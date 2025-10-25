@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ChannelItem" extends="Group">
+    <script type="text/brightscript" uri="pkg:/components/ChannelItem.brs" />
+    
+    <interface>
+        <field id="itemContent" type="node" onChange="onContentChanged" />
+        <field id="focusPercent" type="float" onChange="onFocusPercentChanged" />
+    </interface>
+
+    <children>
+        <Poster
+            id="poster"
+            translation="[0,0]"
+            width="400"
+            height="250"
+            loadDisplayMode="scaleToFit"
+            failedBitmapUri="pkg:/images/placeholder.png"/>
+        
+        <Label
+            id="title"
+            translation="[0,260]"
+            width="400"
+            height="40"
+            horizAlign="center"
+            vertAlign="center"
+            font="font:SmallBoldSystemFont"/>
+    </children>
+</component>
