@@ -27,8 +27,14 @@ sub loadPlaylist()
     m.loadingLabel.visible = true
     m.channelList.visible = false
 
+    ' Add timestamp to prevent caching
+    timestamp = CreateObject("roDateTime").AsSeconds().ToStr()
+    playlistUrl = "https://tvpass.org/playlist/m3u?t=" + timestamp
+    
+    print "Loading playlist from: " + playlistUrl
+
     m.playlistTask = createObject("roSGNode", "LoadPlaylistTask")
-    m.playlistTask.url = "https://tvpass.org/playlist/m3u"
+    m.playlistTask.url = playlistUrl
     m.playlistTask.observeField("response", "onPlaylistResponse")
     m.playlistTask.observeField("error", "onPlaylistError")
     m.playlistTask.control = "RUN"

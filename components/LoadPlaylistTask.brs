@@ -9,12 +9,20 @@ function runTask() as Void
         return
     end if
 
+    print "LoadPlaylistTask: Fetching " + url
+
     ' Create HTTP object
     http = createObject("roUrlTransfer")
     http.setUrl(url)
     http.setCertificatesFile("common:/certs/ca-bundle.crt")
     http.addHeader("User-Agent", "Roku/IPTV-Client")
+    http.addHeader("Cache-Control", "no-cache, no-store, must-revalidate")
+    http.addHeader("Pragma", "no-cache")
+    http.addHeader("Expires", "0")
     http.initClientCertificates()
+    
+    ' Disable any internal caching
+    http.EnableFreshConnection(true)
 
     ' Perform request
     port = createObject("roMessagePort")
@@ -25,8 +33,11 @@ function runTask() as Void
         msg = wait(10000, port) ' 10 second timeout
         if type(msg) = "roUrlEvent"
             responseCode = msg.getResponseCode()
+            print "LoadPlaylistTask: Response code " + str(responseCode)
             if responseCode = 200
-                m.top.response = msg.getString()
+                response = msg.getString()
+                print "LoadPlaylistTask: Received " + str(len(response)) + " bytes"
+                m.top.response = response
             else
                 m.top.error = "HTTP " + str(responseCode)
             end if
