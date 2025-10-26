@@ -20,7 +20,7 @@
         visible="false"
         translation="[100,100]"
         itemComponentName="SimpleChannelItem"
-        itemSize="[1720,55]"
+        itemSize="[1720,60]"
         itemSpacing="[0,10]"
         drawFocusFeedback="false" />
 
