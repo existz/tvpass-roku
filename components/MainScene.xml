@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="MainScene" extends="Scene">
- <script type="text/brightscript" uri="pkg:/components/MainScene.brs"/>
+  <script type="text/brightscript" uri="pkg:/components/MainScene.brs"/>
+
   <children>
+    <!-- Loading / Error Label -->
     <Label id="loadingLabel"
            text="Loading Channels..."
            translation="[540,300]"
@@ -9,24 +11,25 @@
            height="60"
            horizAlign="center"
            vertAlign="center"
-           font="font:LargeBoldSystemFont"/>
-    <RowList id="channelList"
-             visible="false"
-             translation="[100,100]"
-             itemComponentName="ChannelItem"
-             itemSize="[400,300]"
-             itemSpacing="[20,20]"
-             numRows="3"
-             rowItemSize="[[400,300],[400,300],[400,300]]"
-             rowItemSpacing="[[20,0],[20,0],[20,0]]"
-             showRowLabel="false"
-             rowHeights="[300,300,300]"
-             rowFocusAnimationStyle="fixedFocus"
-             vertFocusAnimationStyle="floatingFocus"/>
-    <Video id="videoPlayer"
-           visible="false"
-           translation="[0,0]"
-           width="1920"
-           height="1080"/>
+           font="font:LargeBoldSystemFont"
+           color="0xFFFFFFFF"/>
+
+    <!-- VERTICAL LIST using MarkupList -->
+    <MarkupList
+        id="channelList"
+        visible="false"
+        translation="[100,100]"
+        itemComponentName="SimpleChannelItem"
+        itemSize="[1720,55]"
+        itemSpacing="[0,10]"
+        drawFocusFeedback="false" />
+
+    <!-- Video Player -->
+    <Video
+        id="videoPlayer"
+        visible="false"
+        translation="[0,0]"
+        width="1920"
+        height="1080"/>
   </children>
 </component>
