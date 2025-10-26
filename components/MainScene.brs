@@ -7,17 +7,25 @@ sub init()
     m.videoPlayer = m.top.findNode("videoPlayer")
 
     m.channels = []
+    m.playlistLoaded = false
 
     ' Observe selection and video state
     m.channelList.observeField("itemSelected", "onChannelSelected")
     m.videoPlayer.observeField("state", "onVideoStateChanged")
 
+    ' Load playlist only once on startup
     loadPlaylist()
 end sub
 
 sub loadPlaylist()
+    ' Allow manual refresh but log it
+    if m.playlistLoaded
+        print "Manual playlist refresh requested"
+    end if
+
     m.loadingLabel.text = "Loading Channels..."
     m.loadingLabel.visible = true
+    m.channelList.visible = false
 
     m.playlistTask = createObject("roSGNode", "LoadPlaylistTask")
     m.playlistTask.url = "https://tvpass.org/playlist/m3u"
@@ -32,6 +40,8 @@ sub onPlaylistResponse()
         parseM3U(response)
         if m.channels.count() > 0
             showChannelList()
+            m.playlistLoaded = true
+            print "Playlist loaded successfully with " + str(m.channels.count()) + " channels"
         else
             showError("No channels found in playlist")
         end if
@@ -54,7 +64,7 @@ sub parseM3U(content as String)
     current = invalid
     for each line in lines
         line = line.Trim()
-        if line = "" then continue for
+        if line = "" then goto nextLine
 
         if line.StartsWith("#EXTINF:")
             current = {}
@@ -66,10 +76,10 @@ sub parseM3U(content as String)
             ' Extract tvg-logo
             logoPos = line.Instr("tvg-logo=")
             if logoPos >= 0
-                q1 = line.Instr(logoPos + 10, chr(34))
-                q2 = line.Instr(q1 + 1, chr(34))
-                if q2 > q1
-                    current.logo = line.Mid(q1 + 1, q2 - q1 - 1)
+                logoStart = logoPos + 10
+                logoEnd = line.Instr(logoStart, chr(34))
+                if logoEnd > logoStart
+                    current.logo = line.Mid(logoStart, logoEnd - logoStart)
                 end if
             end if
 
@@ -78,13 +88,17 @@ sub parseM3U(content as String)
             m.channels.push(current)
             current = invalid
         end if
+        
+        nextLine:
     end for
+    
+    print "Parsed " + str(m.channels.count()) + " channels from playlist"
 end sub
 
 sub showChannelList()
     m.loadingLabel.visible = false
 
-    ' === VERTICAL LIST: One root with many items ===
+    ' Create vertical list: One root with many items
     root = createObject("roSGNode", "ContentNode")
 
     for i = 0 to m.channels.count() - 1
@@ -92,18 +106,24 @@ sub showChannelList()
         item = root.createChild("ContentNode")
         item.title = str(i + 1) + ". " + channel.title
         item.streamUrl = channel.url
-        item.logo = channel.logo
+        if channel.logo <> invalid
+            item.logo = channel.logo
+        end if
     end for
 
     m.channelList.content = root
     m.channelList.visible = true
     m.channelList.setFocus(true)
+    
+    print "Channel list displayed with " + str(root.getChildCount()) + " items"
 end sub
 
 sub onChannelSelected()
     idx = m.channelList.itemSelected
     if idx >= 0 and idx < m.channels.count()
-        playChannel(m.channels[idx])
+        channel = m.channels[idx]
+        print "Playing channel: " + channel.title
+        playChannel(channel)
     end if
 end sub
 
@@ -119,10 +139,14 @@ sub playChannel(channel as Object)
     m.videoPlayer.content = content
     m.videoPlayer.control = "play"
     m.videoPlayer.setFocus(true)
+    
+    print "Starting playback: " + channel.url
 end sub
 
 sub onVideoStateChanged()
     state = m.videoPlayer.state
+    print "Video state changed: " + state
+    
     if state = "error" or state = "finished" or state = "stopped"
         m.videoPlayer.control = "stop"
         m.videoPlayer.visible = false
@@ -134,17 +158,35 @@ end sub
 sub showError(msg as String)
     m.loadingLabel.text = "Error: " + msg
     m.loadingLabel.visible = true
+    print "Error: " + msg
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
+    print "Key pressed: " + key
+    
+    ' Back button - return to channel list from video
     if key = "back" and m.videoPlayer.visible
+        print "Back button pressed - returning to channel list"
         m.videoPlayer.control = "stop"
         m.videoPlayer.visible = false
         m.channelList.visible = true
         m.channelList.setFocus(true)
         return true
+    end if
+
+    ' Star button (*) - refresh playlist
+    if key = "options" or key = "*" or key = "instantreplay"
+        if not m.videoPlayer.visible
+            print "Star/Options button pressed - refreshing playlist"
+            ' Reset the loaded flag to allow refresh
+            m.playlistLoaded = false
+            ' Show refresh message
+            m.loadingLabel.text = "Refreshing Channels..."
+            loadPlaylist()
+            return true
+        end if
     end if
 
     return false
