@@ -90,7 +90,13 @@ sub parseM3U(content as String)
             end if
 
         else if not line.StartsWith("#") and current <> invalid
-            current.url = line
+            ' Replace /sd with /hd at the end of the URL
+            if line.EndsWith("/sd")
+                current.url = Left(line, Len(line) - 3) + "/hd"
+                print "Converted SD to HD: " + current.url
+            else
+                current.url = line
+            end if
             m.channels.push(current)
             current = invalid
         end if
