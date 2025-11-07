@@ -35,7 +35,7 @@
             width="710"
             height="28"
             horizAlign="left"
-            vertAlign="top"
+            vertAlign="center"
             font="font:SmallSystemFont"
             color="0x999999FF"/>
     </children>

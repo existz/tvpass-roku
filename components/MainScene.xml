@@ -18,7 +18,7 @@
     <MarkupList
         id="channelList"
         visible="false"
-        translation="[100,100]"
+        translation="[100,50]"
         itemComponentName="SimpleChannelItem"
         itemSize="[1720,70]"
         itemSpacing="[0,15]"
