@@ -14,18 +14,29 @@
             id="background"
             translation="[0,0]"
             width="1720"
-            height="55"
+            height="60"
             color="0x000000FF"/>
 
         <!-- Channel Label -->
         <Label
             id="channelLabel"
-            translation="[20,5]"
-            width="1680"
-            height="50"
+            translation="[20,21]"
+            width="950"
+            height="28"
             horizAlign="left"
             vertAlign="center"
             font="font:MediumSystemFont"
             color="0xDDDDDDFF"/>
+
+        <!-- Now Playing Label -->
+        <Label
+            id="nowPlayingLabel"
+            translation="[990,21]"
+            width="710"
+            height="28"
+            horizAlign="left"
+            vertAlign="top"
+            font="font:SmallSystemFont"
+            color="0x999999FF"/>
     </children>
 </component>

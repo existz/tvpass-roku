@@ -1,6 +1,7 @@
 sub init()
     m.background = m.top.findNode("background")
     m.channelLabel = m.top.findNode("channelLabel")
+    m.nowPlayingLabel = m.top.findNode("nowPlayingLabel")
     setUnfocusedState()
 end sub
 
@@ -8,8 +9,18 @@ sub onContentChanged()
     content = m.top.itemContent
     if content <> invalid
         m.channelLabel.text = content.title
+        
+        ' Display nowPlaying if available
+        if content.nowPlaying <> invalid and content.nowPlaying <> ""
+            m.nowPlayingLabel.text = content.nowPlaying
+            
+            ' Position is now fixed in the XML layout
+        else
+            m.nowPlayingLabel.text = ""
+        end if
     else
         m.channelLabel.text = ""
+        m.nowPlayingLabel.text = ""
     end if
     setUnfocusedState()
 end sub
@@ -32,13 +43,16 @@ end sub
 sub setFocusedState(p as Float)
     bg = interpolateColor(&h000000FF, &h0078D4FF, p)  ' Softer blue
     label = interpolateColor(&hDDDDDDFF, &hFFFFFFFF, p)
+    nowPlaying = interpolateColor(&h999999FF, &hCCCCCCFF, p)
     m.background.color = bg
     m.channelLabel.color = label
+    m.nowPlayingLabel.color = nowPlaying
 end sub
 
 sub setUnfocusedState()
     m.background.color = "0x000000FF"
     m.channelLabel.color = "0xDDDDDDFF"
+    m.nowPlayingLabel.color = "0x999999FF"
 end sub
 
 function interpolateColor(c1 as Integer, c2 as Integer, t as Float) as String
