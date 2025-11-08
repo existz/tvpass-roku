@@ -10,7 +10,6 @@ mm_icon_focus_sd=pkg:/images/icon_sd.png
 splash_screen_hd=pkg:/images/splash_hd.png
 splash_screen_sd=pkg:/images/splash_sd.png
 
-splash_min_time=1500
 ui_resolutions=hd,fhd
 supports_fhd=1
 supports_hd=1
