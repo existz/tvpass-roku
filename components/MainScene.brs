@@ -133,8 +133,8 @@ sub parseSchedules(xmlString as String)
             stopSec = parseXmltvTime(stopTime)
             
             ' Include programs starting within the next hour
-            ' More lenient time window - include programs up to 30 minutes ahead
-            if startSec <= (currentTime + 900) and stopSec > currentTime
+            ' More lenient time window - include programs up to 5 minutes ahead
+            if startSec <= (currentTime + 300) and stopSec > currentTime
                 titleNode = programme.GetNamedElements("title")
                 descNode = programme.GetNamedElements("desc")
                 subTitleNode = programme.GetNamedElements("sub-title")
