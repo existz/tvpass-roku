@@ -410,6 +410,13 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             m.channelList.jumpToItem = m.lastChannelIndex
         end if
         
+        ' Check if EPG needs updating and refresh if necessary
+        if shouldUpdateSchedules()
+            print "EPG data is stale - refreshing"
+            m.schedulesLoaded = false
+            loadSchedules()
+        end if
+        
         return true
     end if
 
