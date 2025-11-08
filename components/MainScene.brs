@@ -10,6 +10,7 @@ sub init()
     m.schedules = {}
     m.playlistLoaded = false
     m.schedulesLoaded = false
+    m.lastScheduleUpdate = 0  ' Track last EPG update time
 
     ' Observe selection and video state
     m.channelList.observeField("itemSelected", "onChannelSelected")
@@ -65,7 +66,21 @@ sub onPlaylistError()
     m.playlistTask = invalid
 end sub
 
+function shouldUpdateSchedules() as Boolean
+    currentTime = CreateObject("roDateTime").AsSeconds()
+    ' Check if 5 minutes (300 seconds) have passed since last update
+    return m.lastScheduleUpdate = 0 or (currentTime - m.lastScheduleUpdate) >= 300
+end function
+
 sub loadSchedules()
+    ' Check if we need to update
+    if not shouldUpdateSchedules()
+        print "Skipping EPG update - last update was less than 5 minutes ago"
+        ' If we don't need to update, just show the channel list
+        showChannelList()
+        return
+    end if
+
     m.loadingLabel.text = "Loading TV Guide..."
     m.loadingLabel.visible = true
 
@@ -86,6 +101,8 @@ sub onScheduleResponse()
     if response <> invalid and response <> ""
         parseSchedules(response)
         m.schedulesLoaded = true
+        ' Update the last schedule update timestamp
+        m.lastScheduleUpdate = CreateObject("roDateTime").AsSeconds()
         print "Schedules loaded successfully"
     else
         print "Empty schedule response, continuing without schedules"
@@ -318,9 +335,11 @@ sub onVideoStateChanged()
         m.videoPlayer.control = "stop"
         m.videoPlayer.visible = false
         
-        ' Refresh EPG data when returning to the main screen
-        m.schedulesLoaded = false
-        loadSchedules()
+        ' Only mark as not loaded if we need to update
+        if shouldUpdateSchedules()
+            m.schedulesLoaded = false
+            loadSchedules()
+        end if
         
         m.channelList.visible = true
         m.channelList.setFocus(true)
