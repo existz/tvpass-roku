@@ -317,6 +317,11 @@ sub onVideoStateChanged()
     if state = "error" or state = "finished" or state = "stopped"
         m.videoPlayer.control = "stop"
         m.videoPlayer.visible = false
+        
+        ' Refresh EPG data when returning to the main screen
+        m.schedulesLoaded = false
+        loadSchedules()
+        
         m.channelList.visible = true
         m.channelList.setFocus(true)
     end if
