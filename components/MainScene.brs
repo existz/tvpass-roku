@@ -5,6 +5,12 @@ sub init()
     m.loadingLabel = m.top.findNode("loadingLabel")
     m.channelList = m.top.findNode("channelList")
     m.videoPlayer = m.top.findNode("videoPlayer")
+    m.videoOverlay = m.top.findNode("videoOverlay")
+    m.channelListBackground = m.top.findNode("channelListBackground")
+    
+    ' Track background playback state and current channel
+    m.isBackgroundPlayback = false
+    m.currentChannelIndex = -1
 
     m.channels = []
     m.schedules = {}
@@ -312,17 +318,34 @@ end sub
 sub onChannelSelected()
     idx = m.channelList.itemSelected
     if idx >= 0 and idx < m.channels.count()
-        ' Store the selected channel index
-        m.lastChannelIndex = idx
-        channel = m.channels[idx]
-        print "Playing channel: " + channel.title
-        playChannel(channel)
+        ' Check if we're selecting the currently playing channel
+        if m.isBackgroundPlayback and idx = m.currentChannelIndex
+            ' Return to full screen playback of current channel
+            m.isBackgroundPlayback = false
+            m.videoPlayer.opacity = 1.0
+            m.videoOverlay.visible = false
+            m.channelList.visible = false
+            m.channelListBackground.visible = false
+            m.videoPlayer.setFocus(true)
+        else
+            ' Play new channel
+            m.lastChannelIndex = idx
+            m.currentChannelIndex = idx
+            channel = m.channels[idx]
+            print "Playing channel: " + channel.title
+            playChannel(channel)
+            m.isBackgroundPlayback = false
+        end if
     end if
 end sub
 
 sub playChannel(channel as Object)
-    m.channelList.visible = false
+    ' Show video player at full opacity when starting playback
+    m.videoPlayer.opacity = 1.0
     m.videoPlayer.visible = true
+    m.videoOverlay.visible = false
+    m.channelList.visible = false
+    m.channelListBackground.visible = false
 
     content = createObject("roSGNode", "ContentNode")
     content.url = channel.url
@@ -368,11 +391,25 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     
     ' Back button - return to channel list from video
     if key = "back" and m.videoPlayer.visible
-        print "Back button pressed - returning to channel list"
-        m.videoPlayer.control = "stop"
-        m.videoPlayer.visible = false
+        print "Back button pressed - enabling background playback"
+        ' Enable background playback mode
+        m.isBackgroundPlayback = true
+        
+        ' Ensure proper visibility with dark overlay
+        m.videoPlayer.opacity = 1.0
+        m.videoPlayer.visible = true
+        m.videoOverlay.visible = true
+        
+        ' Show channel list with black background
+        m.channelListBackground.visible = true
         m.channelList.visible = true
         m.channelList.setFocus(true)
+        
+        ' Make sure we're at the last selected channel
+        if m.lastChannelIndex >= 0
+            m.channelList.jumpToItem = m.lastChannelIndex
+        end if
+        
         return true
     end if
 

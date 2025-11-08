@@ -3,7 +3,46 @@
   <script type="text/brightscript" uri="pkg:/components/MainScene.brs"/>
 
   <children>
-    <!-- Loading / Error Label -->
+    <!-- Video Player (bottom layer) -->
+    <Video
+        id="videoPlayer"
+        visible="false"
+        translation="[0,0]"
+        width="1920"
+        height="1080"
+        opacity="1.0"/>
+
+    <!-- Black overlay for dimming video -->
+    <Rectangle
+        id="videoOverlay"
+        visible="false"
+        translation="[0,0]"
+        width="1920"
+        height="1080"
+        color="0x000000"
+        opacity="0.9"/>
+
+    <!-- Channel list background -->
+    <Rectangle
+        id="channelListBackground"
+        visible="false"
+        translation="[100,50]"
+        width="1720"
+        height="1000"
+        color="0x000000"/>
+
+    <!-- VERTICAL LIST using MarkupList (top layer) -->
+    <MarkupList
+        id="channelList"
+        visible="false"
+        translation="[100,50]"
+        itemComponentName="SimpleChannelItem"
+        itemSize="[1720,70]"
+        itemSpacing="[0,15]"
+        color="0x000000"
+        drawFocusFeedback="false" />
+
+    <!-- Loading / Error Label (top layer) -->
     <Label id="loadingLabel"
            text="Loading Channels..."
            translation="[540,300]"
@@ -13,23 +52,5 @@
            vertAlign="center"
            font="font:LargeBoldSystemFont"
            color="0xFFFFFFFF"/>
-
-    <!-- VERTICAL LIST using MarkupList -->
-    <MarkupList
-        id="channelList"
-        visible="false"
-        translation="[100,50]"
-        itemComponentName="SimpleChannelItem"
-        itemSize="[1720,70]"
-        itemSpacing="[0,15]"
-        drawFocusFeedback="false" />
-
-    <!-- Video Player -->
-    <Video
-        id="videoPlayer"
-        visible="false"
-        translation="[0,0]"
-        width="1920"
-        height="1080"/>
   </children>
 </component>
