@@ -11,6 +11,7 @@ sub init()
     m.playlistLoaded = false
     m.schedulesLoaded = false
     m.lastScheduleUpdate = 0  ' Track last EPG update time
+    m.lastChannelIndex = 0    ' Track last selected channel index
 
     ' Observe selection and video state
     m.channelList.observeField("itemSelected", "onChannelSelected")
@@ -299,12 +300,20 @@ sub showChannelList()
     m.channelList.visible = true
     m.channelList.setFocus(true)
     
+    ' Restore the last selected channel position
+    if m.lastChannelIndex >= 0 and m.lastChannelIndex < m.channels.count()
+        m.channelList.jumpToItem = m.lastChannelIndex
+        print "Restored channel position to " + str(m.lastChannelIndex + 1)
+    end if
+    
     print "Channel list displayed with " + str(root.getChildCount()) + " items"
 end sub
 
 sub onChannelSelected()
     idx = m.channelList.itemSelected
     if idx >= 0 and idx < m.channels.count()
+        ' Store the selected channel index
+        m.lastChannelIndex = idx
         channel = m.channels[idx]
         print "Playing channel: " + channel.title
         playChannel(channel)
