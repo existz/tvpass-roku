@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="GuideChannelItem" extends="Group">
+    <script type="text/brightscript" uri="pkg:/components/GuideChannelItem.brs" />
+
+    <interface>
+        <field id="itemContent" type="node" onChange="onContentChanged" />
+        <field id="focusPercent" type="float" onChange="onFocusPercentChanged" />
+        <field id="width" type="float" onChange="onWidthChanged" />
+    </interface>
+
+    <children>
+        <!-- Background -->
+        <Rectangle
+            id="background"
+            translation="[0,0]"
+            width="1800"
+            height="75"
+            color="0x1A1A1AFF"/>
+
+        <!-- Channel Number -->
+        <Label
+            id="channelNumber"
+            translation="[10,27]"
+            width="100"
+            height="30"
+            horizAlign="center"
+            vertAlign="center"
+            font="font:MediumBoldSystemFont"
+            color="0xFFFFFFFF"
+            wrap="false"/>
+
+        <!-- Channel Logo -->
+        <Poster
+            id="channelLogo"
+            translation="[130,8]"
+            width="100"
+            height="60"
+            loadDisplayMode="scaleToFit"
+            failedBitmapUri=""
+            visible="false"/>
+
+        <!-- Program Slots Container -->
+        <Group
+            id="programSlots"
+            translation="[250,0]"/>
+    </children>
+</component>

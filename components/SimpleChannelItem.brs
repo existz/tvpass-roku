@@ -41,18 +41,18 @@ sub onWidthChanged()
 end sub
 
 sub setFocusedState(p as Float)
-    bg = interpolateColor(&h000000FF, &h0078D4FF, p)  ' Softer blue
-    label = interpolateColor(&hDDDDDDFF, &hFFFFFFFF, p)
-    nowPlaying = interpolateColor(&h999999FF, &hCCCCCCFF, p)
+    bg = interpolateColor(&h0F0F0FFF, &h0078D4FF, p)  ' Softer blue
+    label = interpolateColor(&hCCCCCCFF, &hFFFFFFFF, p)
+    nowPlaying = interpolateColor(&h777777FF, &hCCCCCCFF, p)
     m.background.color = bg
     m.channelLabel.color = label
     m.nowPlayingLabel.color = nowPlaying
 end sub
 
 sub setUnfocusedState()
-    m.background.color = "0x000000FF"
-    m.channelLabel.color = "0xDDDDDDFF"
-    m.nowPlayingLabel.color = "0x999999FF"
+    m.background.color = "0x0F0F0FFF"
+    m.channelLabel.color = "0xCCCCCCFF"
+    m.nowPlayingLabel.color = "0x777777FF"
 end sub
 
 function interpolateColor(c1 as Integer, c2 as Integer, t as Float) as String

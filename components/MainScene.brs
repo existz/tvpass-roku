@@ -1,94 +1,195 @@
 sub init()
     m.top.backgroundURI = "pkg:/images/background.jpg"
-    m.top.backgroundColor = "0x000000"
+    m.top.backgroundColor = "0x1A1A1A"
 
+    ' Find UI elements
     m.loadingLabel = m.top.findNode("loadingLabel")
     m.channelList = m.top.findNode("channelList")
     m.videoPlayer = m.top.findNode("videoPlayer")
     m.videoOverlay = m.top.findNode("videoOverlay")
-    m.channelListBackground = m.top.findNode("channelListBackground")
     
-    ' Track background playback state and current channel
+    ' Guide UI elements
+    m.guideBackground = m.top.findNode("guideBackground")
+    m.headerBackground = m.top.findNode("headerBackground")
+    m.featuredLogo = m.top.findNode("featuredLogo")
+    m.featuredTitle = m.top.findNode("featuredTitle")
+    m.featuredTime = m.top.findNode("featuredTime")
+    m.featuredDescription = m.top.findNode("featuredDescription")
+    m.currentTimeLabel = m.top.findNode("currentTimeLabel")
+    m.guideHeaderLabel = m.top.findNode("guideHeaderLabel")
+    m.allChannelsLabel = m.top.findNode("allChannelsLabel")
+    m.timeSlotHeaders = m.top.findNode("timeSlotHeaders")
+    
+    ' Track state
     m.isBackgroundPlayback = false
     m.currentChannelIndex = -1
-
     m.channels = []
     m.schedules = {}
+    m.programsByChannel = {}
     m.playlistLoaded = false
     m.schedulesLoaded = false
-    m.lastScheduleUpdate = 0  ' Track last EPG update time
-    m.lastChannelIndex = 0    ' Track last selected channel index
+    m.lastScheduleUpdate = 0
+    m.lastChannelIndex = 0
+    m.pendingTasks = 0
+    m.tvpassChannels = []
+    m.logoChannels = []
 
-    ' Observe selection and video state
+    ' Observe selection
     m.channelList.observeField("itemSelected", "onChannelSelected")
     m.videoPlayer.observeField("state", "onVideoStateChanged")
 
-    ' Load playlist only once on startup
+    ' Start clock update timer
+    m.clockTimer = createObject("roSGNode", "Timer")
+    m.clockTimer.repeat = true
+    m.clockTimer.duration = 60
+    m.clockTimer.observeField("fire", "updateClock")
+    m.clockTimer.control = "start"
+    
+    updateClock()
     loadPlaylist()
 end sub
 
+sub updateClock()
+    now = CreateObject("roDateTime")
+    now.ToLocalTime()
+    hour = now.GetHours()
+    minute = now.GetMinutes()
+    ampm = "am"
+    
+    if hour >= 12
+        ampm = "pm"
+        if hour > 12
+            hour = hour - 12
+        end if
+    end if
+    if hour = 0 then hour = 12
+    
+    timeStr = str(hour) + ":" + right("0" + str(minute), 2) + " " + ampm
+    m.currentTimeLabel.text = timeStr
+end sub
+
 sub loadPlaylist()
-    ' Allow manual refresh but log it
     if m.playlistLoaded
         print "Manual playlist refresh requested"
     end if
 
-    m.loadingLabel.text = "Loading Channels..."
+    m.loadingLabel.text = "Loading TV Guide..."
     m.loadingLabel.visible = true
-    m.channelList.visible = false
+    hideGuideElements()
 
-    ' Add timestamp to prevent caching
     timestamp = CreateObject("roDateTime").AsSeconds().ToStr()
-    playlistUrl = "https://tvpass.org/playlist/m3u?t=" + timestamp
     
-    print "Loading playlist from: " + playlistUrl
-
+    ' Load both playlists
+    m.pendingTasks = 2
+    m.tvpassChannels = []
+    m.logoChannels = []
+    
+    ' Load tvpass playlist for channels and URLs
+    tvpassUrl = "https://tvpass.org/playlist/m3u?t=" + timestamp
+    print "Loading tvpass playlist from: " + tvpassUrl
     m.playlistTask = createObject("roSGNode", "LoadPlaylistTask")
-    m.playlistTask.url = playlistUrl
-    m.playlistTask.observeField("response", "onPlaylistResponse")
+    m.playlistTask.url = tvpassUrl
+    m.playlistTask.observeField("response", "onTvpassPlaylistResponse")
     m.playlistTask.observeField("error", "onPlaylistError")
     m.playlistTask.control = "RUN"
+    
+    ' Load logo playlist for tvg-logo info
+    logoUrl = "https://raw.githubusercontent.com/phosani/tvpass/refs/heads/main/tvpasshd.m3u?t=" + timestamp
+    print "Loading logo playlist from: " + logoUrl
+    m.logoTask = createObject("roSGNode", "LoadPlaylistTask")
+    m.logoTask.url = logoUrl
+    m.logoTask.observeField("response", "onLogoPlaylistResponse")
+    m.logoTask.observeField("error", "onLogoPlaylistError")
+    m.logoTask.control = "RUN"
 end sub
 
-sub onPlaylistResponse()
+sub onTvpassPlaylistResponse()
     response = m.playlistTask.response
     if response <> invalid and response <> ""
-        parseM3U(response)
+        m.tvpassChannels = parseM3UData(response)
+        print "Loaded " + str(m.tvpassChannels.count()) + " channels from tvpass (response size: " + str(len(response)) + " bytes)"
+        if m.tvpassChannels.count() > 0
+            print "First channel: " + m.tvpassChannels[0].title
+            print "Last channel: " + m.tvpassChannels[m.tvpassChannels.count() - 1].title
+        end if
+    end if
+    m.playlistTask = invalid
+    checkPlaylistsComplete()
+end sub
+
+sub onLogoPlaylistResponse()
+    response = m.logoTask.response
+    if response <> invalid and response <> ""
+        m.logoChannels = parseM3UData(response)
+        print "Loaded " + str(m.logoChannels.count()) + " logo entries"
+    end if
+    m.logoTask = invalid
+    checkPlaylistsComplete()
+end sub
+
+sub onLogoPlaylistError()
+    print "Logo playlist load failed: " + m.logoTask.error
+    m.logoTask = invalid
+    checkPlaylistsComplete()
+end sub
+
+sub checkPlaylistsComplete()
+    m.pendingTasks = m.pendingTasks - 1
+    if m.pendingTasks = 0
+        ' Merge the data
+        mergePlaylists()
         if m.channels.count() > 0
             m.playlistLoaded = true
-            print "Playlist loaded successfully with " + str(m.channels.count()) + " channels"
-            ' Now load the schedules
+            print "Playlists merged successfully with " + str(m.channels.count()) + " channels"
             loadSchedules()
         else
             showError("No channels found in playlist")
         end if
-    else
-        showError("Empty playlist response")
     end if
-    m.playlistTask = invalid
+end sub
+
+sub mergePlaylists()
+    ' Create lookup map for logos by tvg-id
+    logoMap = {}
+    for each logoChannel in m.logoChannels
+        if logoChannel.tvgId <> invalid and logoChannel.logo <> invalid
+            logoMap[logoChannel.tvgId] = logoChannel.logo
+        end if
+    end for
+    
+    print "Created logo map with " + str(logoMap.count()) + " entries"
+    
+    ' Use tvpass channels as base and add logos from logo playlist
+    m.channels = []
+    for each channel in m.tvpassChannels
+        ' Only add logo from logo playlist if channel doesn't have one
+        if channel.logo = invalid and channel.tvgId <> invalid and logoMap.doesExist(channel.tvgId)
+            channel.logo = logoMap[channel.tvgId]
+            print "Updated logo for " + channel.tvgId + ": " + channel.logo
+        end if
+        m.channels.push(channel)
+    end for
 end sub
 
 sub onPlaylistError()
-    showError("Load failed: " + m.playlistTask.error)
+    print "Playlist load failed: " + m.playlistTask.error
     m.playlistTask = invalid
+    checkPlaylistsComplete()
 end sub
 
 function shouldUpdateSchedules() as Boolean
     currentTime = CreateObject("roDateTime").AsSeconds()
-    ' Check if 5 minutes (300 seconds) have passed since last update
     return m.lastScheduleUpdate = 0 or (currentTime - m.lastScheduleUpdate) >= 300
 end function
 
 sub loadSchedules()
-    ' Check if we need to update
     if not shouldUpdateSchedules()
         print "Skipping EPG update - last update was less than 5 minutes ago"
-        ' If we don't need to update, just show the channel list
-        showChannelList()
+        showGuide()
         return
     end if
 
-    m.loadingLabel.text = "Loading TV Guide..."
+    m.loadingLabel.text = "Loading Program Guide..."
     m.loadingLabel.visible = true
 
     timestamp = CreateObject("roDateTime").AsSeconds().ToStr()
@@ -108,24 +209,19 @@ sub onScheduleResponse()
     if response <> invalid and response <> ""
         parseSchedules(response)
         m.schedulesLoaded = true
-        ' Update the last schedule update timestamp
         m.lastScheduleUpdate = CreateObject("roDateTime").AsSeconds()
         print "Schedules loaded successfully"
     else
         print "Empty schedule response, continuing without schedules"
     end if
     m.scheduleTask = invalid
-    
-    ' Show channel list regardless of schedule load success
-    showChannelList()
+    showGuide()
 end sub
 
 sub onScheduleError()
     print "Schedule load failed: " + m.scheduleTask.error + ", continuing without schedules"
     m.scheduleTask = invalid
-    
-    ' Show channel list even if schedules fail
-    showChannelList()
+    showGuide()
 end sub
 
 sub parseSchedules(xmlString as String)
@@ -137,14 +233,12 @@ sub parseSchedules(xmlString as String)
     
     print "Parsing EPG XML"
     
-    ' Get current time for filtering
     now = CreateObject("roDateTime")
     currentTime = now.AsSeconds()
     
-    ' Parse programmes and build lookup by channel id
+    ' Parse programmes
     programmes = xml.GetNamedElements("programme")
-    channelsWithData = {}
-    scheduleCount = 0
+    m.programsByChannel = {}
     
     for each programme in programmes
         channel = programme@channel
@@ -152,48 +246,73 @@ sub parseSchedules(xmlString as String)
         stopTime = programme@stop
         
         if channel <> invalid and startTime <> invalid and stopTime <> invalid
-            ' Parse XMLTV datetime (format: YYYYMMDDHHmmss +0000)
+            normalizedChannel = normalizeChannelId(channel)
             startSec = parseXmltvTime(startTime)
             stopSec = parseXmltvTime(stopTime)
             
-            ' Include programs starting within the next hour
-            ' More lenient time window - include programs up to 5 minutes ahead
-            if startSec <= (currentTime + 300) and stopSec > currentTime
+            ' Store all programs for next 2 hours
+            if startSec <= (currentTime + 7200) and stopSec > currentTime
                 titleNode = programme.GetNamedElements("title")
                 descNode = programme.GetNamedElements("desc")
                 subTitleNode = programme.GetNamedElements("sub-title")
                 
                 if titleNode.Count() > 0
                     programTitle = titleNode[0].GetText()
+                    programDesc = ""
+                    programSubTitle = ""
                     
-                    ' Add subtitle if available
-                    if subTitleNode.Count() > 0 and subTitleNode[0].GetText() <> invalid
-                        programTitle = programTitle + " - " + subTitleNode[0].GetText()
+                    if descNode.Count() > 0
+                        programDesc = descNode[0].GetText()
                     end if
                     
-                    ' If no subtitle but has description, try to use that
-                    if subTitleNode.Count() = 0 and descNode.Count() > 0 and descNode[0].GetText() <> invalid
-                        description = descNode[0].GetText()
-                        ' Only add description if it's different from the title
-                        if description <> programTitle and description <> ""
-                            programTitle = programTitle + " - " + description
-                        end if
+                    if subTitleNode.Count() > 0
+                        programSubTitle = subTitleNode[0].GetText()
                     end if
                     
-                    if programTitle <> invalid and programTitle <> ""
-                        m.schedules[channel] = programTitle
-                        scheduleCount = scheduleCount + 1
+                    ' Use subtitle if title is just "Movie"
+                    if programTitle = "Movie" and programSubTitle <> ""
+                        programTitle = programSubTitle
+                    end if
+                    
+                    ' Initialize channel array if needed
+                    if not m.programsByChannel.doesExist(normalizedChannel)
+                        m.programsByChannel[normalizedChannel] = []
+                    end if
+                    
+                    ' Add program to channel
+                    programInfo = {
+                        title: programTitle,
+                        description: programDesc,
+                        startTime: startSec,
+                        endTime: stopSec
+                    }
+                    m.programsByChannel[normalizedChannel].push(programInfo)
+                    
+                    ' Also store current program in schedules
+                    if startSec <= currentTime and stopSec > currentTime
+                        m.schedules[normalizedChannel] = programTitle
                     end if
                 end if
             end if
         end if
     end for
     
-    print "Parsed " + str(m.schedules.count()) + " current programs from EPG"
+    print "Parsed programs for " + str(m.programsByChannel.count()) + " channels"
 end sub
 
+function normalizeChannelId(id as String) as String
+    if id = invalid then return ""
+    id = id.Trim()
+    if id.StartsWith("channel")
+        return id.Mid(7)
+    else if id.Instr(".") > 0
+        return Left(id, id.Instr(".") - 1)
+    else
+        return id
+    end if
+end function
+
 function parseXmltvTime(xmltvTime as String) as LongInteger
-    ' Parse XMLTV format: YYYYMMDDHHmmss +0000
     if xmltvTime.Len() < 14 then return 0
     
     year = val(xmltvTime.Mid(0, 4))
@@ -209,8 +328,8 @@ function parseXmltvTime(xmltvTime as String) as LongInteger
     return dt.AsSeconds()
 end function
 
-sub parseM3U(content as String)
-    m.channels = []
+function parseM3UData(content as String) as Object
+    channels = []
     content = content.Replace(chr(13), chr(10)).Replace(chr(10)+chr(10), chr(10))
     lines = content.Split(chr(10))
 
@@ -220,15 +339,18 @@ sub parseM3U(content as String)
         if line = "" then goto nextLine
 
         if line.StartsWith("#EXTINF:")
+            if current <> invalid and current.url <> invalid
+                channels.push(current)
+            end if
+            
             current = {}
             parts = line.Split(",")
             if parts.count() > 1
                 current.title = parts[parts.count() - 1].Trim()
             end if
 
-            ' Extract tvg-id
             tvgIdPos = line.Instr("tvg-id=")
-            if tvgIdPos >= 0
+            if tvgIdPos > 0
                 tvgIdStart = tvgIdPos + 8
                 tvgIdEnd = line.Instr(tvgIdStart, chr(34))
                 if tvgIdEnd > tvgIdStart
@@ -236,9 +358,8 @@ sub parseM3U(content as String)
                 end if
             end if
 
-            ' Extract tvg-logo
             logoPos = line.Instr("tvg-logo=")
-            if logoPos >= 0
+            if logoPos > 0
                 logoStart = logoPos + 10
                 logoEnd = line.Instr(logoStart, chr(34))
                 if logoEnd > logoStart
@@ -247,85 +368,222 @@ sub parseM3U(content as String)
             end if
 
         else if not line.StartsWith("#") and current <> invalid
-            ' Replace /sd with /hd at the end of the URL
             if line.EndsWith("/sd")
                 current.url = Left(line, Len(line) - 3) + "/hd"
-                print "Converted SD to HD: " + current.url
             else
                 current.url = line
             end if
-            m.channels.push(current)
-            current = invalid
         end if
         
         nextLine:
     end for
     
-    print "Parsed " + str(m.channels.count()) + " channels from playlist"
+    if current <> invalid and current.url <> invalid
+        channels.push(current)
+    end if
+    
+    return channels
+end function
+
+sub createTimeSlotHeaders()
+    ' Clear existing headers
+    m.timeSlotHeaders.removeChildrenIndex(m.timeSlotHeaders.getChildCount(), 0)
+    
+    now = CreateObject("roDateTime")
+    now.ToLocalTime()
+    
+    ' Create 3 time slot headers (30-minute intervals) for viewing window
+    slotWidth = 517
+    currentHour = now.GetHours()
+    currentMinute = now.GetMinutes()
+    
+    ' Round down to nearest 30-minute interval
+    if currentMinute >= 30
+        startMinute = 30
+    else
+        startMinute = 0
+    end if
+    
+    for i = 0 to 2
+        totalMinutes = (startMinute + (i * 30))
+        hours = currentHour + int(totalMinutes / 60)
+        minutes = totalMinutes mod 60
+        
+        if hours >= 24 then hours = hours - 24
+        
+        ' Format time
+        displayHour = hours
+        ampm = "am"
+        if hours >= 12
+            ampm = "pm"
+            if hours > 12
+                displayHour = hours - 12
+            end if
+        end if
+        if displayHour = 0 then displayHour = 12
+        
+        minuteStr = ""
+        if minutes > 0
+            minuteStr = ":" + right("0" + str(minutes), 2)
+        end if
+        timeStr = str(displayHour) + minuteStr + ampm
+        
+        ' Create time label
+        timeLabel = createObject("roSGNode", "Label")
+        timeLabel.width = slotWidth
+        timeLabel.height = 40
+        timeLabel.text = timeStr
+        timeLabel.font = "font:SmallBoldSystemFont"
+        timeLabel.color = "0x888888FF"
+        timeLabel.horizAlign = "center"
+        
+        m.timeSlotHeaders.appendChild(timeLabel)
+    end for
 end sub
 
-sub showChannelList()
+sub showGuide()
     m.loadingLabel.visible = false
-
-    ' Create vertical list: One root with many items
+    
+    ' Create time slot headers
+    createTimeSlotHeaders()
+    
+    ' Create channel list content
     root = createObject("roSGNode", "ContentNode")
-
-    matchCount = 0
+    
     for i = 0 to m.channels.count() - 1
         channel = m.channels[i]
         item = root.createChild("ContentNode")
-        item.title = str(i + 1) + ". " + channel.title
+        
+        item.addField("channelNumber", "integer", false)
+        item.channelNumber = i + 1
+        
+        ' If title is too long, move to nowPlaying
+        item.addField("isLongChannelName", "boolean", false)
+        if len(channel.title) > 30
+            item.title = "Ch " + str(i + 1)
+            item.addField("nowPlaying", "string", false)
+            item.nowPlaying = channel.title
+            item.isLongChannelName = true
+        else
+            item.title = channel.title
+            item.addField("nowPlaying", "string", false)
+            item.isLongChannelName = false
+            normalizedId = invalid
+            if channel.tvgId <> invalid
+                normalizedId = normalizeChannelId(channel.tvgId)
+            end if
+            if normalizedId <> invalid and m.schedules.doesExist(normalizedId)
+                item.nowPlaying = m.schedules[normalizedId]
+            else
+                item.nowPlaying = ""
+            end if
+        end if
+        
         item.addField("streamUrl", "string", false)
         item.streamUrl = channel.url
+        
         if channel.logo <> invalid
             item.addField("logo", "string", false)
             item.logo = channel.logo
         end if
         
-        ' Add nowPlaying from schedules if available (match by tvg-id)
-        item.addField("nowPlaying", "string", false)
+        ' Add upcoming programs
+        item.addField("programs", "array", false)
+        normalizedId = invalid
         if channel.tvgId <> invalid
-            if m.schedules.doesExist(channel.tvgId)
-                item.nowPlaying = m.schedules[channel.tvgId]
-                matchCount = matchCount + 1
-            else
-                item.nowPlaying = ""
-            end if
+            normalizedId = normalizeChannelId(channel.tvgId)
+        end if
+        
+        if normalizedId <> invalid and m.programsByChannel.doesExist(normalizedId)
+            item.programs = m.programsByChannel[normalizedId]
         else
-            item.nowPlaying = ""
-            ' Log first few mismatches for debugging
-            if i < 5 and channel.tvgId <> invalid
-                print "No EPG match for tvg-id: '" + channel.tvgId + "' (" + channel.title + ")"
-            end if
+            item.programs = []
         end if
     end for
     
-    print "Matched " + str(matchCount) + " of " + str(m.channels.count()) + " channels to EPG"
-
     m.channelList.content = root
-    m.channelList.visible = true
-    m.channelList.setFocus(true)
     
-    ' Restore the last selected channel position
-    if m.lastChannelIndex >= 0 and m.lastChannelIndex < m.channels.count()
-        m.channelList.jumpToItem = m.lastChannelIndex
-        print "Restored channel position to " + str(m.lastChannelIndex + 1)
+    ' Update featured program with first channel
+    if m.channels.count() > 0 and m.lastChannelIndex >= 0 and m.lastChannelIndex < m.channels.count()
+        updateFeaturedProgram(m.lastChannelIndex)
+    else if m.channels.count() > 0
+        updateFeaturedProgram(0)
     end if
     
-    print "Channel list displayed with " + str(root.getChildCount()) + " items"
+    showGuideElements()
+    m.channelList.setFocus(true)
+    
+    ' Restore position
+    if m.lastChannelIndex >= 0 and m.lastChannelIndex < m.channels.count()
+        m.channelList.jumpToItem = m.lastChannelIndex
+    end if
+end sub
+
+sub updateFeaturedProgram(index as Integer)
+    if index < 0 or index >= m.channels.count() then return
+    
+    channel = m.channels[index]
+    
+    ' Set logo
+    if channel.logo <> invalid and channel.logo <> ""
+        m.featuredLogo.uri = channel.logo
+    end if
+    
+    ' Set title
+    m.featuredTitle.text = channel.title
+    
+    ' Set current program info
+    normalizedId = invalid
+    if channel.tvgId <> invalid
+        normalizedId = normalizeChannelId(channel.tvgId)
+    end if
+    
+    if normalizedId <> invalid and m.schedules.doesExist(normalizedId)
+        m.featuredTime.text = "Now Playing"
+        m.featuredDescription.text = m.schedules[normalizedId]
+    else
+        m.featuredTime.text = ""
+        m.featuredDescription.text = "No program information available"
+    end if
+end sub
+
+sub showGuideElements()
+    m.guideBackground.visible = true
+    m.headerBackground.visible = true
+    m.featuredLogo.visible = true
+    m.featuredTitle.visible = true
+    m.featuredTime.visible = true
+    m.featuredDescription.visible = true
+    m.currentTimeLabel.visible = true
+    m.guideHeaderLabel.visible = true
+    m.allChannelsLabel.visible = true
+    m.timeSlotHeaders.visible = true
+    m.channelList.visible = true
+end sub
+
+sub hideGuideElements()
+    m.guideBackground.visible = false
+    m.headerBackground.visible = false
+    m.featuredLogo.visible = false
+    m.featuredTitle.visible = false
+    m.featuredTime.visible = false
+    m.featuredDescription.visible = false
+    m.currentTimeLabel.visible = false
+    m.guideHeaderLabel.visible = false
+    m.allChannelsLabel.visible = false
+    m.timeSlotHeaders.visible = false
+    m.channelList.visible = false
 end sub
 
 sub onChannelSelected()
     idx = m.channelList.itemSelected
     if idx >= 0 and idx < m.channels.count()
-        ' Check if we're selecting the currently playing channel
         if m.isBackgroundPlayback and idx = m.currentChannelIndex
-            ' Return to full screen playback of current channel
+            ' Return to full screen
             m.isBackgroundPlayback = false
             m.videoPlayer.opacity = 1.0
             m.videoOverlay.visible = false
-            m.channelList.visible = false
-            m.channelListBackground.visible = false
+            hideGuideElements()
             m.videoPlayer.setFocus(true)
         else
             ' Play new channel
@@ -340,12 +598,10 @@ sub onChannelSelected()
 end sub
 
 sub playChannel(channel as Object)
-    ' Show video player at full opacity when starting playback
     m.videoPlayer.opacity = 1.0
     m.videoPlayer.visible = true
     m.videoOverlay.visible = false
-    m.channelList.visible = false
-    m.channelListBackground.visible = false
+    hideGuideElements()
 
     content = createObject("roSGNode", "ContentNode")
     content.url = channel.url
@@ -355,8 +611,6 @@ sub playChannel(channel as Object)
     m.videoPlayer.content = content
     m.videoPlayer.control = "play"
     m.videoPlayer.setFocus(true)
-    
-    print "Starting playback: " + channel.url
 end sub
 
 sub onVideoStateChanged()
@@ -367,14 +621,13 @@ sub onVideoStateChanged()
         m.videoPlayer.control = "stop"
         m.videoPlayer.visible = false
         
-        ' Only mark as not loaded if we need to update
         if shouldUpdateSchedules()
             m.schedulesLoaded = false
             loadSchedules()
+        else
+            showGuide()
+            m.channelList.setFocus(true)
         end if
-        
-        m.channelList.visible = true
-        m.channelList.setFocus(true)
     end if
 end sub
 
@@ -389,46 +642,33 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 
     print "Key pressed: " + key
     
-    ' Back button - return to channel list from video
+    ' Back button
     if key = "back" and m.videoPlayer.visible
-        print "Back button pressed - enabling background playback"
-        ' Enable background playback mode
+        print "Back button pressed - showing guide with background playback"
         m.isBackgroundPlayback = true
-        
-        ' Ensure proper visibility with dark overlay
         m.videoPlayer.opacity = 1.0
         m.videoPlayer.visible = true
         m.videoOverlay.visible = true
-        
-        ' Show channel list with black background
-        m.channelListBackground.visible = true
-        m.channelList.visible = true
+        showGuideElements()
         m.channelList.setFocus(true)
         
-        ' Make sure we're at the last selected channel
         if m.lastChannelIndex >= 0
             m.channelList.jumpToItem = m.lastChannelIndex
         end if
         
-        ' Check if EPG needs updating and refresh if necessary
         if shouldUpdateSchedules()
-            print "EPG data is stale - refreshing"
             m.schedulesLoaded = false
             loadSchedules()
-            m.loadingLabel.visible = false
         end if
         
         return true
     end if
 
-    ' Star button (*) - refresh playlist
+    ' Refresh
     if key = "options" or key = "*" or key = "instantreplay"
         if not m.videoPlayer.visible
-            print "Star/Options button pressed - refreshing playlist"
-            ' Reset the loaded flag to allow refresh
+            print "Refresh button pressed"
             m.playlistLoaded = false
-            ' Show refresh message
-            m.loadingLabel.text = "Refreshing Channels..."
             loadPlaylist()
             return true
         end if

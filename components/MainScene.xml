@@ -22,35 +22,121 @@
         color="0x000000"
         opacity="0.9"/>
 
-    <!-- Channel list background -->
+    <!-- Main Guide Container -->
     <Rectangle
-        id="channelListBackground"
+        id="guideBackground"
         visible="false"
-        translation="[100,50]"
-        width="1720"
-        height="1000"
-        color="0x000000"/>
+        translation="[0,0]"
+        width="1920"
+        height="1080"
+        color="0x0F0F0FFF"/>
 
-    <!-- VERTICAL LIST using MarkupList (top layer) -->
+    <!-- Header Section -->
+    <Rectangle
+        id="headerBackground"
+        visible="false"
+        translation="[0,0]"
+        width="1920"
+        height="200"
+        color="0x1A1A1AFF"/>
+
+    <!-- Featured Program Info -->
+    <Poster
+        id="featuredLogo"
+        visible="false"
+        translation="[60,40]"
+        width="300"
+        height="150"
+        loadDisplayMode="scaleToFit"/>
+
+    <Label
+        id="featuredTitle"
+        visible="false"
+        translation="[400,60]"
+        width="800"
+        height="50"
+        font="font:LargeBoldSystemFont"
+        color="0xFFFFFFFF"/>
+
+    <Label
+        id="featuredTime"
+        visible="false"
+        translation="[400,120]"
+        width="400"
+        height="35"
+        font="font:MediumSystemFont"
+        color="0xCCCCCCFF"/>
+
+    <Label
+        id="featuredDescription"
+        visible="false"
+        translation="[400,160]"
+        width="1000"
+        height="30"
+        font="font:SmallSystemFont"
+        color="0x888888FF"/>
+
+    <!-- Current Time Display -->
+    <Label
+        id="currentTimeLabel"
+        visible="false"
+        translation="[1550,60]"
+        width="300"
+        height="50"
+        horizAlign="right"
+        font="font:LargeBoldSystemFont"
+        color="0xFFFFFFFF"/>
+
+    <!-- Guide Header -->
+    <Label
+        id="guideHeaderLabel"
+        visible="false"
+        translation="[60,220]"
+        width="150"
+        height="40"
+        text="Guide"
+        font="font:MediumBoldSystemFont"
+        color="0xFFFFFFFF"/>
+
+    <Label
+        id="allChannelsLabel"
+        visible="false"
+        translation="[60,260]"
+        width="200"
+        height="30"
+        text="All Channels"
+        font="font:SmallSystemFont"
+        color="0x777777FF"/>
+
+    <!-- Time Slot Headers -->
+    <LayoutGroup
+        id="timeSlotHeaders"
+        visible="false"
+        translation="[310,230]"
+        layoutDirection="horiz"
+        itemSpacings="[0]"/>
+
+    <!-- Channel Grid -->
     <MarkupList
         id="channelList"
         visible="false"
-        translation="[100,50]"
-        itemComponentName="SimpleChannelItem"
-        itemSize="[1720,70]"
-        itemSpacing="[0,15]"
-        color="0x000000"
-        drawFocusFeedback="false" />
+        translation="[60,310]"
+        itemComponentName="GuideChannelItem"
+        itemSize="[1800,80]"
+        itemSpacing="[0,2]"
+        color="0x0F0F0FFF"
+        drawFocusFeedback="false"/>
 
-    <!-- Loading / Error Label (top layer) -->
-    <Label id="loadingLabel"
-           text="Loading Channels..."
-           translation="[540,300]"
-           width="840"
-           height="60"
-           horizAlign="center"
-           vertAlign="center"
-           font="font:LargeBoldSystemFont"
-           color="0xFFFFFFFF"/>
+    <!-- Loading / Error Label -->
+    <Label
+        id="loadingLabel"
+        text="Loading TV Guide..."
+        translation="[540,500]"
+        width="840"
+        height="60"
+        horizAlign="center"
+        vertAlign="center"
+        font="font:LargeBoldSystemFont"
+        color="0xFFFFFFFF"/>
   </children>
 </component>

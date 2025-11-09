@@ -29,21 +29,23 @@ function runTask() as Void
     http.setPort(port)
 
     if http.asyncGetToString()
-        ' Wait for response
-        msg = wait(10000, port) ' 10 second timeout
+        ' Wait for response (30 second timeout for large playlists)
+        msg = wait(30000, port)
         if type(msg) = "roUrlEvent"
             responseCode = msg.getResponseCode()
             print "LoadPlaylistTask: Response code " + str(responseCode)
             if responseCode = 200
                 response = msg.getString()
                 print "LoadPlaylistTask: Received " + str(len(response)) + " bytes"
+                lineCount = response.Split(chr(10)).count()
+                print "LoadPlaylistTask: Response contains " + str(lineCount) + " lines"
                 m.top.response = response
             else
                 m.top.error = "HTTP " + str(responseCode)
             end if
         else if msg = invalid
             http.asyncCancel()
-            m.top.error = "Request timeout"
+            m.top.error = "Request timeout (30s)"
         else
             http.asyncCancel()
             m.top.error = "Request cancelled"
