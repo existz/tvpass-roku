@@ -415,6 +415,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             print "EPG data is stale - refreshing"
             m.schedulesLoaded = false
             loadSchedules()
+            m.loadingLabel.visible = false
         end if
         
         return true
