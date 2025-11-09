@@ -26,7 +26,7 @@
             horizAlign="left"
             vertAlign="center"
             font="font:MediumSystemFont"
-            color="0xDDDDDDFF"/>
+            color="0xFFFFFFFF"/>
 
         <!-- Now Playing Label -->
         <Label
