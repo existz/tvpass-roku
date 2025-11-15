@@ -34,8 +34,9 @@ sub init()
     m.tvpassChannels = []
     m.logoChannels = []
 
-    ' Observe selection
+    ' Observe selection and focus
     m.channelList.observeField("itemSelected", "onChannelSelected")
+    m.channelList.observeField("itemFocused", "onChannelFocused")
     m.videoPlayer.observeField("state", "onVideoStateChanged")
 
     ' Start clock update timer
@@ -93,9 +94,9 @@ sub loadPlaylist()
     m.playlistTask.observeField("error", "onPlaylistError")
     m.playlistTask.control = "RUN"
     
-    ' Load logo playlist for tvg-logo info
+    ' Load logo playlist for tvg-logo info as fallback
     logoUrl = "https://raw.githubusercontent.com/phosani/tvpass/refs/heads/main/tvpasshd.m3u?t=" + timestamp
-    print "Loading logo playlist from: " + logoUrl
+    print "Loading fallback logo playlist from: " + logoUrl
     m.logoTask = createObject("roSGNode", "LoadPlaylistTask")
     m.logoTask.url = logoUrl
     m.logoTask.observeField("response", "onLogoPlaylistResponse")
@@ -121,14 +122,14 @@ sub onLogoPlaylistResponse()
     response = m.logoTask.response
     if response <> invalid and response <> ""
         m.logoChannels = parseM3UData(response)
-        print "Loaded " + str(m.logoChannels.count()) + " logo entries"
+        print "Loaded " + str(m.logoChannels.count()) + " logo entries as fallback"
     end if
     m.logoTask = invalid
     checkPlaylistsComplete()
 end sub
 
 sub onLogoPlaylistError()
-    print "Logo playlist load failed: " + m.logoTask.error
+    print "Logo playlist load failed (non-critical): " + m.logoTask.error
     m.logoTask = invalid
     checkPlaylistsComplete()
 end sub
@@ -149,30 +150,436 @@ sub checkPlaylistsComplete()
 end sub
 
 sub mergePlaylists()
-    ' Create lookup map for logos by tvg-id
-    logoMap = {}
+    ' Create lookup map for fallback logos by tvg-id
+    fallbackLogoMap = {}
     for each logoChannel in m.logoChannels
         if logoChannel.tvgId <> invalid and logoChannel.logo <> invalid
-            logoMap[logoChannel.tvgId] = logoChannel.logo
+            fallbackLogoMap[logoChannel.tvgId] = logoChannel.logo
         end if
     end for
     
-    print "Created logo map with " + str(logoMap.count()) + " entries"
+    print "Created fallback logo map with " + str(fallbackLogoMap.count()) + " entries"
     
-    ' Use tvpass channels as base and add logos from logo playlist
     m.channels = []
-    for each channel in m.tvpassChannels
-        ' Only add logo from logo playlist if channel doesn't have one
-        if channel.logo = invalid and channel.tvgId <> invalid and logoMap.doesExist(channel.tvgId)
-            channel.logo = logoMap[channel.tvgId]
-            print "Updated logo for " + channel.tvgId + ": " + channel.logo
+    tvlogoCount = 0
+    fallbackCount = 0
+    
+    for i = 0 to m.tvpassChannels.count() - 1
+        channel = m.tvpassChannels[i]
+        if channel.title <> invalid and channel.title <> ""
+            ' First try fallback from phosani playlist (most reliable)
+            if channel.tvgId <> invalid and fallbackLogoMap.doesExist(channel.tvgId)
+                channel.logo = fallbackLogoMap[channel.tvgId]
+                fallbackCount = fallbackCount + 1
+                if i < 10
+                    print "fallback logo " + str(i) + " for '" + channel.title + "' -> " + channel.logo
+                end if
+            end if
+            
+            ' Try skydrome tvg-logos as secondary (has affiliate station logos for ABC/NBC/CBS/FOX)
+            if channel.logo = invalid
+                ' Skip skydrome for networks that don't have good affiliate coverage
+                useSkydrome = true
+                if channel.title.Instr("CW ") = 1 or channel.title.Instr("CW(") > 0
+                    useSkydrome = false
+                end if
+                
+                if useSkydrome
+                    skydromeUrl = getTvgLogoUrl(channel.title)
+                    if skydromeUrl <> invalid and skydromeUrl <> ""
+                        channel.logo = skydromeUrl
+                        tvlogoCount = tvlogoCount + 1
+                        if i < 10
+                            print "skydrome logo " + str(i) + " for '" + channel.title + "' -> " + channel.logo
+                        end if
+                    end if
+                end if
+            end if
+            
+            ' For CW, use network-only logo
+            isCW = channel.title.Left(2) = "CW" and channel.title.Len() > 2 and (channel.title.Mid(2, 1) = " " or channel.title.Mid(2, 1) = "(")
+            if isCW
+                channel.logo = "https://raw.githubusercontent.com/skydrome/tvg-logos/master/cw.us.png"
+                tvlogoCount = tvlogoCount + 1
+            end if
+            
+            ' Try tv-logos repository as tertiary option
+            if channel.logo = invalid
+                logoUrl = generateTvLogoUrl(channel.title)
+                if logoUrl <> invalid
+                    channel.logo = logoUrl
+                    tvlogoCount = tvlogoCount + 1
+                    if i < 10
+                        print "tv-logo " + str(i) + " for '" + channel.title + "' -> " + channel.logo
+                    end if
+                else
+                    ' Try network-only logo as final fallback
+                    networkLogo = getNetworkLogoUrl(channel.title)
+                    if networkLogo <> invalid and networkLogo <> ""
+                        channel.logo = networkLogo
+                        tvlogoCount = tvlogoCount + 1
+                        if i < 10
+                            print "network logo " + str(i) + " for '" + channel.title + "' -> " + channel.logo
+                        end if
+                    else
+                        if i < 10 and channel.title.Instr("(W") > 0
+                            print "NO LOGO for " + str(i) + " '" + channel.title + "' (tvgId: " + str(channel.tvgId) + ")"
+                        end if
+                    end if
+                end if
+            end if
         end if
         m.channels.push(channel)
     end for
+    
+    print "Total logos: " + str(tvlogoCount) + " from tv-logos, " + str(fallbackCount) + " from fallback, out of " + str(m.tvpassChannels.count())
 end sub
 
+function generateTvLogoUrl(channelTitle as String) as String
+    baseUrl = "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/"
+    
+    original = channelTitle.Trim()
+    
+    ' Extract call letters from parentheses if present
+    callLetters = ""
+    parenPos = original.Instr("(")
+    if parenPos > 0
+        endParenPos = original.Instr(")")
+        if endParenPos > parenPos
+            callLetters = original.Mid(parenPos + 1, endParenPos - parenPos - 1).Trim()
+        end if
+    end if
+    
+    normalized = original
+    
+    parenPos = normalized.Instr("(")
+    if parenPos > 0
+        normalized = normalized.Left(parenPos - 1).Trim()
+    end if
+    
+    parenPos = normalized.Instr("[")
+    if parenPos > 0
+        normalized = normalized.Left(parenPos - 1).Trim()
+    end if
+    
+    dashPos = normalized.Instr(" - ")
+    if dashPos > 0
+        normalized = normalized.Left(dashPos - 1).Trim()
+    end if
+    
+    normalized = normalized.Replace(" US ", " ")
+    normalized = normalized.Replace(" us ", " ")
+    normalized = normalized.Replace(" US-", "-")
+    normalized = normalized.Replace(" us-", "-")
+    normalized = normalized.Replace(" HD ", " ")
+    normalized = normalized.Replace(" hd ", " ")
+    normalized = normalized.Replace(" SD ", " ")
+    normalized = normalized.Replace(" sd ", " ")
+    normalized = normalized.Replace(" Eastern ", " ")
+    normalized = normalized.Replace(" eastern ", " ")
+    normalized = normalized.Replace(" Western ", " ")
+    normalized = normalized.Replace(" western ", " ")
+    normalized = normalized.Replace(" Central ", " ")
+    normalized = normalized.Replace(" central ", " ")
+    normalized = normalized.Replace(" Mountain ", " ")
+    normalized = normalized.Replace(" mountain ", " ")
+    normalized = normalized.Replace(" Feed", "")
+    normalized = normalized.Replace(" feed", "")
+    normalized = normalized.Replace(" Extra", "")
+    normalized = normalized.Replace(" extra", "")
+    normalized = normalized.Replace(" Plus", "")
+    normalized = normalized.Replace(" plus", "")
+    normalized = normalized.Replace(" New York", "")
+    normalized = normalized.Replace(" new york", "")
+    normalized = normalized.Replace(" Los Angeles", "")
+    normalized = normalized.Replace(" los angeles", "")
+    normalized = normalized.Replace(" Chicago", "")
+    normalized = normalized.Replace(" chicago", "")
+    normalized = normalized.Replace(" Dallas", "")
+    normalized = normalized.Replace(" dallas", "")
+    normalized = normalized.Replace(" Houston", "")
+    normalized = normalized.Replace(" houston", "")
+    normalized = normalized.Replace(" Denver", "")
+    normalized = normalized.Replace(" denver", "")
+    normalized = normalized.Trim()
+    
+    normalized = normalized.Replace("&", " and ")
+    normalized = normalized.Replace("&", " and ")
+    normalized = normalized.Replace("A&E", "aande")
+    normalized = normalized.Replace("a&e", "aande")
+    normalized = normalized.Replace(" ", "-")
+    normalized = normalized.Replace("_", "-")
+    normalized = normalized.Replace(".", "-")
+    normalized = normalized.Replace(",", "")
+    normalized = normalized.Replace("'", "")
+    normalized = normalized.Replace("A", "a").Replace("B", "b").Replace("C", "c").Replace("D", "d").Replace("E", "e").Replace("F", "f").Replace("G", "g").Replace("H", "h").Replace("I", "i").Replace("J", "j").Replace("K", "k").Replace("L", "l").Replace("M", "m").Replace("N", "n").Replace("O", "o").Replace("P", "p").Replace("Q", "q").Replace("R", "r").Replace("S", "s").Replace("T", "t").Replace("U", "u").Replace("V", "v").Replace("W", "w").Replace("X", "x").Replace("Y", "y").Replace("Z", "z")
+    
+    while normalized.Instr("--") > 0
+        normalized = normalized.Replace("--", "-")
+    end while
+    
+    if normalized.Len() > 0
+        while normalized.Len() > 0 and (normalized.Left(1) = "-" or normalized.Left(1) = "0" or normalized.Left(1) = "1" or normalized.Left(1) = "2" or normalized.Left(1) = "3" or normalized.Left(1) = "4" or normalized.Left(1) = "5" or normalized.Left(1) = "6" or normalized.Left(1) = "7" or normalized.Left(1) = "8" or normalized.Left(1) = "9")
+            normalized = normalized.Mid(1)
+            if normalized.Len() = 0 then exit while
+        end while
+        
+        while normalized.Len() > 0 and normalized.Right(1) = "-"
+            if normalized.Len() <= 1
+                normalized = ""
+                exit while
+            end if
+            normalized = normalized.Left(normalized.Len() - 1)
+        end while
+    end if
+    
+    if normalized = "" then return ""
+    
+    ' If call letters exist, try network-callletters first, then fallback to network only
+    if callLetters <> "" and callLetters <> invalid
+        callLettersNorm = callLetters.Replace(" ", "").Replace("_", "").Replace(".", "").Replace(",", "")
+        callLettersNorm = callLettersNorm.Replace("A", "a").Replace("B", "b").Replace("C", "c").Replace("D", "d").Replace("E", "e")
+        callLettersNorm = callLettersNorm.Replace("F", "f").Replace("G", "g").Replace("H", "h").Replace("I", "i").Replace("J", "j")
+        callLettersNorm = callLettersNorm.Replace("K", "k").Replace("L", "l").Replace("M", "m").Replace("N", "n").Replace("O", "o")
+        callLettersNorm = callLettersNorm.Replace("P", "p").Replace("Q", "q").Replace("R", "r").Replace("S", "s").Replace("T", "t")
+        callLettersNorm = callLettersNorm.Replace("U", "u").Replace("V", "v").Replace("W", "w").Replace("X", "x").Replace("Y", "y").Replace("Z", "z")
+        if callLettersNorm <> "" and callLettersNorm <> invalid
+            return baseUrl + normalized + "-" + callLettersNorm + "-us.png"
+        end if
+    end if
+    
+    logoFileName = normalized + "-us.png"
+    
+    return baseUrl + logoFileName
+end function
+
+function getTvgLogoUrl(channelTitle as String) as String
+    baseUrl = "https://raw.githubusercontent.com/skydrome/tvg-logos/master/"
+    
+    normalized = channelTitle.Trim()
+    
+    ' Strip only qualifiers, keep location info for skydrome
+    normalized = normalized.Replace(" US ", " ")
+    normalized = normalized.Replace(" us ", " ")
+    normalized = normalized.Replace(" HD ", " ")
+    normalized = normalized.Replace(" hd ", " ")
+    normalized = normalized.Replace(" SD ", " ")
+    normalized = normalized.Replace(" sd ", " ")
+    normalized = normalized.Replace(" Feed", "")
+    normalized = normalized.Replace(" feed", "")
+    normalized = normalized.Replace(" Extra", "")
+    normalized = normalized.Replace(" extra", "")
+    normalized = normalized.Replace(" Plus", "")
+    normalized = normalized.Replace(" plus", "")
+    normalized = normalized.Trim()
+    
+    ' Remove state abbreviations to avoid duplicates
+    normalized = normalized.Replace(", NY", "")
+    normalized = normalized.Replace(", CA", "")
+    normalized = normalized.Replace(", TX", "")
+    normalized = normalized.Replace(", CO", "")
+    normalized = normalized.Replace(", PA", "")
+    normalized = normalized.Replace(", AZ", "")
+    normalized = normalized.Replace(", MA", "")
+    normalized = normalized.Replace(", DC", "")
+    normalized = normalized.Replace(", FL", "")
+    normalized = normalized.Replace(", MI", "")
+    normalized = normalized.Replace(", WA", "")
+    normalized = normalized.Replace(", GA", "")
+    normalized = normalized.Replace(", IL", "")
+    normalized = normalized.Replace(", NV", "")
+    normalized = normalized.Replace(", MD", "")
+    normalized = normalized.Replace(", OH", "")
+    normalized = normalized.Replace(", MN", "")
+    normalized = normalized.Trim()
+    
+    ' Map city names to state abbreviations for skydrome filenames
+    normalized = normalized.Replace(" Los Angeles", " los angeles ca")
+    normalized = normalized.Replace(" New York", " new york ny")
+    normalized = normalized.Replace(" Chicago", " chicago il")
+    normalized = normalized.Replace(" Dallas", " dallas tx")
+    normalized = normalized.Replace(" Houston", " houston tx")
+    normalized = normalized.Replace(" Denver", " denver co")
+    normalized = normalized.Replace(" Philadelphia", " philadelphia pa")
+    normalized = normalized.Replace(" Phoenix", " phoenix az")
+    normalized = normalized.Replace(" San Francisco", " san francisco ca")
+    normalized = normalized.Replace(" San Diego", " san diego ca")
+    normalized = normalized.Replace(" Boston", " boston ma")
+    normalized = normalized.Replace(" Washington", " washington dc")
+    normalized = normalized.Replace(" Miami", " miami fl")
+    normalized = normalized.Replace(" Detroit", " detroit mi")
+    normalized = normalized.Replace(" Seattle", " seattle wa")
+    normalized = normalized.Replace(" Atlanta", " atlanta ga")
+    normalized = normalized.Replace(" Las Vegas", " las vegas nv")
+    normalized = normalized.Replace(" Baltimore", " baltimore md")
+    normalized = normalized.Replace(" Cleveland", " cleveland oh")
+    normalized = normalized.Replace(" Minneapolis", " minneapolis mn")
+    normalized = normalized.Trim()
+    
+    ' Extract text in parentheses - keep call letters with network
+    ' For "ABC (WABC) New York, NY" -> "abc wabc new york ny"
+    parenPos = normalized.Instr("(")
+    endParenPos = normalized.Instr(")")
+    if parenPos > 0 and endParenPos > parenPos
+        before = normalized.Left(parenPos - 1).Trim()
+        extracted = normalized.Mid(parenPos)
+        extracted = extracted.Left(endParenPos - parenPos + 1)
+        extracted = extracted.Replace("(", "").Replace(")", "").Trim()
+        
+        ' Remove TV channel numbers from call letters (e.g., "KFMB-TV2" -> "KFMB")
+        ' Only remove when prefixed with dash, not standalone TV (e.g., keep KTTV)
+        extracted = extracted.Replace("-TV2", "").Replace("-TV", "").Replace("-tv2", "").Replace("-tv", "")
+        extracted = extracted.Replace("TV2", "").Replace("tv2", "")
+        extracted = extracted.Trim()
+        
+        after = ""
+        if endParenPos < normalized.Len()
+            after = normalized.Mid(endParenPos + 1).Trim()
+        end if
+        normalized = before + " " + extracted + " " + after
+        normalized = normalized.Replace("  ", " ").Trim()
+    end if
+    
+    ' Replace punctuation and spaces with dots
+    normalized = normalized.Replace(",", "")
+    normalized = normalized.Replace("&", "and")
+    normalized = normalized.Replace("_", ".")
+    normalized = normalized.Replace("-", ".")
+    normalized = normalized.Replace(" ", ".")
+    normalized = normalized.Replace("'", "")
+    normalized = normalized.Replace("A", "a").Replace("B", "b").Replace("C", "c").Replace("D", "d").Replace("E", "e").Replace("F", "f").Replace("G", "g").Replace("H", "h").Replace("I", "i").Replace("J", "j").Replace("K", "k").Replace("L", "l").Replace("M", "m").Replace("N", "n").Replace("O", "o").Replace("P", "p").Replace("Q", "q").Replace("R", "r").Replace("S", "s").Replace("T", "t").Replace("U", "u").Replace("V", "v").Replace("W", "w").Replace("X", "x").Replace("Y", "y").Replace("Z", "z")
+    
+    ' Remove consecutive dots
+    while normalized.Instr("..") > 0
+        normalized = normalized.Replace("..", ".")
+    end while
+    
+    ' Remove leading/trailing dots
+    if normalized.Len() > 0
+        while normalized.Len() > 0 and normalized.Left(1) = "."
+            normalized = normalized.Mid(1)
+        end while
+        
+        while normalized.Len() > 0 and normalized.Right(1) = "."
+            if normalized.Len() <= 1
+                normalized = ""
+                exit while
+            end if
+            normalized = normalized.Left(normalized.Len() - 1)
+        end while
+    end if
+    
+    if normalized = "" then return ""
+    
+    logoFileName = normalized + ".us.png"
+    
+    return baseUrl + logoFileName
+end function
+
+function getSkydromeNetworkLogoUrl(channelTitle as String) as String
+    baseUrl = "https://raw.githubusercontent.com/skydrome/tvg-logos/master/"
+    
+    ' Extract network name (before parentheses or common location indicators)
+    networkName = channelTitle.Trim()
+    
+    ' Remove text in parentheses
+    parenPos = networkName.Instr("(")
+    if parenPos > 0
+        networkName = networkName.Left(parenPos - 1).Trim()
+    end if
+    
+    ' Remove common location suffixes
+    networkName = networkName.Replace(" New York", "").Replace(" new york", "").Replace(" Los Angeles", "").Replace(" los angeles", "").Replace(" Chicago", "").Replace(" chicago", "").Replace(" Dallas", "").Replace(" dallas", "").Replace(" Houston", "").Replace(" houston", "").Replace(" Atlanta", "").Replace(" atlanta", "").Replace(" Philadelphia", "").Replace(" philadelphia", "").Replace(" Phoenix", "").Replace(" phoenix", "").Replace(" San Francisco", "").Replace(" san francisco", "").Replace(" San Diego", "").Replace(" san diego", "").Replace(" Boston", "").Replace(" boston", "").Replace(" Washington", "").Replace(" washington", "").Replace(" Miami", "").Replace(" miami", "").Replace(" Detroit", "").Replace(" detroit", "").Replace(" Seattle", "").Replace(" seattle", "").Replace(" Denver", "").Replace(" denver", "").Replace(" Las Vegas", "").Replace(" las vegas", "").Replace(" Baltimore", "").Replace(" baltimore", "").Replace(" Cleveland", "").Replace(" cleveland", "").Replace(" Minneapolis", "").Replace(" minneapolis", "").Replace(", NY", "").Replace(", ny", "").Replace(", CA", "").Replace(", ca", "").Replace(", TX", "").Replace(", tx", "").Replace(", SD", "").Replace(", sd", "").Replace(" NY", "").Replace(" ny", "").Replace(" CA", "").Replace(" ca", "").Replace(" TX", "").Replace(" tx", "").Replace(" SD", "").Replace(" sd", "").Trim()
+    
+    if networkName = "" then return ""
+    
+    ' Normalize for skydrome format
+    normalized = networkName
+    normalized = normalized.Replace("A&E", "aande")
+    normalized = normalized.Replace("a&e", "aande")
+    normalized = normalized.Replace("&", "-and-")
+    normalized = normalized.Replace(" ", "-")
+    normalized = normalized.Replace("_", "-")
+    normalized = normalized.Replace(".", "-")
+    normalized = normalized.Replace(",", "")
+    normalized = normalized.Replace("'", "")
+    normalized = normalized.Replace("A", "a").Replace("B", "b").Replace("C", "c").Replace("D", "d").Replace("E", "e").Replace("F", "f").Replace("G", "g").Replace("H", "h").Replace("I", "i").Replace("J", "j").Replace("K", "k").Replace("L", "l").Replace("M", "m").Replace("N", "n").Replace("O", "o").Replace("P", "p").Replace("Q", "q").Replace("R", "r").Replace("S", "s").Replace("T", "t").Replace("U", "u").Replace("V", "v").Replace("W", "w").Replace("X", "x").Replace("Y", "y").Replace("Z", "z")
+    
+    ' Remove consecutive hyphens
+    while normalized.Instr("--") > 0
+        normalized = normalized.Replace("--", "-")
+    end while
+    
+    ' Remove leading/trailing hyphens
+    while normalized.Len() > 0 and (normalized.Left(1) = "-" or normalized.Left(1) = "0" or normalized.Left(1) = "1" or normalized.Left(1) = "2" or normalized.Left(1) = "3" or normalized.Left(1) = "4" or normalized.Left(1) = "5" or normalized.Left(1) = "6" or normalized.Left(1) = "7" or normalized.Left(1) = "8" or normalized.Left(1) = "9")
+        normalized = normalized.Mid(1)
+    end while
+    while normalized.Len() > 0 and normalized.Right(1) = "-"
+        normalized = normalized.Left(normalized.Len() - 1)
+    end while
+    
+    if normalized = "" then return ""
+    
+    logoFileName = normalized + ".us.png"
+    
+    return baseUrl + logoFileName
+end function
+
+function getNetworkLogoUrl(channelTitle as String) as String
+    baseUrl = "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/"
+    
+    ' Extract network name (before parentheses or common location indicators)
+    networkName = channelTitle.Trim()
+    
+    ' Remove text in parentheses
+    parenPos = networkName.Instr("(")
+    if parenPos > 0
+        networkName = networkName.Left(parenPos - 1).Trim()
+    end if
+    
+    ' Remove common location suffixes
+    networkName = networkName.Replace(" New York", "").Replace(" new york", "").Replace(" Los Angeles", "").Replace(" los angeles", "").Replace(" Chicago", "").Replace(" chicago", "").Replace(" Dallas", "").Replace(" dallas", "").Replace(" Houston", "").Replace(" houston", "").Replace(" Atlanta", "").Replace(" atlanta", "").Replace(" Philadelphia", "").Replace(" philadelphia", "").Replace(" Phoenix", "").Replace(" phoenix", "").Replace(" San Francisco", "").Replace(" san francisco", "").Replace(" San Diego", "").Replace(" san diego", "").Replace(" Boston", "").Replace(" boston", "").Replace(" Washington", "").Replace(" washington", "").Replace(" Miami", "").Replace(" miami", "").Replace(" Detroit", "").Replace(" detroit", "").Replace(" Seattle", "").Replace(" seattle", "").Replace(" Denver", "").Replace(" denver", "").Replace(" Las Vegas", "").Replace(" las vegas", "").Replace(" Baltimore", "").Replace(" baltimore", "").Replace(" Cleveland", "").Replace(" cleveland", "").Replace(" Minneapolis", "").Replace(" minneapolis", "").Replace(", NY", "").Replace(", ny", "").Replace(", CA", "").Replace(", ca", "").Replace(", TX", "").Replace(", tx", "").Replace(", SD", "").Replace(", sd", "").Replace(" NY", "").Replace(" ny", "").Replace(" CA", "").Replace(" ca", "").Replace(" TX", "").Replace(" tx", "").Replace(" SD", "").Replace(" sd", "").Trim()
+    
+    if networkName = "" then return ""
+    
+    ' Normalize same as generateTvLogoUrl
+    normalized = networkName
+    normalized = normalized.Replace("A&E", "aande")
+    normalized = normalized.Replace("a&e", "aande")
+    normalized = normalized.Replace("&", " and ")
+    normalized = normalized.Replace(" ", "-")
+    normalized = normalized.Replace("_", "-")
+    normalized = normalized.Replace(".", "-")
+    normalized = normalized.Replace(",", "")
+    normalized = normalized.Replace("'", "")
+    normalized = normalized.Replace("A", "a").Replace("B", "b").Replace("C", "c").Replace("D", "d").Replace("E", "e").Replace("F", "f").Replace("G", "g").Replace("H", "h").Replace("I", "i").Replace("J", "j").Replace("K", "k").Replace("L", "l").Replace("M", "m").Replace("N", "n").Replace("O", "o").Replace("P", "p").Replace("Q", "q").Replace("R", "r").Replace("S", "s").Replace("T", "t").Replace("U", "u").Replace("V", "v").Replace("W", "w").Replace("X", "x").Replace("Y", "y").Replace("Z", "z")
+    
+    ' Remove consecutive hyphens
+    while normalized.Instr("--") > 0
+        normalized = normalized.Replace("--", "-")
+    end while
+    
+    ' Remove leading/trailing hyphens
+    while normalized.Len() > 0 and (normalized.Left(1) = "-" or normalized.Left(1) = "0" or normalized.Left(1) = "1" or normalized.Left(1) = "2" or normalized.Left(1) = "3" or normalized.Left(1) = "4" or normalized.Left(1) = "5" or normalized.Left(1) = "6" or normalized.Left(1) = "7" or normalized.Left(1) = "8" or normalized.Left(1) = "9")
+        normalized = normalized.Mid(1)
+    end while
+    while normalized.Len() > 0 and normalized.Right(1) = "-"
+        normalized = normalized.Left(normalized.Len() - 1)
+    end while
+    
+    if normalized = "" then return ""
+    
+    logoFileName = normalized + "-us.png"
+    
+    return baseUrl + logoFileName
+end function
+
 sub onPlaylistError()
-    print "Playlist load failed: " + m.playlistTask.error
+    errorMsg = ""
+    if m.playlistTask.error <> invalid
+        errorMsg = m.playlistTask.error.ToString()
+    end if
+    print "Playlist load failed: " + errorMsg
     m.playlistTask = invalid
     checkPlaylistsComplete()
 end sub
@@ -219,7 +626,11 @@ sub onScheduleResponse()
 end sub
 
 sub onScheduleError()
-    print "Schedule load failed: " + m.scheduleTask.error + ", continuing without schedules"
+    errorMsg = ""
+    if m.scheduleTask.error <> invalid
+        errorMsg = m.scheduleTask.error.ToString()
+    end if
+    print "Schedule load failed: " + errorMsg + ", continuing without schedules"
     m.scheduleTask = invalid
     showGuide()
 end sub
@@ -334,7 +745,9 @@ function parseM3UData(content as String) as Object
     lines = content.Split(chr(10))
 
     current = invalid
+    lineNum = 0
     for each line in lines
+        lineNum = lineNum + 1
         line = line.Trim()
         if line = "" then goto nextLine
 
@@ -344,9 +757,23 @@ function parseM3UData(content as String) as Object
             end if
             
             current = {}
-            parts = line.Split(",")
-            if parts.count() > 1
-                current.title = parts[parts.count() - 1].Trim()
+            
+            ' Try to extract title from tvg-name first (handles commas in names)
+            tvgNamePos = line.Instr("tvg-name=")
+            if tvgNamePos > 0
+                tvgNameStart = tvgNamePos + 10
+                tvgNameEnd = line.Instr(tvgNameStart, chr(34))
+                if tvgNameEnd > tvgNameStart
+                    current.title = line.Mid(tvgNameStart, tvgNameEnd - tvgNameStart).Trim()
+                end if
+            end if
+            
+            ' Fallback: extract from text after last comma
+            if current.title = invalid or current.title = ""
+                parts = line.Split(",")
+                if parts.count() > 1
+                    current.title = parts[parts.count() - 1].Trim()
+                end if
             end if
 
             tvgIdPos = line.Instr("tvg-id=")
@@ -369,7 +796,7 @@ function parseM3UData(content as String) as Object
 
         else if not line.StartsWith("#") and current <> invalid
             if line.EndsWith("/sd")
-                current.url = Left(line, Len(line) - 3) + "/hd"
+                current.url = Left(line, Len(line) - 2) + "hd"
             else
                 current.url = line
             end if
@@ -527,6 +954,9 @@ sub updateFeaturedProgram(index as Integer)
     ' Set logo
     if channel.logo <> invalid and channel.logo <> ""
         m.featuredLogo.uri = channel.logo
+        print "Featured logo set to: " + channel.logo
+    else
+        print "No logo available for channel: " + channel.title
     end if
     
     ' Set title
@@ -593,6 +1023,7 @@ sub onChannelSelected()
             print "Playing channel: " + channel.title
             playChannel(channel)
             m.isBackgroundPlayback = false
+            updateFeaturedProgram(idx)
         end if
     end if
 end sub
