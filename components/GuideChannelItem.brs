@@ -37,13 +37,17 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
     ' Clear existing slots
     m.programSlots.removeChildrenIndex(m.programSlots.getChildCount(), 0)
     
-    ' Get current time and calculate time window
+    ' Get current UTC time and calculate time window - match header logic
+    ' Program times from EPG are in UTC seconds
     now = CreateObject("roDateTime")
     currentTime = now.AsSeconds()
     
+    ' Round down to nearest 30-minute interval
+    ' 1800 seconds = 30 minutes
+    windowStartTime = int(currentTime / 1800) * 1800
+    
     ' 1.5 hour window (3 x 30-minute blocks)
-    windowStartTime = currentTime
-    windowEndTime = currentTime + (1.5 * 3600)
+    windowEndTime = windowStartTime + (1.5 * 3600)
     slotWidth = 517
     totalWidth = slotWidth * 3
     
@@ -53,12 +57,17 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
         programs = content.programs
     end if
     
+    ' Initialize counters
+    debugCount = 0
+    totalProgramsChecked = 0
+    totalProgramsRendered = 0
+    
     ' If no programs but nowPlaying, create a synthetic program spanning the full window
     if programs.count() = 0 and content.nowPlaying <> invalid and content.nowPlaying <> ""
         syntheticProgram = {
             title: content.nowPlaying,
-            startTime: currentTime,
-            endTime: currentTime + (1.5 * 3600)
+            startTime: windowStartTime,
+            endTime: windowEndTime
         }
         programs.push(syntheticProgram)
     end if
@@ -66,11 +75,25 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
     ' Create blocks for each program
     for each program in programs
         if program <> invalid and program.title <> invalid
-            progStart = program.startTime
-            progEnd = program.endTime
+            progStart = invalid
+            progEnd = invalid
+            
+            ' Try to get time fields
+            if program.startTime <> invalid
+                progStart = program.startTime
+            end if
+            if program.endTime <> invalid
+                progEnd = program.endTime
+            end if
+            
+            if progStart = invalid or progEnd = invalid
+                ' Skip programs without valid times
+                goto nextProgram
+            end if
             
             ' Show programs that overlap with the display window
             if progStart < windowEndTime and progEnd > windowStartTime
+                
                 ' Clamp to window
                 displayStart = progStart
                 displayEnd = progEnd
@@ -94,11 +117,14 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 
                 ' Create label for program
                 label = createObject("roSGNode", "Label")
-                label.translation = [5, 22]
+                slotHeight = 75
+                labelHeight = 30
+                verticalPadding = (slotHeight - labelHeight) / 2
+                label.translation = [5, verticalPadding]
                 labelWidth = width - 10
                 if labelWidth < 1 then labelWidth = 1
                 label.width = labelWidth
-                label.height = 30
+                label.height = labelHeight
                 label.text = program.title
                 label.font = "font:SmallSystemFont"
                 label.color = "0xCCCCCCFF"
@@ -116,8 +142,11 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 slot.appendChild(label)
                 m.programSlots.appendChild(slot)
             end if
+            
+            nextProgram:
         end if
     end for
+    
 end sub
 
 sub onFocusPercentChanged()

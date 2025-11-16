@@ -733,8 +733,23 @@ function parseXmltvTime(xmltvTime as String) as LongInteger
     minute = val(xmltvTime.Mid(10, 2))
     second = val(xmltvTime.Mid(12, 2))
     
+    ' Check if there's timezone info after the 14 base characters
+    tzStr = "Z"
+    if xmltvTime.Len() >= 19
+        ' Check for timezone offset format: +HHMM or -HHMM (at position 14)
+        tzPart = xmltvTime.Mid(14)
+        if tzPart.Left(1) = "+" or tzPart.Left(1) = "-"
+            if tzPart.Len() >= 5
+                ' Parse +/-HHMM format and convert to ISO8601 format
+                tzStr = tzPart.Mid(0, 3) + ":" + tzPart.Mid(3, 2)
+            end if
+        end if
+    end if
+    
+    iso8601Str = stri(year).Trim() + "-" + right("0" + stri(month).Trim(), 2) + "-" + right("0" + stri(day).Trim(), 2) + "T" + right("0" + stri(hour).Trim(), 2) + ":" + right("0" + stri(minute).Trim(), 2) + ":" + right("0" + stri(second).Trim(), 2) + tzStr
+    
     dt = CreateObject("roDateTime")
-    dt.FromISO8601String(stri(year).Trim() + "-" + right("0" + stri(month).Trim(), 2) + "-" + right("0" + stri(day).Trim(), 2) + "T" + right("0" + stri(hour).Trim(), 2) + ":" + right("0" + stri(minute).Trim(), 2) + ":" + right("0" + stri(second).Trim(), 2) + "Z")
+    dt.FromISO8601String(iso8601Str)
     
     return dt.AsSeconds()
 end function
@@ -816,27 +831,27 @@ sub createTimeSlotHeaders()
     ' Clear existing headers
     m.timeSlotHeaders.removeChildrenIndex(m.timeSlotHeaders.getChildCount(), 0)
     
+    ' Get current UTC time and round down to nearest 30 minutes
     now = CreateObject("roDateTime")
-    now.ToLocalTime()
+    currentTime = now.AsSeconds()
     
-    ' Create 3 time slot headers (30-minute intervals) for viewing window
+    ' Round down to nearest 30-minute interval (1800 seconds = 30 minutes)
+    roundedTime = int(currentTime / 1800) * 1800
+    
+    ' Create a DateTime object for the rounded time and convert to local
     slotWidth = 517
-    currentHour = now.GetHours()
-    currentMinute = now.GetMinutes()
-    
-    ' Round down to nearest 30-minute interval
-    if currentMinute >= 30
-        startMinute = 30
-    else
-        startMinute = 0
-    end if
     
     for i = 0 to 2
-        totalMinutes = (startMinute + (i * 30))
-        hours = currentHour + int(totalMinutes / 60)
-        minutes = totalMinutes mod 60
+        ' Calculate time for this slot
+        slotTime = roundedTime + (i * 1800)
         
-        if hours >= 24 then hours = hours - 24
+        ' Convert to local time for display
+        slotDateTime = CreateObject("roDateTime")
+        slotDateTime.FromSeconds(slotTime)
+        slotDateTime.ToLocalTime()
+        
+        hours = slotDateTime.GetHours()
+        minutes = slotDateTime.GetMinutes()
         
         ' Format time
         displayHour = hours
@@ -956,9 +971,6 @@ sub updateFeaturedProgram(index as Integer)
     ' Set logo
     if channel.logo <> invalid and channel.logo <> ""
         m.featuredLogo.uri = channel.logo
-        print "Featured logo set to: " + channel.logo
-    else
-        print "No logo available for channel: " + channel.title
     end if
     
     ' Set title
