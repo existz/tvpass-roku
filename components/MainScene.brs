@@ -849,20 +849,22 @@ sub createTimeSlotHeaders()
         end if
         if displayHour = 0 then displayHour = 12
         
-        minuteStr = ""
-        if minutes > 0
-            minuteStr = ":" + right("0" + str(minutes), 2)
+        minutesInt = int(minutes)
+        if minutesInt < 10
+            timeStr = StrI(displayHour).Trim() + ":0" + StrI(minutesInt).Trim() + " " + ampm
+        else
+            timeStr = StrI(displayHour).Trim() + ":" + StrI(minutesInt).Trim() + " " + ampm
         end if
-        timeStr = str(displayHour) + minuteStr + ampm
         
         ' Create time label
         timeLabel = createObject("roSGNode", "Label")
         timeLabel.width = slotWidth
         timeLabel.height = 40
-        timeLabel.text = timeStr
         timeLabel.font = "font:SmallBoldSystemFont"
         timeLabel.color = "0x888888FF"
         timeLabel.horizAlign = "center"
+        timeLabel.vertAlign = "center"
+        timeLabel.text = timeStr
         
         m.timeSlotHeaders.appendChild(timeLabel)
     end for
