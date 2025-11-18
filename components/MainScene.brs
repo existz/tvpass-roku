@@ -33,6 +33,14 @@ sub init()
     m.pendingTasks = 0
     m.tvpassChannels = []
     m.logoChannels = []
+    
+    ' Retry logic for full servers
+    m.retryAttempts = 0
+    m.maxRetryAttempts = 10
+    m.retryDelay = 2
+    m.bufferingTimer = invalid
+    m.positionCheckTimer = invalid
+    m.lastPosition = 0
 
     ' Observe selection and focus
     m.channelList.observeField("itemSelected", "onChannelSelected")
@@ -45,6 +53,11 @@ sub init()
     m.clockTimer.duration = 60
     m.clockTimer.observeField("fire", "updateClock")
     m.clockTimer.control = "start"
+    
+    ' Retry timer for failed streams
+    m.retryTimer = createObject("roSGNode", "Timer")
+    m.retryTimer.repeat = false
+    m.retryTimer.observeField("fire", "onRetryTimer")
     
     updateClock()
     loadPlaylist()
@@ -237,10 +250,7 @@ end sub
 
 function generateTvLogoUrl(channelTitle as String) as String
     baseUrl = "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/"
-    
     original = channelTitle.Trim()
-    
-    ' Extract call letters from parentheses if present
     callLetters = ""
     parenPos = original.Instr("(")
     if parenPos > 0
@@ -249,81 +259,30 @@ function generateTvLogoUrl(channelTitle as String) as String
             callLetters = original.Mid(parenPos + 1, endParenPos - parenPos - 1).Trim()
         end if
     end if
-    
     normalized = original
-    
     parenPos = normalized.Instr("(")
     if parenPos > 0
         normalized = normalized.Left(parenPos - 1).Trim()
     end if
-    
     parenPos = normalized.Instr("[")
     if parenPos > 0
         normalized = normalized.Left(parenPos - 1).Trim()
     end if
-    
     dashPos = normalized.Instr(" - ")
     if dashPos > 0
         normalized = normalized.Left(dashPos - 1).Trim()
     end if
-    
-    normalized = normalized.Replace(" US ", " ")
-    normalized = normalized.Replace(" us ", " ")
-    normalized = normalized.Replace(" US-", "-")
-    normalized = normalized.Replace(" us-", "-")
-    normalized = normalized.Replace(" HD ", " ")
-    normalized = normalized.Replace(" hd ", " ")
-    normalized = normalized.Replace(" SD ", " ")
-    normalized = normalized.Replace(" sd ", " ")
-    normalized = normalized.Replace(" Eastern ", " ")
-    normalized = normalized.Replace(" eastern ", " ")
-    normalized = normalized.Replace(" Western ", " ")
-    normalized = normalized.Replace(" western ", " ")
-    normalized = normalized.Replace(" Central ", " ")
-    normalized = normalized.Replace(" central ", " ")
-    normalized = normalized.Replace(" Mountain ", " ")
-    normalized = normalized.Replace(" mountain ", " ")
-    normalized = normalized.Replace(" Feed", "")
-    normalized = normalized.Replace(" feed", "")
-    normalized = normalized.Replace(" Extra", "")
-    normalized = normalized.Replace(" extra", "")
-    normalized = normalized.Replace(" Plus", "")
-    normalized = normalized.Replace(" plus", "")
-    normalized = normalized.Replace(" New York", "")
-    normalized = normalized.Replace(" new york", "")
-    normalized = normalized.Replace(" Los Angeles", "")
-    normalized = normalized.Replace(" los angeles", "")
-    normalized = normalized.Replace(" Chicago", "")
-    normalized = normalized.Replace(" chicago", "")
-    normalized = normalized.Replace(" Dallas", "")
-    normalized = normalized.Replace(" dallas", "")
-    normalized = normalized.Replace(" Houston", "")
-    normalized = normalized.Replace(" houston", "")
-    normalized = normalized.Replace(" Denver", "")
-    normalized = normalized.Replace(" denver", "")
-    normalized = normalized.Trim()
-    
-    normalized = normalized.Replace("&", " and ")
-    normalized = normalized.Replace("&", " and ")
-    normalized = normalized.Replace("A&E", "aande")
-    normalized = normalized.Replace("a&e", "aande")
-    normalized = normalized.Replace(" ", "-")
-    normalized = normalized.Replace("_", "-")
-    normalized = normalized.Replace(".", "-")
-    normalized = normalized.Replace(",", "")
-    normalized = normalized.Replace("'", "")
-    normalized = normalized.Replace("A", "a").Replace("B", "b").Replace("C", "c").Replace("D", "d").Replace("E", "e").Replace("F", "f").Replace("G", "g").Replace("H", "h").Replace("I", "i").Replace("J", "j").Replace("K", "k").Replace("L", "l").Replace("M", "m").Replace("N", "n").Replace("O", "o").Replace("P", "p").Replace("Q", "q").Replace("R", "r").Replace("S", "s").Replace("T", "t").Replace("U", "u").Replace("V", "v").Replace("W", "w").Replace("X", "x").Replace("Y", "y").Replace("Z", "z")
-    
+    normalized = normalized.Replace(" US ", " ").Replace(" us ", " ").Replace(" US-", "-").Replace(" us-", "-").Replace(" HD ", " ").Replace(" hd ", " ").Replace(" SD ", " ").Replace(" sd ", " ").Replace(" Eastern ", " ").Replace(" eastern ", " ").Replace(" Western ", " ").Replace(" western ", " ").Replace(" Central ", " ").Replace(" central ", " ").Replace(" Mountain ", " ").Replace(" mountain ", " ").Replace(" Feed", "").Replace(" feed", "").Replace(" Extra", "").Replace(" extra", "").Replace(" Plus", "").Replace(" plus", "").Replace(" New York", "").Replace(" new york", "").Replace(" Los Angeles", "").Replace(" los angeles", "").Replace(" Chicago", "").Replace(" chicago", "").Replace(" Dallas", "").Replace(" dallas", "").Replace(" Houston", "").Replace(" houston", "").Replace(" Denver", "").Replace(" denver", "").Trim()
+    normalized = normalized.Replace("&", " and ").Replace("&", " and ").Replace("A&E", "aande").Replace("a&e", "aande").Replace(" ", "-").Replace("_", "-").Replace(".", "-").Replace(",", "").Replace("'", "")
+    normalized = normalized.Replace("A","a").Replace("B","b").Replace("C","c").Replace("D","d").Replace("E","e").Replace("F","f").Replace("G","g").Replace("H","h").Replace("I","i").Replace("J","j").Replace("K","k").Replace("L","l").Replace("M","m").Replace("N","n").Replace("O","o").Replace("P","p").Replace("Q","q").Replace("R","r").Replace("S","s").Replace("T","t").Replace("U","u").Replace("V","v").Replace("W","w").Replace("X","x").Replace("Y","y").Replace("Z","z")
     while normalized.Instr("--") > 0
         normalized = normalized.Replace("--", "-")
     end while
-    
     if normalized.Len() > 0
-        while normalized.Len() > 0 and (normalized.Left(1) = "-" or normalized.Left(1) = "0" or normalized.Left(1) = "1" or normalized.Left(1) = "2" or normalized.Left(1) = "3" or normalized.Left(1) = "4" or normalized.Left(1) = "5" or normalized.Left(1) = "6" or normalized.Left(1) = "7" or normalized.Left(1) = "8" or normalized.Left(1) = "9")
+        while normalized.Len() > 0 and (normalized.Left(1) = "-" or normalized.Left(1) >= "0" and normalized.Left(1) <= "9")
             normalized = normalized.Mid(1)
             if normalized.Len() = 0 then exit while
         end while
-        
         while normalized.Len() > 0 and normalized.Right(1) = "-"
             if normalized.Len() <= 1
                 normalized = ""
@@ -332,134 +291,45 @@ function generateTvLogoUrl(channelTitle as String) as String
             normalized = normalized.Left(normalized.Len() - 1)
         end while
     end if
-    
     if normalized = "" then return ""
-    
-    ' If call letters exist, try network-callletters first, then fallback to network only
     if callLetters <> "" and callLetters <> invalid
-        callLettersNorm = callLetters.Replace(" ", "").Replace("_", "").Replace(".", "").Replace(",", "")
-        callLettersNorm = callLettersNorm.Replace("A", "a").Replace("B", "b").Replace("C", "c").Replace("D", "d").Replace("E", "e")
-        callLettersNorm = callLettersNorm.Replace("F", "f").Replace("G", "g").Replace("H", "h").Replace("I", "i").Replace("J", "j")
-        callLettersNorm = callLettersNorm.Replace("K", "k").Replace("L", "l").Replace("M", "m").Replace("N", "n").Replace("O", "o")
-        callLettersNorm = callLettersNorm.Replace("P", "p").Replace("Q", "q").Replace("R", "r").Replace("S", "s").Replace("T", "t")
-        callLettersNorm = callLettersNorm.Replace("U", "u").Replace("V", "v").Replace("W", "w").Replace("X", "x").Replace("Y", "y").Replace("Z", "z")
+        callLettersNorm = callLetters.Replace(" ","").Replace("_","").Replace(".","").Replace(",","")
+        callLettersNorm = callLettersNorm.Replace("A","a").Replace("B","b").Replace("C","c").Replace("D","d").Replace("E","e").Replace("F","f").Replace("G","g").Replace("H","h").Replace("I","i").Replace("J","j").Replace("K","k").Replace("L","l").Replace("M","m").Replace("N","n").Replace("O","o").Replace("P","p").Replace("Q","q").Replace("R","r").Replace("S","s").Replace("T","t").Replace("U","u").Replace("V","v").Replace("W","w").Replace("X","x").Replace("Y","y").Replace("Z","z")
         if callLettersNorm <> "" and callLettersNorm <> invalid
             return baseUrl + normalized + "-" + callLettersNorm + "-us.png"
         end if
     end if
-    
-    logoFileName = normalized + "-us.png"
-    
-    return baseUrl + logoFileName
+    return baseUrl + normalized + "-us.png"
 end function
 
 function getTvgLogoUrl(channelTitle as String) as String
     baseUrl = "https://raw.githubusercontent.com/skydrome/tvg-logos/master/"
-    
     normalized = channelTitle.Trim()
-    
-    ' Strip only qualifiers, keep location info for skydrome
-    normalized = normalized.Replace(" US ", " ")
-    normalized = normalized.Replace(" us ", " ")
-    normalized = normalized.Replace(" HD ", " ")
-    normalized = normalized.Replace(" hd ", " ")
-    normalized = normalized.Replace(" SD ", " ")
-    normalized = normalized.Replace(" sd ", " ")
-    normalized = normalized.Replace(" Feed", "")
-    normalized = normalized.Replace(" feed", "")
-    normalized = normalized.Replace(" Extra", "")
-    normalized = normalized.Replace(" extra", "")
-    normalized = normalized.Replace(" Plus", "")
-    normalized = normalized.Replace(" plus", "")
-    normalized = normalized.Trim()
-    
-    ' Remove state abbreviations to avoid duplicates
-    normalized = normalized.Replace(", NY", "")
-    normalized = normalized.Replace(", CA", "")
-    normalized = normalized.Replace(", TX", "")
-    normalized = normalized.Replace(", CO", "")
-    normalized = normalized.Replace(", PA", "")
-    normalized = normalized.Replace(", AZ", "")
-    normalized = normalized.Replace(", MA", "")
-    normalized = normalized.Replace(", DC", "")
-    normalized = normalized.Replace(", FL", "")
-    normalized = normalized.Replace(", MI", "")
-    normalized = normalized.Replace(", WA", "")
-    normalized = normalized.Replace(", GA", "")
-    normalized = normalized.Replace(", IL", "")
-    normalized = normalized.Replace(", NV", "")
-    normalized = normalized.Replace(", MD", "")
-    normalized = normalized.Replace(", OH", "")
-    normalized = normalized.Replace(", MN", "")
-    normalized = normalized.Trim()
-    
-    ' Map city names to state abbreviations for skydrome filenames
-    normalized = normalized.Replace(" Los Angeles", " los angeles ca")
-    normalized = normalized.Replace(" New York", " new york ny")
-    normalized = normalized.Replace(" Chicago", " chicago il")
-    normalized = normalized.Replace(" Dallas", " dallas tx")
-    normalized = normalized.Replace(" Houston", " houston tx")
-    normalized = normalized.Replace(" Denver", " denver co")
-    normalized = normalized.Replace(" Philadelphia", " philadelphia pa")
-    normalized = normalized.Replace(" Phoenix", " phoenix az")
-    normalized = normalized.Replace(" San Francisco", " san francisco ca")
-    normalized = normalized.Replace(" San Diego", " san diego ca")
-    normalized = normalized.Replace(" Boston", " boston ma")
-    normalized = normalized.Replace(" Washington", " washington dc")
-    normalized = normalized.Replace(" Miami", " miami fl")
-    normalized = normalized.Replace(" Detroit", " detroit mi")
-    normalized = normalized.Replace(" Seattle", " seattle wa")
-    normalized = normalized.Replace(" Atlanta", " atlanta ga")
-    normalized = normalized.Replace(" Las Vegas", " las vegas nv")
-    normalized = normalized.Replace(" Baltimore", " baltimore md")
-    normalized = normalized.Replace(" Cleveland", " cleveland oh")
-    normalized = normalized.Replace(" Minneapolis", " minneapolis mn")
-    normalized = normalized.Trim()
-    
-    ' Extract text in parentheses - keep call letters with network
-    ' For "ABC (WABC) New York, NY" -> "abc wabc new york ny"
+    normalized = normalized.Replace(" US "," ").Replace(" us "," ").Replace(" HD "," ").Replace(" hd "," ").Replace(" SD "," ").Replace(" sd "," ").Replace(" Feed","").Replace(" feed","").Replace(" Extra","").Replace(" extra","").Replace(" Plus","").Replace(" plus","").Trim()
+    normalized = normalized.Replace(", NY","").Replace(", CA","").Replace(", TX","").Replace(", CO","").Replace(", PA","").Replace(", AZ","").Replace(", MA","").Replace(", DC","").Replace(", FL","").Replace(", MI","").Replace(", WA","").Replace(", GA","").Replace(", IL","").Replace(", NV","").Replace(", MD","").Replace(", OH","").Replace(", MN","").Trim()
+    normalized = normalized.Replace(" Los Angeles"," los angeles ca").Replace(" New York"," new york ny").Replace(" Chicago"," chicago il").Replace(" Dallas"," dallas tx").Replace(" Houston"," houston tx").Replace(" Denver"," denver co").Replace(" Philadelphia"," philadelphia pa").Replace(" Phoenix"," phoenix az").Replace(" San Francisco"," san francisco ca").Replace(" San Diego"," san diego ca").Replace(" Boston"," boston ma").Replace(" Washington"," washington dc").Replace(" Miami"," miami fl").Replace(" Detroit"," detroit mi").Replace(" Seattle"," seattle wa").Replace(" Atlanta"," atlanta ga").Replace(" Las Vegas"," las vegas nv").Replace(" Baltimore"," baltimore md").Replace(" Cleveland"," cleveland oh").Replace(" Minneapolis"," minneapolis mn").Trim()
     parenPos = normalized.Instr("(")
     endParenPos = normalized.Instr(")")
     if parenPos > 0 and endParenPos > parenPos
         before = normalized.Left(parenPos - 1).Trim()
-        extracted = normalized.Mid(parenPos)
-        extracted = extracted.Left(endParenPos - parenPos + 1)
-        extracted = extracted.Replace("(", "").Replace(")", "").Trim()
-        
-        ' Remove TV channel numbers from call letters (e.g., "KFMB-TV2" -> "KFMB")
-        ' Only remove when prefixed with dash, not standalone TV (e.g., keep KTTV)
-        extracted = extracted.Replace("-TV2", "").Replace("-TV", "").Replace("-tv2", "").Replace("-tv", "")
-        extracted = extracted.Replace("TV2", "").Replace("tv2", "")
-        extracted = extracted.Trim()
-        
+        extracted = normalized.Mid(parenPos).Left(endParenPos - parenPos + 1).Replace("(","").Replace(")","").Trim()
+        extracted = extracted.Replace("-TV2","").Replace("-TV","").Replace("-tv2","").Replace("-tv","").Replace("TV2","").Replace("tv2","").Trim()
         after = ""
         if endParenPos < normalized.Len()
             after = normalized.Mid(endParenPos + 1).Trim()
         end if
         normalized = before + " " + extracted + " " + after
-        normalized = normalized.Replace("  ", " ").Trim()
+        normalized = normalized.Replace("  "," ").Trim()
     end if
-    
-    ' Replace punctuation and spaces with dots
-    normalized = normalized.Replace(",", "")
-    normalized = normalized.Replace("&", "and")
-    normalized = normalized.Replace("_", ".")
-    normalized = normalized.Replace("-", ".")
-    normalized = normalized.Replace(" ", ".")
-    normalized = normalized.Replace("'", "")
-    normalized = normalized.Replace("A", "a").Replace("B", "b").Replace("C", "c").Replace("D", "d").Replace("E", "e").Replace("F", "f").Replace("G", "g").Replace("H", "h").Replace("I", "i").Replace("J", "j").Replace("K", "k").Replace("L", "l").Replace("M", "m").Replace("N", "n").Replace("O", "o").Replace("P", "p").Replace("Q", "q").Replace("R", "r").Replace("S", "s").Replace("T", "t").Replace("U", "u").Replace("V", "v").Replace("W", "w").Replace("X", "x").Replace("Y", "y").Replace("Z", "z")
-    
-    ' Remove consecutive dots
+    normalized = normalized.Replace(",","").Replace("&","and").Replace("_",".").Replace("-",".").Replace(" ",".").Replace("'","")
+    normalized = normalized.Replace("A","a").Replace("B","b").Replace("C","c").Replace("D","d").Replace("E","e").Replace("F","f").Replace("G","g").Replace("H","h").Replace("I","i").Replace("J","j").Replace("K","k").Replace("L","l").Replace("M","m").Replace("N","n").Replace("O","o").Replace("P","p").Replace("Q","q").Replace("R","r").Replace("S","s").Replace("T","t").Replace("U","u").Replace("V","v").Replace("W","w").Replace("X","x").Replace("Y","y").Replace("Z","z")
     while normalized.Instr("..") > 0
-        normalized = normalized.Replace("..", ".")
+        normalized = normalized.Replace("..",".")
     end while
-    
-    ' Remove leading/trailing dots
     if normalized.Len() > 0
         while normalized.Len() > 0 and normalized.Left(1) = "."
             normalized = normalized.Mid(1)
         end while
-        
         while normalized.Len() > 0 and normalized.Right(1) = "."
             if normalized.Len() <= 1
                 normalized = ""
@@ -468,116 +338,62 @@ function getTvgLogoUrl(channelTitle as String) as String
             normalized = normalized.Left(normalized.Len() - 1)
         end while
     end if
-    
     if normalized = "" then return ""
-    
-    logoFileName = normalized + ".us.png"
-    
-    return baseUrl + logoFileName
+    return baseUrl + normalized + ".us.png"
 end function
 
 function getSkydromeNetworkLogoUrl(channelTitle as String) as String
     baseUrl = "https://raw.githubusercontent.com/skydrome/tvg-logos/master/"
-    
-    ' Extract network name (before parentheses or common location indicators)
     networkName = channelTitle.Trim()
-    
-    ' Remove text in parentheses
     parenPos = networkName.Instr("(")
     if parenPos > 0
         networkName = networkName.Left(parenPos - 1).Trim()
     end if
-    
-    ' Remove common location suffixes
-    networkName = networkName.Replace(" New York", "").Replace(" new york", "").Replace(" Los Angeles", "").Replace(" los angeles", "").Replace(" Chicago", "").Replace(" chicago", "").Replace(" Dallas", "").Replace(" dallas", "").Replace(" Houston", "").Replace(" houston", "").Replace(" Atlanta", "").Replace(" atlanta", "").Replace(" Philadelphia", "").Replace(" philadelphia", "").Replace(" Phoenix", "").Replace(" phoenix", "").Replace(" San Francisco", "").Replace(" san francisco", "").Replace(" San Diego", "").Replace(" san diego", "").Replace(" Boston", "").Replace(" boston", "").Replace(" Washington", "").Replace(" washington", "").Replace(" Miami", "").Replace(" miami", "").Replace(" Detroit", "").Replace(" detroit", "").Replace(" Seattle", "").Replace(" seattle", "").Replace(" Denver", "").Replace(" denver", "").Replace(" Las Vegas", "").Replace(" las vegas", "").Replace(" Baltimore", "").Replace(" baltimore", "").Replace(" Cleveland", "").Replace(" cleveland", "").Replace(" Minneapolis", "").Replace(" minneapolis", "").Replace(", NY", "").Replace(", ny", "").Replace(", CA", "").Replace(", ca", "").Replace(", TX", "").Replace(", tx", "").Replace(", SD", "").Replace(", sd", "").Replace(" NY", "").Replace(" ny", "").Replace(" CA", "").Replace(" ca", "").Replace(" TX", "").Replace(" tx", "").Replace(" SD", "").Replace(" sd", "").Trim()
-    
+    networkName = networkName.Replace(" New York","").Replace(" Los Angeles","").Replace(" Chicago","").Replace(" Dallas","").Replace(" Houston","").Replace(", NY","").Replace(", CA","").Replace(", TX","").Trim()
     if networkName = "" then return ""
-    
-    ' Normalize for skydrome format
-    normalized = networkName
-    normalized = normalized.Replace("A&E", "aande")
-    normalized = normalized.Replace("a&e", "aande")
-    normalized = normalized.Replace("&", "-and-")
-    normalized = normalized.Replace(" ", "-")
-    normalized = normalized.Replace("_", "-")
-    normalized = normalized.Replace(".", "-")
-    normalized = normalized.Replace(",", "")
-    normalized = normalized.Replace("'", "")
-    normalized = normalized.Replace("A", "a").Replace("B", "b").Replace("C", "c").Replace("D", "d").Replace("E", "e").Replace("F", "f").Replace("G", "g").Replace("H", "h").Replace("I", "i").Replace("J", "j").Replace("K", "k").Replace("L", "l").Replace("M", "m").Replace("N", "n").Replace("O", "o").Replace("P", "p").Replace("Q", "q").Replace("R", "r").Replace("S", "s").Replace("T", "t").Replace("U", "u").Replace("V", "v").Replace("W", "w").Replace("X", "x").Replace("Y", "y").Replace("Z", "z")
-    
-    ' Remove consecutive hyphens
+    normalized = networkName.Replace("A&E","aande").Replace("&","-and-").Replace(" ","-").Replace("_","-").Replace(".","-").Replace(",","").Replace("'","")
+    normalized = normalized.Replace("A","a").Replace("B","b").Replace("C","c").Replace("D","d").Replace("E","e").Replace("F","f").Replace("G","g").Replace("H","h").Replace("I","i").Replace("J","j").Replace("K","k").Replace("L","l").Replace("M","m").Replace("N","n").Replace("O","o").Replace("P","p").Replace("Q","q").Replace("R","r").Replace("S","s").Replace("T","t").Replace("U","u").Replace("V","v").Replace("W","w").Replace("X","x").Replace("Y","y").Replace("Z","z")
     while normalized.Instr("--") > 0
-        normalized = normalized.Replace("--", "-")
+        normalized = normalized.Replace("--","-")
     end while
-    
-    ' Remove leading/trailing hyphens
-    while normalized.Len() > 0 and (normalized.Left(1) = "-" or normalized.Left(1) = "0" or normalized.Left(1) = "1" or normalized.Left(1) = "2" or normalized.Left(1) = "3" or normalized.Left(1) = "4" or normalized.Left(1) = "5" or normalized.Left(1) = "6" or normalized.Left(1) = "7" or normalized.Left(1) = "8" or normalized.Left(1) = "9")
+    while normalized.Len() > 0 and (normalized.Left(1) = "-" or (normalized.Left(1) >= "0" and normalized.Left(1) <= "9"))
         normalized = normalized.Mid(1)
     end while
     while normalized.Len() > 0 and normalized.Right(1) = "-"
         normalized = normalized.Left(normalized.Len() - 1)
     end while
-    
     if normalized = "" then return ""
-    
-    logoFileName = normalized + ".us.png"
-    
-    return baseUrl + logoFileName
+    return baseUrl + normalized + ".us.png"
 end function
 
 function getNetworkLogoUrl(channelTitle as String) as String
     baseUrl = "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/"
-    
-    ' Extract network name (before parentheses or common location indicators)
     networkName = channelTitle.Trim()
-    
-    ' Remove text in parentheses
     parenPos = networkName.Instr("(")
     if parenPos > 0
         networkName = networkName.Left(parenPos - 1).Trim()
     end if
-    
-    ' Remove common location suffixes
-    networkName = networkName.Replace(" New York", "").Replace(" new york", "").Replace(" Los Angeles", "").Replace(" los angeles", "").Replace(" Chicago", "").Replace(" chicago", "").Replace(" Dallas", "").Replace(" dallas", "").Replace(" Houston", "").Replace(" houston", "").Replace(" Atlanta", "").Replace(" atlanta", "").Replace(" Philadelphia", "").Replace(" philadelphia", "").Replace(" Phoenix", "").Replace(" phoenix", "").Replace(" San Francisco", "").Replace(" san francisco", "").Replace(" San Diego", "").Replace(" san diego", "").Replace(" Boston", "").Replace(" boston", "").Replace(" Washington", "").Replace(" washington", "").Replace(" Miami", "").Replace(" miami", "").Replace(" Detroit", "").Replace(" detroit", "").Replace(" Seattle", "").Replace(" seattle", "").Replace(" Denver", "").Replace(" denver", "").Replace(" Las Vegas", "").Replace(" las vegas", "").Replace(" Baltimore", "").Replace(" baltimore", "").Replace(" Cleveland", "").Replace(" cleveland", "").Replace(" Minneapolis", "").Replace(" minneapolis", "").Replace(", NY", "").Replace(", ny", "").Replace(", CA", "").Replace(", ca", "").Replace(", TX", "").Replace(", tx", "").Replace(", SD", "").Replace(", sd", "").Replace(" NY", "").Replace(" ny", "").Replace(" CA", "").Replace(" ca", "").Replace(" TX", "").Replace(" tx", "").Replace(" SD", "").Replace(" sd", "").Trim()
-    
+    networkName = networkName.Replace(" New York","").Replace(" Los Angeles","").Replace(" Chicago","").Replace(" Dallas","").Replace(", NY","").Replace(", CA","").Trim()
     if networkName = "" then return ""
-    
-    ' Normalize same as generateTvLogoUrl
-    normalized = networkName
-    normalized = normalized.Replace("A&E", "aande")
-    normalized = normalized.Replace("a&e", "aande")
-    normalized = normalized.Replace("&", " and ")
-    normalized = normalized.Replace(" ", "-")
-    normalized = normalized.Replace("_", "-")
-    normalized = normalized.Replace(".", "-")
-    normalized = normalized.Replace(",", "")
-    normalized = normalized.Replace("'", "")
-    normalized = normalized.Replace("A", "a").Replace("B", "b").Replace("C", "c").Replace("D", "d").Replace("E", "e").Replace("F", "f").Replace("G", "g").Replace("H", "h").Replace("I", "i").Replace("J", "j").Replace("K", "k").Replace("L", "l").Replace("M", "m").Replace("N", "n").Replace("O", "o").Replace("P", "p").Replace("Q", "q").Replace("R", "r").Replace("S", "s").Replace("T", "t").Replace("U", "u").Replace("V", "v").Replace("W", "w").Replace("X", "x").Replace("Y", "y").Replace("Z", "z")
-    
-    ' Remove consecutive hyphens
+    normalized = networkName.Replace("A&E","aande").Replace("&"," and ").Replace(" ","-").Replace("_","-").Replace(".","-").Replace(",","").Replace("'","")
+    normalized = normalized.Replace("A","a").Replace("B","b").Replace("C","c").Replace("D","d").Replace("E","e").Replace("F","f").Replace("G","g").Replace("H","h").Replace("I","i").Replace("J","j").Replace("K","k").Replace("L","l").Replace("M","m").Replace("N","n").Replace("O","o").Replace("P","p").Replace("Q","q").Replace("R","r").Replace("S","s").Replace("T","t").Replace("U","u").Replace("V","v").Replace("W","w").Replace("X","x").Replace("Y","y").Replace("Z","z")
     while normalized.Instr("--") > 0
-        normalized = normalized.Replace("--", "-")
+        normalized = normalized.Replace("--","-")
     end while
-    
-    ' Remove leading/trailing hyphens
-    while normalized.Len() > 0 and (normalized.Left(1) = "-" or normalized.Left(1) = "0" or normalized.Left(1) = "1" or normalized.Left(1) = "2" or normalized.Left(1) = "3" or normalized.Left(1) = "4" or normalized.Left(1) = "5" or normalized.Left(1) = "6" or normalized.Left(1) = "7" or normalized.Left(1) = "8" or normalized.Left(1) = "9")
+    while normalized.Len() > 0 and (normalized.Left(1) = "-" or (normalized.Left(1) >= "0" and normalized.Left(1) <= "9"))
         normalized = normalized.Mid(1)
     end while
     while normalized.Len() > 0 and normalized.Right(1) = "-"
         normalized = normalized.Left(normalized.Len() - 1)
     end while
-    
     if normalized = "" then return ""
-    
-    logoFileName = normalized + "-us.png"
-    
-    return baseUrl + logoFileName
+    return baseUrl + normalized + "-us.png"
 end function
 
 sub onPlaylistError()
     errorMsg = ""
     if m.playlistTask.error <> invalid
-        errorMsg = m.playlistTask.error.ToString()
+        errorMsg = str(m.playlistTask.error)
     end if
     print "Playlist load failed: " + errorMsg
     m.playlistTask = invalid
@@ -595,15 +411,11 @@ sub loadSchedules()
         showGuide()
         return
     end if
-
     m.loadingLabel.text = "Loading Program Guide..."
     m.loadingLabel.visible = true
-
     timestamp = CreateObject("roDateTime").AsSeconds().ToStr()
     epgUrl = "https://tvpass.org/epg.xml?t=" + timestamp
-    
     print "Loading EPG from: " + epgUrl
-
     m.scheduleTask = createObject("roSGNode", "LoadScheduleTask")
     m.scheduleTask.url = epgUrl
     m.scheduleTask.observeField("response", "onScheduleResponse")
@@ -628,7 +440,7 @@ end sub
 sub onScheduleError()
     errorMsg = ""
     if m.scheduleTask.error <> invalid
-        errorMsg = m.scheduleTask.error.ToString()
+        errorMsg = str(m.scheduleTask.error)
     end if
     print "Schedule load failed: " + errorMsg + ", continuing without schedules"
     m.scheduleTask = invalid
@@ -641,65 +453,41 @@ sub parseSchedules(xmlString as String)
         print "Failed to parse EPG XML"
         return
     end if
-    
     print "Parsing EPG XML"
-    
     now = CreateObject("roDateTime")
     currentTime = now.AsSeconds()
-    
-    ' Parse programmes
     programmes = xml.GetNamedElements("programme")
     m.programsByChannel = {}
-    
     for each programme in programmes
         channel = programme@channel
         startTime = programme@start
         stopTime = programme@stop
-        
         if channel <> invalid and startTime <> invalid and stopTime <> invalid
             normalizedChannel = normalizeChannelId(channel)
             startSec = parseXmltvTime(startTime)
             stopSec = parseXmltvTime(stopTime)
-            
-            ' Store all programs for next 2 hours
             if startSec <= (currentTime + 7200) and stopSec > currentTime
                 titleNode = programme.GetNamedElements("title")
                 descNode = programme.GetNamedElements("desc")
                 subTitleNode = programme.GetNamedElements("sub-title")
-                
                 if titleNode.Count() > 0
                     programTitle = titleNode[0].GetText()
                     programDesc = ""
                     programSubTitle = ""
-                    
                     if descNode.Count() > 0
                         programDesc = descNode[0].GetText()
                     end if
-                    
                     if subTitleNode.Count() > 0
                         programSubTitle = subTitleNode[0].GetText()
                     end if
-                    
-                    ' Use subtitle if title is just "Movie"
                     if programTitle = "Movie" and programSubTitle <> ""
                         programTitle = programSubTitle
                     end if
-                    
-                    ' Initialize channel array if needed
                     if not m.programsByChannel.doesExist(normalizedChannel)
                         m.programsByChannel[normalizedChannel] = []
                     end if
-                    
-                    ' Add program to channel
-                    programInfo = {
-                        title: programTitle,
-                        description: programDesc,
-                        startTime: startSec,
-                        endTime: stopSec
-                    }
+                    programInfo = {title: programTitle, description: programDesc, startTime: startSec, endTime: stopSec}
                     m.programsByChannel[normalizedChannel].push(programInfo)
-                    
-                    ' Also store current program in schedules
                     if startSec <= currentTime and stopSec > currentTime
                         m.schedules[normalizedChannel] = programTitle
                     end if
@@ -707,7 +495,6 @@ sub parseSchedules(xmlString as String)
             end if
         end if
     end for
-    
     print "Parsed programs for " + str(m.programsByChannel.count()) + " channels"
 end sub
 
@@ -725,32 +512,24 @@ end function
 
 function parseXmltvTime(xmltvTime as String) as LongInteger
     if xmltvTime.Len() < 14 then return 0
-    
     year = val(xmltvTime.Mid(0, 4))
     month = val(xmltvTime.Mid(4, 2))
     day = val(xmltvTime.Mid(6, 2))
     hour = val(xmltvTime.Mid(8, 2))
     minute = val(xmltvTime.Mid(10, 2))
     second = val(xmltvTime.Mid(12, 2))
-    
-    ' Check if there's timezone info after the 14 base characters
     tzStr = "Z"
     if xmltvTime.Len() >= 19
-        ' Check for timezone offset format: +HHMM or -HHMM (at position 14)
         tzPart = xmltvTime.Mid(14)
         if tzPart.Left(1) = "+" or tzPart.Left(1) = "-"
             if tzPart.Len() >= 5
-                ' Parse +/-HHMM format and convert to ISO8601 format
                 tzStr = tzPart.Mid(0, 3) + ":" + tzPart.Mid(3, 2)
             end if
         end if
     end if
-    
     iso8601Str = stri(year).Trim() + "-" + right("0" + stri(month).Trim(), 2) + "-" + right("0" + stri(day).Trim(), 2) + "T" + right("0" + stri(hour).Trim(), 2) + ":" + right("0" + stri(minute).Trim(), 2) + ":" + right("0" + stri(second).Trim(), 2) + tzStr
-    
     dt = CreateObject("roDateTime")
     dt.FromISO8601String(iso8601Str)
-    
     return dt.AsSeconds()
 end function
 
@@ -758,22 +537,17 @@ function parseM3UData(content as String) as Object
     channels = []
     content = content.Replace(chr(13), chr(10)).Replace(chr(10)+chr(10), chr(10))
     lines = content.Split(chr(10))
-
     current = invalid
     lineNum = 0
     for each line in lines
         lineNum = lineNum + 1
         line = line.Trim()
         if line = "" then goto nextLine
-
         if line.StartsWith("#EXTINF:")
             if current <> invalid and current.url <> invalid
                 channels.push(current)
             end if
-            
             current = {}
-            
-            ' Try to extract title from tvg-name first (handles commas in names)
             tvgNamePos = line.Instr("tvg-name=")
             if tvgNamePos > 0
                 tvgNameStart = tvgNamePos + 10
@@ -782,15 +556,12 @@ function parseM3UData(content as String) as Object
                     current.title = line.Mid(tvgNameStart, tvgNameEnd - tvgNameStart).Trim()
                 end if
             end if
-            
-            ' Fallback: extract from text after last comma
             if current.title = invalid or current.title = ""
                 parts = line.Split(",")
                 if parts.count() > 1
                     current.title = parts[parts.count() - 1].Trim()
                 end if
             end if
-
             tvgIdPos = line.Instr("tvg-id=")
             if tvgIdPos > 0
                 tvgIdStart = tvgIdPos + 8
@@ -799,7 +570,6 @@ function parseM3UData(content as String) as Object
                     current.tvgId = line.Mid(tvgIdStart, tvgIdEnd - tvgIdStart)
                 end if
             end if
-
             logoPos = line.Instr("tvg-logo=")
             if logoPos > 0
                 logoStart = logoPos + 10
@@ -808,7 +578,6 @@ function parseM3UData(content as String) as Object
                     current.logo = line.Mid(logoStart, logoEnd - logoStart)
                 end if
             end if
-
         else if not line.StartsWith("#") and current <> invalid
             if line.EndsWith("/sd")
                 current.url = Left(line, Len(line) - 2) + "hd"
@@ -816,44 +585,27 @@ function parseM3UData(content as String) as Object
                 current.url = line
             end if
         end if
-        
         nextLine:
     end for
-    
     if current <> invalid and current.url <> invalid
         channels.push(current)
     end if
-    
     return channels
 end function
 
 sub createTimeSlotHeaders()
-    ' Clear existing headers
     m.timeSlotHeaders.removeChildrenIndex(m.timeSlotHeaders.getChildCount(), 0)
-    
-    ' Get current UTC time and round down to nearest 30 minutes
     now = CreateObject("roDateTime")
     currentTime = now.AsSeconds()
-    
-    ' Round down to nearest 30-minute interval (1800 seconds = 30 minutes)
     roundedTime = int(currentTime / 1800) * 1800
-    
-    ' Create a DateTime object for the rounded time and convert to local
     slotWidth = 517
-    
     for i = 0 to 2
-        ' Calculate time for this slot
         slotTime = roundedTime + (i * 1800)
-        
-        ' Convert to local time for display
         slotDateTime = CreateObject("roDateTime")
         slotDateTime.FromSeconds(slotTime)
         slotDateTime.ToLocalTime()
-        
         hours = slotDateTime.GetHours()
         minutes = slotDateTime.GetMinutes()
-        
-        ' Format time
         displayHour = hours
         ampm = "am"
         if hours >= 12
@@ -863,15 +615,12 @@ sub createTimeSlotHeaders()
             end if
         end if
         if displayHour = 0 then displayHour = 12
-        
         minutesInt = int(minutes)
+        minutesStr = StrI(minutesInt).Trim()
         if minutesInt < 10
-            timeStr = StrI(displayHour).Trim() + ":0" + StrI(minutesInt).Trim() + " " + ampm
-        else
-            timeStr = StrI(displayHour).Trim() + ":" + StrI(minutesInt).Trim() + " " + ampm
+            minutesStr = "0" + minutesStr
         end if
-        
-        ' Create time label
+        timeStr = StrI(displayHour).Trim() + ":" + minutesStr + " " + ampm
         timeLabel = createObject("roSGNode", "Label")
         timeLabel.width = slotWidth
         timeLabel.height = 40
@@ -880,28 +629,19 @@ sub createTimeSlotHeaders()
         timeLabel.horizAlign = "center"
         timeLabel.vertAlign = "center"
         timeLabel.text = timeStr
-        
         m.timeSlotHeaders.appendChild(timeLabel)
     end for
 end sub
 
 sub showGuide()
     m.loadingLabel.visible = false
-    
-    ' Create time slot headers
     createTimeSlotHeaders()
-    
-    ' Create channel list content
     root = createObject("roSGNode", "ContentNode")
-    
     for i = 0 to m.channels.count() - 1
         channel = m.channels[i]
         item = root.createChild("ContentNode")
-        
         item.addField("channelNumber", "integer", false)
         item.channelNumber = i + 1
-        
-        ' If title is too long, move to nowPlaying
         item.addField("isLongChannelName", "boolean", false)
         if len(channel.title) > 30
             item.title = "Ch " + str(i + 1)
@@ -922,42 +662,31 @@ sub showGuide()
                 item.nowPlaying = ""
             end if
         end if
-        
         item.addField("streamUrl", "string", false)
         item.streamUrl = channel.url
-        
         if channel.logo <> invalid
             item.addField("logo", "string", false)
             item.logo = channel.logo
         end if
-        
-        ' Add upcoming programs
         item.addField("programs", "array", false)
         normalizedId = invalid
         if channel.tvgId <> invalid
             normalizedId = normalizeChannelId(channel.tvgId)
         end if
-        
         if normalizedId <> invalid and m.programsByChannel.doesExist(normalizedId)
             item.programs = m.programsByChannel[normalizedId]
         else
             item.programs = []
         end if
     end for
-    
     m.channelList.content = root
-    
-    ' Update featured program with first channel
     if m.channels.count() > 0 and m.lastChannelIndex >= 0 and m.lastChannelIndex < m.channels.count()
         updateFeaturedProgram(m.lastChannelIndex)
     else if m.channels.count() > 0
         updateFeaturedProgram(0)
     end if
-    
     showGuideElements()
     m.channelList.setFocus(true)
-    
-    ' Restore position
     if m.lastChannelIndex >= 0 and m.lastChannelIndex < m.channels.count()
         m.channelList.jumpToItem = m.lastChannelIndex
     end if
@@ -965,23 +694,15 @@ end sub
 
 sub updateFeaturedProgram(index as Integer)
     if index < 0 or index >= m.channels.count() then return
-    
     channel = m.channels[index]
-    
-    ' Set logo
     if channel.logo <> invalid and channel.logo <> ""
         m.featuredLogo.uri = channel.logo
     end if
-    
-    ' Set title
     m.featuredTitle.text = channel.title
-    
-    ' Set current program info
     normalizedId = invalid
     if channel.tvgId <> invalid
         normalizedId = normalizeChannelId(channel.tvgId)
     end if
-    
     if normalizedId <> invalid and m.schedules.doesExist(normalizedId)
         m.featuredTime.text = "Now Playing"
         m.featuredDescription.text = m.schedules[normalizedId]
@@ -1023,14 +744,13 @@ sub onChannelSelected()
     idx = m.channelList.itemSelected
     if idx >= 0 and idx < m.channels.count()
         if m.isBackgroundPlayback and idx = m.currentChannelIndex
-            ' Return to full screen
             m.isBackgroundPlayback = false
             m.videoPlayer.opacity = 1.0
             m.videoOverlay.visible = false
             hideGuideElements()
             m.videoPlayer.setFocus(true)
         else
-            ' Play new channel
+            m.retryAttempts = 0
             m.lastChannelIndex = idx
             m.currentChannelIndex = idx
             channel = m.channels[idx]
@@ -1047,12 +767,10 @@ sub playChannel(channel as Object)
     m.videoPlayer.visible = true
     m.videoOverlay.visible = false
     hideGuideElements()
-
     content = createObject("roSGNode", "ContentNode")
     content.url = channel.url
     content.title = channel.title
     content.streamFormat = "hls"
-
     m.videoPlayer.content = content
     m.videoPlayer.control = "play"
     m.videoPlayer.setFocus(true)
@@ -1062,10 +780,64 @@ sub onVideoStateChanged()
     state = m.videoPlayer.state
     print "Video state changed: " + state
     
-    if state = "error" or state = "finished" or state = "stopped"
+    ' Also check for error info
+    errorCode = m.videoPlayer.errorCode
+    errorMsg = m.videoPlayer.errorMsg
+    errorStr = m.videoPlayer.errorStr
+    
+    print "  errorCode: " + str(errorCode)
+    if errorMsg <> invalid and errorMsg <> ""
+        print "  errorMsg: " + errorMsg
+    end if
+    if errorStr <> invalid and errorStr <> ""
+        print "  errorStr: " + errorStr
+    end if
+    
+    ' Check if we have an actual error even if state isn't "error"
+    hasError = false
+    if errorCode <> invalid and errorCode <> 0
+        hasError = true
+        print "  ERROR DETECTED via errorCode!"
+    end if
+    
+    ' Check if we have an actual error even if state isn't "error"
+    hasError = false
+    if errorCode <> invalid and errorCode <> 0
+        hasError = true
+        print "  ERROR DETECTED via errorCode!"
+    end if
+    
+    if state = "error" or hasError
+        print "Video error occurred (state=" + state + ", hasError=" + str(hasError) + ")"
+        if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0 and m.currentChannelIndex < m.channels.count()
+            m.retryAttempts = m.retryAttempts + 1
+            print "Retry attempt " + str(m.retryAttempts) + " of " + str(m.maxRetryAttempts) + " in " + str(m.retryDelay) + " seconds..."
+            m.loadingLabel.text = "Server full, retrying... (Attempt " + str(m.retryAttempts) + "/" + str(m.maxRetryAttempts) + ")"
+            m.loadingLabel.visible = true
+            m.videoPlayer.control = "stop"
+            m.retryTimer.duration = m.retryDelay
+            m.retryTimer.control = "start"
+        else
+            if m.retryAttempts >= m.maxRetryAttempts
+                print "Max retry attempts reached"
+                m.loadingLabel.text = "Unable to connect - Server full. Please try again later."
+            else
+                m.loadingLabel.text = "Playback error"
+            end if
+            m.loadingLabel.visible = true
+            m.videoPlayer.control = "stop"
+            m.videoPlayer.visible = false
+            returnTimer = createObject("roSGNode", "Timer")
+            returnTimer.duration = 3
+            returnTimer.repeat = false
+            returnTimer.observeField("fire", "returnToGuide")
+            returnTimer.control = "start"
+        end if
+        return
+    end if
+    if state = "finished" or state = "stopped"
         m.videoPlayer.control = "stop"
         m.videoPlayer.visible = false
-        
         if shouldUpdateSchedules()
             m.schedulesLoaded = false
             loadSchedules()
@@ -1073,6 +845,149 @@ sub onVideoStateChanged()
             showGuide()
             m.channelList.setFocus(true)
         end if
+    end if
+    if state = "playing"
+        m.retryAttempts = 0
+        m.loadingLabel.visible = false
+        if m.bufferingTimer <> invalid
+            m.bufferingTimer.control = "stop"
+            m.bufferingTimer = invalid
+        end if
+        
+        ' Check if we're actually playing or just stuck on the "server full" screen
+        ' Start a position check timer to verify playback is progressing
+        if m.positionCheckTimer = invalid or not m.positionCheckTimer.isSubtype("Timer")
+            print "Creating position check timer"
+            m.positionCheckTimer = m.top.createChild("Timer")
+            m.positionCheckTimer.id = "positionCheckTimer"
+            m.positionCheckTimer.duration = 3
+            m.positionCheckTimer.repeat = false
+            m.positionCheckTimer.observeField("fire", "onPositionCheck")
+            m.lastPosition = m.videoPlayer.position
+            print "Initial position: " + str(m.lastPosition)
+        end if
+        m.positionCheckTimer.control = "start"
+    end if
+    if state = "buffering"
+        print "Video entered buffering state"
+        ' Start a timer to detect if buffering takes too long (potential server full issue)
+        if m.bufferingTimer = invalid or not m.bufferingTimer.isSubtype("Timer")
+            print "Creating buffering timeout timer (10 seconds)"
+            m.bufferingTimer = m.top.createChild("Timer")
+            m.bufferingTimer.id = "bufferingTimeoutTimer"
+            m.bufferingTimer.duration = 10
+            m.bufferingTimer.repeat = false
+            m.bufferingTimer.observeField("fire", "onBufferingTimeout")
+            print "Timer created and configured"
+        else
+            print "Reusing existing buffering timer"
+        end if
+        print "Starting buffering timer..."
+        m.bufferingTimer.control = "start"
+        print "Buffering timer started, control set to 'start'"
+    end if
+end sub
+
+sub onBufferingTimeout()
+    ' Buffering has taken too long, treat it as an error
+    print "!!! BUFFERING TIMEOUT TRIGGERED !!!"
+    state = m.videoPlayer.state
+    print "Current video state: " + state
+    if state = "buffering"
+        print "Still buffering after timeout - initiating retry"
+        ' Force trigger the error handling
+        m.videoPlayer.control = "stop"
+        m.videoPlayer.visible = false
+        hideGuideElements()
+        
+        if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0 and m.currentChannelIndex < m.channels.count()
+            m.retryAttempts = m.retryAttempts + 1
+            print "Retry attempt " + str(m.retryAttempts) + " of " + str(m.maxRetryAttempts) + " due to buffering timeout..."
+            m.loadingLabel.text = "Connection timeout, retrying... (Attempt " + str(m.retryAttempts) + "/" + str(m.maxRetryAttempts) + ")"
+            m.loadingLabel.visible = true
+            m.retryTimer.duration = m.retryDelay
+            m.retryTimer.control = "start"
+        else
+            if m.retryAttempts >= m.maxRetryAttempts
+                print "Max retry attempts reached"
+                m.loadingLabel.text = "Unable to connect - Server may be full. Please try again later."
+            else
+                m.loadingLabel.text = "Connection timeout"
+            end if
+            m.loadingLabel.visible = true
+            returnTimer = createObject("roSGNode", "Timer")
+            returnTimer.duration = 3
+            returnTimer.repeat = false
+            returnTimer.observeField("fire", "returnToGuide")
+            returnTimer.control = "start"
+        end if
+    end if
+    m.bufferingTimer = invalid
+end sub
+
+sub onPositionCheck()
+    ' Check if video position has progressed
+    currentPosition = m.videoPlayer.position
+    print "Position check: last=" + str(m.lastPosition) + " current=" + str(currentPosition)
+    
+    ' If position hasn't changed after 3 seconds of "playing", it's likely stuck on server full screen
+    if currentPosition = m.lastPosition or currentPosition < 1
+        print "!!! VIDEO NOT PROGRESSING - Server likely full !!!"
+        ' Trigger retry logic
+        m.videoPlayer.control = "stop"
+        m.videoPlayer.visible = false
+        hideGuideElements()
+        
+        if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0 and m.currentChannelIndex < m.channels.count()
+            m.retryAttempts = m.retryAttempts + 1
+            print "Retry attempt " + str(m.retryAttempts) + " of " + str(m.maxRetryAttempts) + " due to stuck playback..."
+            m.loadingLabel.text = "Server full, retrying... (Attempt " + str(m.retryAttempts) + "/" + str(m.maxRetryAttempts) + ")"
+            m.loadingLabel.visible = true
+            m.retryTimer.duration = m.retryDelay
+            m.retryTimer.control = "start"
+        else
+            if m.retryAttempts >= m.maxRetryAttempts
+                print "Max retry attempts reached"
+                m.loadingLabel.text = "Unable to connect - Server full. Please try again later."
+            else
+                m.loadingLabel.text = "Playback error"
+            end if
+            m.loadingLabel.visible = true
+            returnTimer = m.top.createChild("Timer")
+            returnTimer.duration = 3
+            returnTimer.repeat = false
+            returnTimer.observeField("fire", "returnToGuide")
+            returnTimer.control = "start"
+        end if
+    else
+        print "Video is progressing normally"
+    end if
+    m.positionCheckTimer = invalid
+end sub
+
+sub onRetryTimer()
+    print "Retrying channel playback..."
+    if m.currentChannelIndex >= 0 and m.currentChannelIndex < m.channels.count()
+        channel = m.channels[m.currentChannelIndex]
+        playChannel(channel)
+    end if
+end sub
+
+sub returnToGuide()
+    m.loadingLabel.visible = false
+    if shouldUpdateSchedules()
+        m.schedulesLoaded = false
+        loadSchedules()
+    else
+        showGuide()
+        m.channelList.setFocus(true)
+    end if
+end sub
+
+sub onChannelFocused()
+    idx = m.channelList.itemFocused
+    if idx >= 0 and idx < m.channels.count()
+        updateFeaturedProgram(idx)
     end if
 end sub
 
@@ -1084,10 +999,7 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-
     print "Key pressed: " + key
-    
-    ' Back button
     if key = "back" and m.videoPlayer.visible
         print "Back button pressed - showing guide with background playback"
         m.isBackgroundPlayback = true
@@ -1096,20 +1008,15 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         m.videoOverlay.visible = true
         showGuideElements()
         m.channelList.setFocus(true)
-        
         if m.lastChannelIndex >= 0
             m.channelList.jumpToItem = m.lastChannelIndex
         end if
-        
         if shouldUpdateSchedules()
             m.schedulesLoaded = false
             loadSchedules()
         end if
-        
         return true
     end if
-
-    ' Refresh
     if key = "options" or key = "*" or key = "instantreplay"
         if not m.videoPlayer.visible
             print "Refresh button pressed"
@@ -1118,6 +1025,5 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             return true
         end if
     end if
-
     return false
 end function
