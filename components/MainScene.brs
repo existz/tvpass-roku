@@ -808,7 +808,7 @@ sub onVideoStateChanged()
     end if
     
     if state = "error" or hasError
-        print "Video error occurred (state=" + state + ", hasError=" + str(hasError) + ")"
+       ' print "Video error occurred (state=" + state + ", hasError=" + str(hasError) + ")"
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0 and m.currentChannelIndex < m.channels.count()
             m.retryAttempts = m.retryAttempts + 1
             print "Retry attempt " + str(m.retryAttempts) + " of " + str(m.maxRetryAttempts) + " in " + str(m.retryDelay) + " seconds..."
