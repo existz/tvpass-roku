@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="SlideChannelMenu" extends="Group">
+    <script type="text/brightscript" uri="pkg:/components/SlideChannelMenu.brs" />
+
+    <interface>
+        <field id="channels" type="array" onChange="onChannelsChanged" />
+        <field id="currentChannelIndex" type="integer" />
+        <field id="selectedChannel" type="integer" alwaysNotify="true" />
+    </interface>
+
+    <children>
+        <!-- Semi-transparent background overlay -->
+        <Rectangle
+            id="overlay"
+            translation="[0,0]"
+            width="1920"
+            height="1080"
+            color="0x000000"
+            opacity="0.7"/>
+
+        <!-- Menu container -->
+        <Rectangle
+            id="menuBackground"
+            translation="[1120,0]"
+            width="800"
+            height="1080"
+            color="0x1A1A1AFF"/>
+
+        <!-- Menu header -->
+        <Label
+            id="menuTitle"
+            translation="[1150,40]"
+            width="740"
+            height="60"
+            text="Channels"
+            font="font:LargeBoldSystemFont"
+            color="0xFFFFFFFF"
+            horizAlign="left"
+            vertAlign="center"/>
+
+        <!-- Channel list -->
+        <MarkupList
+            id="channelList"
+            translation="[1150,120]"
+            itemComponentName="SlideChannelMenuItem"
+            itemSize="[740,100]"
+            itemSpacing="[0,5]"
+            numRows="9"
+            drawFocusFeedback="false"/>
+    </children>
+</component>

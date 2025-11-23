@@ -138,5 +138,11 @@
         vertAlign="center"
         font="font:LargeBoldSystemFont"
         color="0xFFFFFFFF"/>
+
+    <!-- Channel Menu (right side) -->
+    <SlideChannelMenu
+        id="channelMenu"
+        visible="false"
+        translation="[0,0]"/>
   </children>
 </component>

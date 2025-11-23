@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="SlideChannelMenuItem" extends="Group">
+    <script type="text/brightscript" uri="pkg:/components/SlideChannelMenuItem.brs" />
+
+    <interface>
+        <field id="itemContent" type="node" onChange="onContentChanged" />
+        <field id="focusPercent" type="float" onChange="onFocusPercentChanged" />
+    </interface>
+
+    <children>
+        <!-- Background -->
+        <Rectangle
+            id="background"
+            translation="[0,0]"
+            width="770"
+            height="100"
+            color="0x2A2A2AFF"/>
+
+        <!-- Channel Logo -->
+        <Poster
+            id="logo"
+            translation="[20,15]"
+            width="120"
+            height="70"
+            loadDisplayMode="scaleToFit"
+            failedBitmapUri=""/>
+
+        <!-- Channel Title -->
+        <Label
+            id="title"
+            translation="[170,20]"
+            width="580"
+            height="60"
+            horizAlign="left"
+            vertAlign="center"
+            font="font:SmallSystemFont"
+            color="0xCCCCCCFF"
+            wrap="true"
+            maxLines="2"/>
+    </children>
+</component>

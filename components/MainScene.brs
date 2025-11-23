@@ -7,6 +7,7 @@ sub init()
     m.channelList = m.top.findNode("channelList")
     m.videoPlayer = m.top.findNode("videoPlayer")
     m.videoOverlay = m.top.findNode("videoOverlay")
+    m.channelMenu = m.top.findNode("channelMenu")
     
     ' Guide UI elements
     m.guideBackground = m.top.findNode("guideBackground")
@@ -46,6 +47,7 @@ sub init()
     m.channelList.observeField("itemSelected", "onChannelSelected")
     m.channelList.observeField("itemFocused", "onChannelFocused")
     m.videoPlayer.observeField("state", "onVideoStateChanged")
+    m.channelMenu.observeField("selectedChannel", "onMenuChannelSelected")
 
     ' Start clock update timer
     m.clockTimer = createObject("roSGNode", "Timer")
@@ -324,7 +326,7 @@ function getTvgLogoUrl(channelTitle as String) as String
     normalized = normalized.Replace(",","").Replace("&","and").Replace("_",".").Replace("-",".").Replace(" ",".").Replace("'","")
     normalized = normalized.Replace("A","a").Replace("B","b").Replace("C","c").Replace("D","d").Replace("E","e").Replace("F","f").Replace("G","g").Replace("H","h").Replace("I","i").Replace("J","j").Replace("K","k").Replace("L","l").Replace("M","m").Replace("N","n").Replace("O","o").Replace("P","p").Replace("Q","q").Replace("R","r").Replace("S","s").Replace("T","t").Replace("U","u").Replace("V","v").Replace("W","w").Replace("X","x").Replace("Y","y").Replace("Z","z")
     while normalized.Instr("..") > 0
-        normalized = normalized.Replace("..",".")
+        normalized = normalized.Replace("..",".") 
     end while
     if normalized.Len() > 0
         while normalized.Len() > 0 and normalized.Left(1) = "."
@@ -686,10 +688,11 @@ sub showGuide()
         updateFeaturedProgram(0)
     end if
     showGuideElements()
-    m.channelList.setFocus(true)
     if m.lastChannelIndex >= 0 and m.lastChannelIndex < m.channels.count()
         m.channelList.jumpToItem = m.lastChannelIndex
+        m.channelList.animateToItem = m.lastChannelIndex
     end if
+    m.channelList.setFocus(true)
 end sub
 
 sub updateFeaturedProgram(index as Integer)
@@ -762,6 +765,23 @@ sub onChannelSelected()
     end if
 end sub
 
+sub onMenuChannelSelected()
+    ' Channel selected from the menu
+    idx = m.channelMenu.selectedChannel
+    if idx >= 0 and idx < m.channels.count()
+        m.retryAttempts = 0
+        m.lastChannelIndex = idx
+        m.currentChannelIndex = idx
+        channel = m.channels[idx]
+        print "Playing channel from menu: " + channel.title
+        
+        ' Hide menu and play channel
+        m.channelMenu.visible = false
+        playChannel(channel)
+        m.isBackgroundPlayback = false
+    end if
+end sub
+
 sub playChannel(channel as Object)
     m.videoPlayer.opacity = 1.0
     m.videoPlayer.visible = true
@@ -773,6 +793,10 @@ sub playChannel(channel as Object)
     content.streamFormat = "hls"
     m.videoPlayer.content = content
     m.videoPlayer.control = "play"
+    
+    ' Disable video player's built-in trick play controls
+    m.videoPlayer.enableTrickPlay = false
+    
     m.videoPlayer.setFocus(true)
 end sub
 
@@ -800,15 +824,7 @@ sub onVideoStateChanged()
         print "  ERROR DETECTED via errorCode!"
     end if
     
-    ' Check if we have an actual error even if state isn't "error"
-    hasError = false
-    if errorCode <> invalid and errorCode <> 0
-        hasError = true
-        print "  ERROR DETECTED via errorCode!"
-    end if
-    
     if state = "error" or hasError
-       ' print "Video error occurred (state=" + state + ", hasError=" + str(hasError) + ")"
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0 and m.currentChannelIndex < m.channels.count()
             m.retryAttempts = m.retryAttempts + 1
             print "Retry attempt " + str(m.retryAttempts) + " of " + str(m.maxRetryAttempts) + " in " + str(m.retryDelay) + " seconds..."
@@ -997,9 +1013,77 @@ sub showError(msg as String)
     print "Error: " + msg
 end sub
 
+sub showChannelMenu()
+    ' Build channel data with now playing info
+    channelsWithNowPlaying = []
+    for i = 0 to m.channels.count() - 1
+        channel = m.channels[i]
+        channelData = {
+            title: channel.title,
+            logo: channel.logo,
+            url: channel.url,
+            tvgId: channel.tvgId
+        }
+        
+        ' Get now playing info
+        normalizedId = invalid
+        if channel.tvgId <> invalid
+            normalizedId = normalizeChannelId(channel.tvgId)
+        end if
+        if normalizedId <> invalid and m.schedules.doesExist(normalizedId)
+            channelData.nowPlaying = m.schedules[normalizedId]
+        else
+            channelData.nowPlaying = ""
+        end if
+        
+        channelsWithNowPlaying.push(channelData)
+    end for
+    
+    ' Set menu properties - order matters!
+    print "Setting channels array with " + str(channelsWithNowPlaying.count()) + " channels"
+    print "Current channel index: " + str(m.currentChannelIndex)
+    
+    ' Set currentChannelIndex BEFORE setting channels
+    m.channelMenu.currentChannelIndex = m.currentChannelIndex
+    m.channelMenu.channels = channelsWithNowPlaying
+    m.channelMenu.visible = true
+    
+    ' Set focus
+    print "MainScene: Setting focus to channel menu"
+    m.channelMenu.setFocus(true)
+end sub
+
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
-    print "Key pressed: " + key
+    print "MainScene: Key pressed: " + key + " (videoPlayer.visible=" ; m.videoPlayer.visible ; ", menuVisible=" ; m.channelMenu.visible ; ")"
+    
+    ' If channel menu is visible, handle navigation
+    if m.channelMenu.visible
+        if key = "back"
+            print "Closing channel menu"
+            m.channelMenu.visible = false
+            m.videoPlayer.setFocus(true)
+            return true
+        end if
+        ' Let the menu handle other keys
+        return false
+    end if
+    
+    ' Show channel menu when right button is pressed during video playback
+    if key = "right" and m.videoPlayer.visible and not m.channelMenu.visible
+        print "Right button pressed - showing channel menu"
+        showChannelMenu()
+        return true
+    end if
+    
+    ' Also handle left, up, down to show menu during video playback
+    if (key = "left" or key = "up" or key = "down") and m.videoPlayer.visible and not m.channelMenu.visible
+        print key + " button pressed - showing channel menu"
+        showChannelMenu()
+        return true
+    end if
+    
+    ' Back button during video playback - return to guide
     if key = "back" and m.videoPlayer.visible
         print "Back button pressed - showing guide with background playback"
         m.isBackgroundPlayback = true
@@ -1008,15 +1092,16 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         m.videoOverlay.visible = true
         showGuideElements()
         m.channelList.setFocus(true)
-        if m.lastChannelIndex >= 0
-            m.channelList.jumpToItem = m.lastChannelIndex
-        end if
         if shouldUpdateSchedules()
             m.schedulesLoaded = false
             loadSchedules()
+        else
+            showGuide()
+            m.channelList.setFocus(true)
         end if
         return true
     end if
+    
     if key = "options" or key = "*" or key = "instantreplay"
         if not m.videoPlayer.visible
             print "Refresh button pressed"
