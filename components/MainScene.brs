@@ -9,6 +9,12 @@ sub init()
     m.videoOverlay = m.top.findNode("videoOverlay")
     m.channelMenu = m.top.findNode("channelMenu")
     
+    ' Long press detection
+    m.longPressThreshold = 500 ' milliseconds
+    m.leftButtonPressTime = 0
+    m.rightButtonPressTime = 0
+    m.isLongPressing = false
+    
     ' Guide UI elements
     m.guideBackground = m.top.findNode("guideBackground")
     m.headerBackground = m.top.findNode("headerBackground")
@@ -797,7 +803,8 @@ sub playChannel(channel as Object)
     ' Disable video player's built-in trick play controls
     m.videoPlayer.enableTrickPlay = false
     
-    m.videoPlayer.setFocus(true)
+    ' Give focus to MainScene, not video player directly
+    m.top.setFocus(true)
 end sub
 
 sub onVideoStateChanged()
@@ -1054,61 +1061,143 @@ sub showChannelMenu()
 end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
-    if not press then return false
-    print "MainScene: Key pressed: " + key + " (videoPlayer.visible=" ; m.videoPlayer.visible ; ", menuVisible=" ; m.channelMenu.visible ; ")"
-    
-    ' If channel menu is visible, handle navigation
+    ' Get current time in milliseconds for long press detection
+    dt = CreateObject("roDateTime")
+    currentTime& = dt.AsSeconds()
+    currentTimeMs& = (currentTime& * 1000) + dt.GetMilliseconds()
+
+    ' If channel menu is visible, handle it FIRST before anything else
     if m.channelMenu.visible
-        if key = "back"
+        if key = "back" and press
             print "Closing channel menu"
             m.channelMenu.visible = false
-            m.videoPlayer.setFocus(true)
+            m.top.setFocus(true)
             return true
         end if
         ' Let the menu handle other keys
         return false
     end if
     
-    ' Show channel menu when right button is pressed during video playback
-    if key = "right" and m.videoPlayer.visible and not m.channelMenu.visible
-        print "Right button pressed - showing channel menu"
-        showChannelMenu()
-        return true
-    end if
-    
-    ' Also handle left, up, down to show menu during video playback
-    if (key = "left" or key = "up" or key = "down") and m.videoPlayer.visible and not m.channelMenu.visible
-        print key + " button pressed - showing channel menu"
-        showChannelMenu()
-        return true
-    end if
-    
-    ' Back button during video playback - return to guide
-    if key = "back" and m.videoPlayer.visible
-        print "Back button pressed - showing guide with background playback"
-        m.isBackgroundPlayback = true
-        m.videoPlayer.opacity = 1.0
-        m.videoPlayer.visible = true
-        m.videoOverlay.visible = true
-        showGuideElements()
-        m.channelList.setFocus(true)
-        if shouldUpdateSchedules()
-            m.schedulesLoaded = false
-            loadSchedules()
-        else
-            showGuide()
-            m.channelList.setFocus(true)
+    ' Handle key press (button down)
+    if press
+        ' Track left button press time during video playback
+        if key = "left" and m.videoPlayer.visible and not m.channelMenu.visible
+            m.leftButtonPressTime = currentTimeMs&
+            m.isLongPressing = false
+            return true ' Consume the event, wait for release
         end if
-        return true
-    end if
-    
-    if key = "options" or key = "*" or key = "instantreplay"
-        if not m.videoPlayer.visible
-            print "Refresh button pressed"
-            m.playlistLoaded = false
-            loadPlaylist()
+        
+        ' Track right button press time during video playback
+        if key = "right" and m.videoPlayer.visible and not m.channelMenu.visible
+            m.rightButtonPressTime = currentTimeMs&
+            m.isLongPressing = false
+            return true ' Consume the event, wait for release
+        end if
+        
+        ' For up/down during video, let them through normally (no long press)
+        if (key = "up" or key = "down") and m.videoPlayer.visible and not m.channelMenu.visible
+            print key + " button pressed - showing channel menu"
+            showChannelMenu()
             return true
         end if
+        
+        ' Back button during video playback - return to guide
+        if key = "back" and m.videoPlayer.visible
+            print "Back button pressed - showing guide with background playback"
+            m.isBackgroundPlayback = true
+            m.videoPlayer.opacity = 1.0
+            m.videoPlayer.visible = true
+            m.videoOverlay.visible = true
+            showGuideElements()
+            m.channelList.setFocus(true)
+            if shouldUpdateSchedules()
+                m.schedulesLoaded = false
+                loadSchedules()
+            else
+                showGuide()
+                m.channelList.setFocus(true)
+            end if
+            return true
+        end if
+        
+        ' Refresh button
+        if key = "options" or key = "*" or key = "instantreplay"
+            if not m.videoPlayer.visible
+                print "Refresh button pressed"
+                m.playlistLoaded = false
+                loadPlaylist()
+                return true
+            end if
+        end if
+    else
+        ' Handle key release (button up)
+        
+        ' Check for long press left (rewind)
+        if key = "left" and m.leftButtonPressTime > 0
+            pressDuration = currentTimeMs& - m.leftButtonPressTime
+            m.leftButtonPressTime = 0
+            
+            print "Left button released after " + str(pressDuration) + "ms"
+            
+            if pressDuration >= m.longPressThreshold and m.videoPlayer.visible and not m.channelMenu.visible
+                print "Long press LEFT detected - seeking backward"
+                m.isLongPressing = true
+                seekBackward()
+                return true
+            else if m.videoPlayer.visible and not m.channelMenu.visible
+                ' Short press - show menu
+                print "Short press LEFT - showing channel menu"
+                showChannelMenu()
+                return true
+            end if
+        end if
+        
+        ' Check for long press right (fast forward)
+        if key = "right" and m.rightButtonPressTime > 0
+            pressDuration = currentTimeMs& - m.rightButtonPressTime
+            m.rightButtonPressTime = 0
+            
+            print "Right button released after " + str(pressDuration) + "ms"
+            
+            if pressDuration >= m.longPressThreshold and m.videoPlayer.visible and not m.channelMenu.visible
+                print "Long press RIGHT detected - seeking forward"
+                m.isLongPressing = true
+                seekForward()
+                return true
+            else if m.videoPlayer.visible and not m.channelMenu.visible
+                ' Short press - show menu
+                print "Short press RIGHT - showing channel menu"
+                showChannelMenu()
+                return true
+            end if
+        end if
+        
+        ' Reset long press flag on any key release
+        m.isLongPressing = false
     end if
+    
     return false
 end function
+
+sub seekBackward()
+    ' Seek backward by 10 seconds
+    if m.videoPlayer.content <> invalid
+        currentPos = m.videoPlayer.position
+        newPos = currentPos - 10
+        if newPos < 0 then newPos = 0
+        m.videoPlayer.seek = newPos
+        print "Seeking backward to position: " + str(newPos)
+    end if
+end sub
+
+sub seekForward()
+    ' Seek forward by 10 seconds
+    if m.videoPlayer.content <> invalid
+        currentPos = m.videoPlayer.position
+        duration = m.videoPlayer.duration
+        newPos = currentPos + 10
+        if duration > 0 and newPos > duration then newPos = duration
+        m.videoPlayer.seek = newPos
+        print "Seeking forward to position: " + str(newPos)
+    end if
+end sub
