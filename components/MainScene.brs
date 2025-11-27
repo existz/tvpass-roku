@@ -557,7 +557,24 @@ sub showChannelMenu()
                 now = CreateObject("roDateTime").AsSeconds()
                 for each prog in programs
                     if prog.startTime <= now and prog.endTime > now
-                        if prog.description <> invalid and prog.description <> ""
+                        ' Check if this is a sports program by looking at the title
+                        programTitle = prog.title
+                        isSportsProgram = false
+                        
+                        ' List of sports program titles to check
+                        sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "MLB Baseball", "NHL Hockey"]
+                        
+                        for each keyword in sportsKeywords
+                            if programTitle.Instr(keyword) >= 0
+                                isSportsProgram = true
+                                exit for
+                            end if
+                        end for
+                        
+                        ' Use sub-title for sports, description for others
+                        if isSportsProgram and prog.subTitle <> invalid and prog.subTitle <> ""
+                            channelData.programDetails = prog.subTitle
+                        else if prog.description <> invalid and prog.description <> ""
                             channelData.programDetails = prog.description
                         end if
                         exit for
@@ -819,12 +836,16 @@ function EPGParseXML(xmlString as String) as Object
             programDesc = descNode[0].GetText()
         end if
         
+        ' Capture sub-title
+        programSubTitle = ""
         subTitleNode = programme.GetNamedElements("sub-title")
-        if programTitle = "Movie" and subTitleNode.Count() > 0
+        if subTitleNode.Count() > 0
             programSubTitle = subTitleNode[0].GetText()
-            if programSubTitle <> ""
-                programTitle = programSubTitle
-            end if
+        end if
+        
+        ' Handle Movie special case
+        if programTitle = "Movie" and programSubTitle <> ""
+            programTitle = programSubTitle
         end if
         
         if startSec <= currentTime and stopSec > currentTime
@@ -838,6 +859,7 @@ function EPGParseXML(xmlString as String) as Object
         programInfo = {}
         programInfo.title = programTitle
         programInfo.description = programDesc
+        programInfo.subTitle = programSubTitle
         programInfo.startTime = startSec
         programInfo.endTime = stopSec
         result.programsByChannel[normalizedChannel].push(programInfo)

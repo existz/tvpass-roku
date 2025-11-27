@@ -12,10 +12,10 @@ sub onContentChanged()
         ' Set channel number
         if content.channelNumber <> invalid
             m.channelNumber.text = str(content.channelNumber)
-            m.channelNumber.horizAlign = "center" ' Align center for consistent positioning
+            m.channelNumber.horizAlign = "center"
         end if
         
-        ' Set channel logo (larger, replaces name)
+        ' Set channel logo
         if content.logo <> invalid and content.logo <> ""
             m.channelLogo.uri = content.logo
             m.channelLogo.visible = true
@@ -38,13 +38,11 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
     ' Clear existing slots
     m.programSlots.removeChildrenIndex(m.programSlots.getChildCount(), 0)
     
-    ' Get current UTC time and calculate time window - match header logic
-    ' Program times from EPG are in UTC seconds
+    ' Get current UTC time and calculate time window
     now = CreateObject("roDateTime")
     currentTime = now.AsSeconds()
     
     ' Round down to nearest 30-minute interval
-    ' 1800 seconds = 30 minutes
     windowStartTime = int(currentTime / 1800) * 1800
     
     ' 1.5 hour window (3 x 30-minute blocks)
@@ -58,12 +56,7 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
         programs = content.programs
     end if
     
-    ' Initialize counters
-    debugCount = 0
-    totalProgramsChecked = 0
-    totalProgramsRendered = 0
-    
-    ' If no programs but nowPlaying, create a synthetic program spanning the full window
+    ' If no programs but nowPlaying, create a synthetic program
     if programs.count() = 0 and content.nowPlaying <> invalid and content.nowPlaying <> ""
         syntheticProgram = {
             title: content.nowPlaying,
@@ -88,7 +81,6 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
             end if
             
             if progStart = invalid or progEnd = invalid
-                ' Skip programs without valid times
                 goto nextProgram
             end if
             
@@ -116,6 +108,22 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 slot.height = 75
                 slot.color = "0x2A2A2AFF"
                 
+                ' Determine display text - use subTitle for sports programs
+                displayText = program.title
+                isSportsProgram = false
+                sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
+                
+                for each keyword in sportsKeywords
+                    if program.title.Instr(keyword) >= 0
+                        isSportsProgram = true
+                        exit for
+                    end if
+                end for
+                
+                if isSportsProgram and program.subTitle <> invalid and program.subTitle <> ""
+                    displayText = program.subTitle
+                end if
+                
                 ' Create label for program
                 label = createObject("roSGNode", "Label")
                 slotHeight = 75
@@ -126,7 +134,7 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 if labelWidth < 1 then labelWidth = 1
                 label.width = labelWidth
                 label.height = labelHeight
-                label.text = program.title
+                label.text = displayText
                 label.font = "font:SmallSystemFont"
                 label.color = "0xCCCCCCFF"
                 label.horizAlign = "left"
@@ -136,8 +144,8 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 ' Truncate text based on block width (35 chars per 517px)
                 maxChars = int((width / 517.0) * 35)
                 if maxChars < 10 then maxChars = 10
-                if len(program.title) > maxChars
-                    label.text = left(program.title, maxChars - 3) + "..."
+                if len(displayText) > maxChars
+                    label.text = left(displayText, maxChars - 3) + "..."
                 end if
                 
                 slot.appendChild(label)
