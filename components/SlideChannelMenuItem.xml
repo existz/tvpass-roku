@@ -35,7 +35,6 @@
             vertAlign="center"
             font="font:MediumBoldSystemFont"
             color="0xCCCCCCFF"/>
->
 
         <!-- Program Title (Now Playing) -->
         <Label

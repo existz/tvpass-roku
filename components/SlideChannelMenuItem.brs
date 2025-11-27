@@ -38,6 +38,7 @@ sub onContentChanged()
         ' Set program details (episode info or description)
         if content.doesExist("programDetails") and content.programDetails <> invalid and content.programDetails <> ""
             m.programDetails.text = content.programDetails
+            m.programDetails.font.size = 28
         else
             m.programDetails.text = ""
         end if
