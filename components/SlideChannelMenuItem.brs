@@ -1,31 +1,49 @@
 sub init()
     m.background = m.top.findNode("background")
     m.logo = m.top.findNode("logo")
-    m.title = m.top.findNode("title")
+    m.channelNumber = m.top.findNode("channelNumber")
+    m.programTitle = m.top.findNode("programTitle")
+    m.programDetails = m.top.findNode("programDetails")
     setUnfocusedState()
 end sub
 
 sub onContentChanged()
     content = m.top.itemContent
     if content <> invalid
-        ' Set title
-        if content.title <> invalid
-            m.title.text = content.title
+        ' Set channel number - check if field exists first
+        if content.doesExist("channelNumber") and content.channelNumber <> invalid
+            m.channelNumber.text = str(content.channelNumber)
+        else
+            m.channelNumber.text = ""
         end if
         
         ' Set logo
         if content.logo <> invalid and content.logo <> ""
             m.logo.uri = content.logo
             m.logo.visible = true
-            ' Keep title in normal position when logo is present
-            m.title.translation = [170, 20]
-            m.title.width = 580
         else
             m.logo.visible = false
-            ' Move title to left when no logo
-            m.title.translation = [20, 20]
-            m.title.width = 730
         end if
+        
+        ' Set program title (what's currently playing)
+        if content.doesExist("nowPlaying") and content.nowPlaying <> invalid and content.nowPlaying <> ""
+            m.programTitle.text = content.nowPlaying
+        else if content.title <> invalid
+            m.programTitle.text = content.title
+        else
+            m.programTitle.text = ""
+        end if
+        
+        ' Set program details (episode info or description)
+        if content.doesExist("programDetails") and content.programDetails <> invalid and content.programDetails <> ""
+            m.programDetails.text = content.programDetails
+        else
+            m.programDetails.text = ""
+        end if
+    else
+        m.channelNumber.text = ""
+        m.programTitle.text = ""
+        m.programDetails.text = ""
     end if
     setUnfocusedState()
 end sub
@@ -41,14 +59,21 @@ end sub
 
 sub setFocusedState(p as Float)
     bg = interpolateColor(&h2A2A2AFF, &h0078D4FF, p)
-    txt = interpolateColor(&hCCCCCCFF, &hFFFFFFFF, p)
+    numColor = interpolateColor(&hCCCCCCFF, &hFFFFFFFF, p)
+    titleColor = interpolateColor(&hFFFFFFFF, &hFFFFFFFF, p)
+    detailColor = interpolateColor(&h888888FF, &hCCCCCCFF, p)
+    
     m.background.color = bg
-    m.title.color = txt
+    m.channelNumber.color = numColor
+    m.programTitle.color = titleColor
+    m.programDetails.color = detailColor
 end sub
 
 sub setUnfocusedState()
     m.background.color = "0x2A2A2AFF"
-    m.title.color = "0xCCCCCCFF"
+    m.channelNumber.color = "0xCCCCCCFF"
+    m.programTitle.color = "0xFFFFFFFF"
+    m.programDetails.color = "0x888888FF"
 end sub
 
 function interpolateColor(c1 as Integer, c2 as Integer, t as Float) as String

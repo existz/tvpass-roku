@@ -536,14 +536,41 @@ sub showChannelMenu()
             logo: channel.logo
             url: channel.url
             tvgId: channel.tvgId
+            channelNumber: i + 1
+            nowPlaying: ""
+            programDetails: ""
         }
+        
+        ' Get current program info
         if channel.tvgId <> invalid
-            channelData.nowPlaying = EPGGetCurrentProgram(m.epgData, channel.tvgId)
+            currentProgram = EPGGetCurrentProgram(m.epgData, channel.tvgId)
+            if currentProgram <> ""
+                channelData.nowPlaying = currentProgram
+            else
+                channelData.nowPlaying = channel.title
+            end if
+            
+            ' Get program details (episode info)
+            programs = EPGGetPrograms(m.epgData, channel.tvgId)
+            if programs.count() > 0
+                ' Find current program for details
+                now = CreateObject("roDateTime").AsSeconds()
+                for each prog in programs
+                    if prog.startTime <= now and prog.endTime > now
+                        if prog.description <> invalid and prog.description <> ""
+                            channelData.programDetails = prog.description
+                        end if
+                        exit for
+                    end if
+                end for
+            end if
         else
-            channelData.nowPlaying = ""
+            channelData.nowPlaying = channel.title
         end if
+        
         channelsWithInfo.push(channelData)
     end for
+    
     m.channelMenu.currentChannelIndex = m.currentChannelIndex
     m.channelMenu.channels = channelsWithInfo
     m.channelMenu.visible = true

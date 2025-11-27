@@ -72,6 +72,21 @@ sub onChannelsChanged()
             print "ChannelMenu: Channel " + str(i) + " NO logo"
         end if
         
+        if channel.channelNumber <> invalid
+            item.addField("channelNumber", "integer", false)
+            item.channelNumber = channel.channelNumber
+        end if
+        
+        if channel.nowPlaying <> invalid
+            item.addField("nowPlaying", "string", false)
+            item.nowPlaying = channel.nowPlaying
+        end if
+        
+        if channel.programDetails <> invalid
+            item.addField("programDetails", "string", false)
+            item.programDetails = channel.programDetails
+        end if
+        
         item.addField("channelIndex", "integer", false)
         item.channelIndex = i
     end for

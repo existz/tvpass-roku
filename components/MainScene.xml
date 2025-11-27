@@ -124,7 +124,6 @@
         itemComponentName="GuideChannelItem"
         itemSize="[1800,80]"
         itemSpacing="[0,2]"
-        color="0x0F0F0FFF"
         drawFocusFeedback="false"/>
 
     <!-- Loading / Error Label -->
