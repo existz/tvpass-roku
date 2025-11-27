@@ -81,10 +81,14 @@ sub onChannelsChanged()
             item.addField("nowPlaying", "string", false)
             item.nowPlaying = channel.nowPlaying
         end if
-        
-        if channel.programDetails <> invalid
+
+        if channel.programDetails <> invalid and channel.programDetails <> ""
+            ' Add program details if available
             item.addField("programDetails", "string", false)
             item.programDetails = channel.programDetails
+        else
+            item.addField("programDetails", "string", false)
+            item.programDetails = "Unavailable"
         end if
         
         item.addField("channelIndex", "integer", false)
