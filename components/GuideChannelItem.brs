@@ -12,6 +12,7 @@ sub onContentChanged()
         ' Set channel number
         if content.channelNumber <> invalid
             m.channelNumber.text = str(content.channelNumber)
+            m.channelNumber.horizAlign = "center" ' Align center for consistent positioning
         end if
         
         ' Set channel logo (larger, replaces name)
