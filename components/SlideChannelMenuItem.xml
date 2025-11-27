@@ -12,7 +12,7 @@
         <Rectangle
             id="background"
             translation="[0,0]"
-            width="780"
+            width="880"
             height="120"
             color="0x2A2A2AFF"/>
 
@@ -28,19 +28,20 @@
         <!-- Channel Number -->
         <Label
             id="channelNumber"
-            translation="[125,30]"
-            width="60"
+            translation="[110,30]"
+            width="100"
             height="40"
-            horizAlign="center"
+            horizAlign="right"
             vertAlign="center"
             font="font:MediumBoldSystemFont"
             color="0xCCCCCCFF"/>
+>
 
         <!-- Program Title (Now Playing) -->
         <Label
             id="programTitle"
-            translation="[210,20]"
-            width="550"
+            translation="[240,20]"
+            width="620"
             height="35"
             horizAlign="left"
             vertAlign="center"
@@ -51,8 +52,8 @@
         <!-- Program Details (Episode/Description) -->
         <Label
             id="programDetails"
-            translation="[210,70]"
-            width="550"
+            translation="[240,70]"
+            width="620"
             height="30"
             horizAlign="left"
             vertAlign="center"

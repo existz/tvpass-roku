@@ -21,8 +21,8 @@
         <!-- Menu container -->
         <Rectangle
             id="menuBackground"
-            translation="[1080,0]"
-            width="840"
+            translation="[1040,0]"
+            width="880"
             height="1080"
             color="0x1A1A1AFF"/>
 

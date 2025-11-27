@@ -12,6 +12,7 @@ sub onContentChanged()
     if content <> invalid
         ' Set channel number - check if field exists first
         if content.doesExist("channelNumber") and content.channelNumber <> invalid
+            m.channelNumber.horizAlign = "center"
             m.channelNumber.text = str(content.channelNumber)
         else
             m.channelNumber.text = ""
