@@ -600,7 +600,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     currentTimeMs& = (currentTime& * 1000) + dt.GetMilliseconds()
 
     if m.channelMenu.visible
-        if key = "back" and press
+        if (key = "back" or key = "left") and press
             m.channelMenu.visible = false
             m.top.setFocus(true)
             return true
