@@ -562,7 +562,7 @@ sub showChannelMenu()
                         isSportsProgram = false
                         
                         ' List of sports program titles to check
-                        sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "MLB Baseball", "NHL Hockey"]
+                        sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
                         
                         for each keyword in sportsKeywords
                             if programTitle.Instr(keyword) >= 0
@@ -919,6 +919,7 @@ function EPGGetNetworkLogo(title as String) as String
     networkName = networkName.Replace(" New York", "")
     networkName = networkName.Replace(" Los Angeles", "")
     networkName = networkName.Replace(" Chicago", "")
+    networkName = networkName.Replace(", LA", "")
     networkName = networkName.Replace(", NY", "")
     networkName = networkName.Replace(", CA", "")
     networkName = networkName.Trim()
