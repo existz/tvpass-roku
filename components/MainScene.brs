@@ -117,7 +117,7 @@ sub loadPlaylist()
     
     ' Load logo fallback
     m.epgData.logoTask = createObject("roSGNode", "LoadPlaylistTask")
-    m.epgData.logoTask.url = "https://raw.githubusercontent.com/phosani/tvpass/refs/heads/main/tvpasshd.m3u?t=" + timestamp
+    m.epgData.logoTask.url = "https://raw.githubusercontent.com/existz/tvpass/refs/heads/main/tvpasshd.m3u?t=" + timestamp
     m.epgData.logoTask.observeField("response", "onLogoPlaylistResponse")
     m.epgData.logoTask.observeField("error", "onLogoPlaylistError")
     m.epgData.logoTask.control = "RUN"
@@ -909,12 +909,29 @@ function EPGGenerateLogoUrl(title as String) as String
 end function
 
 function EPGGetNetworkLogo(title as String) as String
-    baseUrl = "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/"
+    baseUrl = "https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/"
     networkName = title.Trim()
     parenPos = networkName.Instr("(")
     if parenPos > 0
         networkName = networkName.Left(parenPos - 1).Trim()
     end if
+
+    ' Local ABC and CBS affiliate logos
+    netMap = {
+        abc: "abc-7-"
+        cbs: "cbs-2-"
+    }
+
+    for each key in netMap
+        if networkName.StartsWith(UCase(key))
+            openParen = title.Instr("(")
+            closeParen = title.Instr(")")
+            if openParen > 0 and closeParen > openParen
+                callLetters = LCase(title.Mid(openParen + 1, closeParen - openParen - 1))
+                return "https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/us-local/" + netMap[key] + callLetters + "-us.png"
+            end if
+        end if
+    end for
     
     networkName = networkName.Replace(" New York", "")
     networkName = networkName.Replace(" Los Angeles", "")
