@@ -106,7 +106,7 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 slot.translation = [offset, 0]
                 slot.width = width
                 slot.height = 75
-                slot.color = "0x2A2A2AFF"
+                slot.color = "0x1A1A1AFF"
                 
                 ' Determine display text - use subTitle for sports programs
                 displayText = program.title
