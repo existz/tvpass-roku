@@ -5,10 +5,13 @@
     <interface>
         <field id="channels" type="array" onChange="onChannelsChanged" />
         <field id="currentChannelIndex" type="integer" />
+        <field id="initialChannelIndex" type="integer" />
         <field id="selectedChannel" type="integer" alwaysNotify="true" />
+        <field id="launchMultiview" type="array" alwaysNotify="true" />
     </interface>
 
-    <children>
+    <!-- Make the menu focusable so it can receive key events -->
+    <children focusable="true">
         <!-- Semi-transparent background overlay -->
         <Rectangle
             id="overlay"
@@ -38,6 +41,19 @@
             horizAlign="left"
             vertAlign="center"/>
 
+        <!-- Instruction label for multiview -->
+        <Label
+            id="instructionLabel"
+            translation="[1110,960]"
+            width="780"
+            height="80"
+            text="Select channel or long-press OK for multiview"
+            font="font:SmallSystemFont"
+            color="0xCCCCCCFF"
+            horizAlign="left"
+            vertAlign="top"
+            wrap="true"/>
+
         <!-- Channel list -->
         <MarkupList
             id="channelList"
@@ -45,7 +61,7 @@
             itemComponentName="SlideChannelMenuItem"
             itemSize="[780,120]"
             itemSpacing="[0,5]"
-            numRows="9"
+            numRows="7"
             drawFocusFeedback="false"/>
     </children>
 </component>

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="MultiviewGrid" extends="Group">
+    <script type="text/brightscript" uri="pkg:/components/MultiviewGrid.brs" />
+
+    <interface>
+        <field id="channels" type="array" />
+    </interface>
+
+    <children>
+        <!-- Main Video Player -->
+        <Video
+            id="mainVideo"
+            translation="[0,0]"
+            width="1540"
+            height="1080"
+            enableTrickPlay="false"/>
+
+        <!-- Main Channel Label -->
+        <Rectangle
+            translation="[0,0]"
+            width="1540"
+            height="60"
+            color="0x000000CC"/>
+        
+        <Label
+            id="mainChannelLabel"
+            translation="[20,10]"
+            width="1500"
+            height="40"
+            font="font:LargeBoldSystemFont"
+            color="0xFFFFFFFF"
+            horizAlign="left"
+            vertAlign="center"/>
+
+        <!-- Thumbnail Container (right side) - Wider for better visibility -->
+        <Rectangle
+            translation="[1540,0]"
+            width="380"
+            height="1080"
+            color="0x000000CC"/>
+        
+        <Group 
+            id="thumbnailContainer"
+            translation="[1540,60]"/>
+
+        <!-- Instructions -->
+        <Rectangle
+            translation="[1540,0]"
+            width="380"
+            height="60"
+            color="0x0078D4FF"/>
+        
+        <Label
+            translation="[1550,10]"
+            width="360"
+            height="40"
+            text="MULTIVIEW MODE"
+            font="font:MediumBoldSystemFont"
+            color="0xFFFFFFFF"
+            horizAlign="center"
+            vertAlign="center"/>
+        
+        <Rectangle
+            translation="[1540,1000]"
+            width="380"
+            height="80"
+            color="0x000000CC"/>
+        
+        <Label
+            translation="[1550,1010]"
+            width="360"
+            height="60"
+            text="↑↓ Select  OK/→ Swap"
+            font="font:SmallSystemFont"
+            color="0xCCCCCCFF"
+            horizAlign="center"
+            vertAlign="center"
+            wrap="true"/>
+    </children>
+</component>

@@ -18,6 +18,7 @@ sub init()
     m.guideHeaderLabel = m.top.findNode("guideHeaderLabel")
     m.allChannelsLabel = m.top.findNode("allChannelsLabel")
     m.timeSlotHeaders = m.top.findNode("timeSlotHeaders")
+    m.multiviewGrid = m.top.findNode("multiviewGrid")
     
     ' Initialize EPG data
     m.epgData = CreateEPGData()
@@ -26,6 +27,7 @@ sub init()
     m.isBackgroundPlayback = false
     m.currentChannelIndex = -1
     m.lastChannelIndex = 0
+    m.isMultiviewMode = false
     
     ' Long press detection
     m.longPressThreshold = 500
@@ -46,6 +48,8 @@ sub init()
     m.channelList.observeField("itemFocused", "onChannelFocused")
     m.videoPlayer.observeField("state", "onVideoStateChanged")
     m.channelMenu.observeField("selectedChannel", "onMenuChannelSelected")
+    m.channelMenu.observeField("launchMultiview", "onLaunchMultiview")
+    m.multiviewGrid.observeField("visible", "onPiPVisibleChanged")
 
     ' Start clock update timer
     m.clockTimer = createObject("roSGNode", "Timer")
@@ -63,6 +67,65 @@ sub init()
     loadPlaylist()
 end sub
 
+sub onLaunchMultiview()
+    selectedChannels = m.channelMenu.launchMultiview
+    print "MainScene: onLaunchMultiview called"
+    print "MainScene: selectedChannels = "; selectedChannels
+
+    if selectedChannels = invalid or selectedChannels.count() = 0 then
+        print "MainScene: No channels selected or invalid"
+        return
+    end if
+
+    print "MainScene: Building PiP view with " + str(selectedChannels.count()) + " channels"
+
+    pipChannels = []
+    now = CreateObject("roDateTime").AsSeconds()
+
+    for each channelIdx in selectedChannels
+        if channelIdx >= 0 and channelIdx < m.epgData.channels.count() then
+            channel = m.epgData.channels[channelIdx]
+            print "MainScene: Adding channel " + str(channelIdx) + ": " + channel.title
+
+            pipChannel = {
+                title: channel.title,
+                url: channel.url,
+                logo: channel.logo,
+                tvgId: channel.tvgId,
+                nowPlaying: ""
+            }
+
+            pipChannel.nowPlaying = GetNowPlayingForChannel(channel, now)
+            pipChannels.push(pipChannel)
+        end if
+    end for
+
+    if pipChannels.count() = 0 then
+        print "MainScene: No valid channels to show in PiP"
+        return
+    end if
+
+    print "MainScene: Starting PiP view with " + str(pipChannels.count()) + " channels"
+
+    m.videoPlayer.visible = false
+    m.videoPlayer.control = "stop"
+    hideGuideElements()
+
+    m.isMultiviewMode = true
+    m.multiviewGrid.visible = true
+    m.multiviewGrid.channels = pipChannels
+    m.multiviewGrid.setFocus(true)
+end sub
+
+sub onPiPVisibleChanged()
+    ' When PiP is hidden, exit multiview mode
+    if not m.multiviewGrid.visible and m.isMultiviewMode then
+        print "MainScene: PiP hidden, exiting multiview mode"
+        m.isMultiviewMode = false
+        loadPlaylist()
+    end if
+end sub
+
 sub updateClock()
     now = CreateObject("roDateTime")
     now.ToLocalTime()
@@ -70,9 +133,9 @@ sub updateClock()
     minute = now.GetMinutes()
     ampm = "am"
     
-    if hour >= 12
+    if hour >= 12 then
         ampm = "pm"
-        if hour > 12
+        if hour > 12 then
             hour = hour - 12
         end if
     end if
@@ -117,7 +180,7 @@ sub loadPlaylist()
     
     ' Load logo fallback
     m.epgData.logoTask = createObject("roSGNode", "LoadPlaylistTask")
-    m.epgData.logoTask.url = "https://raw.githubusercontent.com/existz/tvpass/refs/heads/main/tvpasshd.m3u?t=" + timestamp
+    m.epgData.logoTask.url = "https://raw.githubusercontent.com/phosani/tvpass/refs/heads/main/tvpasshd.m3u?t=" + timestamp
     m.epgData.logoTask.observeField("response", "onLogoPlaylistResponse")
     m.epgData.logoTask.observeField("error", "onLogoPlaylistError")
     m.epgData.logoTask.control = "RUN"
@@ -589,6 +652,7 @@ sub showChannelMenu()
     end for
     
     m.channelMenu.currentChannelIndex = m.currentChannelIndex
+    m.channelMenu.initialChannelIndex = m.currentChannelIndex  ' Add this to track the initially playing channel
     m.channelMenu.channels = channelsWithInfo
     m.channelMenu.visible = true
     m.channelMenu.setFocus(true)
@@ -599,12 +663,14 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     currentTime& = dt.AsSeconds()
     currentTimeMs& = (currentTime& * 1000) + dt.GetMilliseconds()
 
+    ' Handle multiview mode (PiP)
+    if m.isMultiviewMode
+        ' Let the PiP component handle ALL keys
+        return false
+    end if
+
+    ' If channel menu is visible, don't handle keys - menu will handle them
     if m.channelMenu.visible
-        if (key = "back" or key = "left") and press
-            m.channelMenu.visible = false
-            m.top.setFocus(true)
-            return true
-        end if
         return false
     end if
     
@@ -1066,4 +1132,43 @@ function EPGGetPrograms(epg as Object, tvgId as String) as Object
     end if
     
     return []
+end function
+
+function GetNowPlayingForChannel(channel as Object, now as Integer) as String
+    if channel.tvgId = invalid
+        return channel.title
+    end if
+
+    programs = EPGGetPrograms(m.epgData, channel.tvgId)
+    if programs = invalid or programs.count() = 0
+        return channel.title
+    end if
+
+    for each prog in programs
+        if prog.startTime <= now and prog.endTime > now then
+            programTitle = prog.title
+            sportsKeywords = [
+                "College Basketball", "College Football", "College Baseball",
+                "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"
+            ]
+
+            isSports = false
+            for each keyword in sportsKeywords
+                if programTitle.Instr(keyword) >= 0
+                    isSports = true
+                    exit for
+                end if
+            end for
+
+            if isSports and prog.subTitle <> invalid and prog.subTitle <> ""
+                print "MainScene: Sports program, using subtitle: " + prog.subTitle
+                return prog.subTitle
+            end if
+
+            print "MainScene: Now playing: " + programTitle
+            return programTitle
+        end if
+    end for
+
+    return channel.title
 end function

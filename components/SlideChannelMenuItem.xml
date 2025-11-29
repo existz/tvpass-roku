@@ -5,6 +5,7 @@
     <interface>
         <field id="itemContent" type="node" onChange="onContentChanged" />
         <field id="focusPercent" type="float" onChange="onFocusPercentChanged" />
+        <field id="isSelected" type="boolean" />
     </interface>
 
     <children>
@@ -40,7 +41,7 @@
         <Label
             id="programTitle"
             translation="[240,20]"
-            width="620"
+            width="600"
             height="35"
             horizAlign="left"
             vertAlign="center"
@@ -52,12 +53,20 @@
         <Label
             id="programDetails"
             translation="[240,70]"
-            width="620"
+            width="600"
             height="30"
             horizAlign="left"
             vertAlign="center"
             font="font:SmallSystemFont"
             color="0x888888FF"
             wrap="false"/>
+
+        <!-- Selection Indicator for Multiview -->
+        <Rectangle
+            id="selectionIndicator"
+            translation="[860,10]"
+            width="10"
+            height="100"
+            color="0x00FF00FF"/>
     </children>
 </component>

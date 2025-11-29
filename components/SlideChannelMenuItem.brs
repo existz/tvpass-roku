@@ -4,7 +4,23 @@ sub init()
     m.channelNumber = m.top.findNode("channelNumber")
     m.programTitle = m.top.findNode("programTitle")
     m.programDetails = m.top.findNode("programDetails")
+    m.selectionIndicator = m.top.findNode("selectionIndicator")
+    m.selectionIndicator.visible = false
+    
+    m.top.observeField("isSelected", "onSelectedChanged")
     setUnfocusedState()
+end sub
+
+sub onSelectedChanged()
+    m.selectionIndicator.visible = m.top.isSelected
+    if m.top.isSelected
+        m.background.color = "0x0078D4FF"
+    else
+        ' Reset to unfocused state if not focused
+        if m.top.focusPercent = 0
+            setUnfocusedState()
+        end if
+    end if
 end sub
 
 sub onContentChanged()
@@ -42,12 +58,26 @@ sub onContentChanged()
         else
             m.programDetails.text = ""
         end if
+        
+        ' Check if this item is selected
+        if content.doesExist("isSelected") and content.isSelected <> invalid
+            m.top.isSelected = content.isSelected
+            ' Observe changes to isSelected in content
+            content.observeField("isSelected", "onContentSelectedChanged")
+        end if
     else
         m.channelNumber.text = ""
         m.programTitle.text = ""
         m.programDetails.text = ""
     end if
     setUnfocusedState()
+end sub
+
+sub onContentSelectedChanged()
+    content = m.top.itemContent
+    if content <> invalid and content.doesExist("isSelected")
+        m.top.isSelected = content.isSelected
+    end if
 end sub
 
 sub onFocusPercentChanged()
@@ -60,19 +90,24 @@ sub onFocusPercentChanged()
 end sub
 
 sub setFocusedState(p as Float)
-    bg = interpolateColor(&h2A2A2AFF, &h0078D4FF, p)
+    if not m.top.isSelected
+        bg = interpolateColor(&h2A2A2AFF, &h0078D4FF, p)
+        m.background.color = bg
+    end if
+    
     numColor = interpolateColor(&hCCCCCCFF, &hFFFFFFFF, p)
     titleColor = interpolateColor(&hFFFFFFFF, &hFFFFFFFF, p)
     detailColor = interpolateColor(&h888888FF, &hCCCCCCFF, p)
     
-    m.background.color = bg
     m.channelNumber.color = numColor
     m.programTitle.color = titleColor
     m.programDetails.color = detailColor
 end sub
 
 sub setUnfocusedState()
-    m.background.color = "0x2A2A2AFF"
+    if not m.top.isSelected
+        m.background.color = "0x2A2A2AFF"
+    end if
     m.channelNumber.color = "0xCCCCCCFF"
     m.programTitle.color = "0xFFFFFFFF"
     m.programDetails.color = "0x888888FF"

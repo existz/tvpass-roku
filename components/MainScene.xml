@@ -12,6 +12,12 @@
         height="1080"
         opacity="1.0"/>
 
+    <!-- Multiview Grid -->
+    <MultiviewGrid
+        id="multiviewGrid"
+        visible="false"
+        translation="[0,0]"/>
+
     <!-- Black overlay for dimming video -->
     <Rectangle
         id="videoOverlay"
