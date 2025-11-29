@@ -81,7 +81,7 @@ function createThumbnail(index as Integer) as Object
     label.width = 360
     label.height = 50
     label.font = "font:SmallBoldSystemFont"
-    label.font.size = 28
+    label.font.size = 26
     label.color = "0xCCCCCCFF"
     label.horizAlign = "center"
     label.vertAlign = "center"
