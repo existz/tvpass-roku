@@ -669,8 +669,12 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         return false
     end if
 
-    ' If channel menu is visible, don't handle keys - menu will handle them
     if m.channelMenu.visible
+        if (key = "back" or key = "left") and press
+            m.channelMenu.visible = false
+            m.top.setFocus(true)
+            return true
+        end if
         return false
     end if
     
