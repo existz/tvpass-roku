@@ -180,7 +180,7 @@ sub loadPlaylist()
     
     ' Load logo fallback
     m.epgData.logoTask = createObject("roSGNode", "LoadPlaylistTask")
-    m.epgData.logoTask.url = "https://raw.githubusercontent.com/phosani/tvpass/refs/heads/main/tvpasshd.m3u?t=" + timestamp
+    m.epgData.logoTask.url = "https://raw.githubusercontent.com/existz/tvpass/refs/heads/main/tvpasshd.m3u?t=" + timestamp
     m.epgData.logoTask.observeField("response", "onLogoPlaylistResponse")
     m.epgData.logoTask.observeField("error", "onLogoPlaylistError")
     m.epgData.logoTask.control = "RUN"
