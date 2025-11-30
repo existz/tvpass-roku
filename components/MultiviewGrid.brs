@@ -131,40 +131,41 @@ end sub
 sub updateThumbnails()
     thumbIndex = 0
 
+    ' Loop through channels and fill up to 5 thumbnails
     for i = 0 to m.channels.count() - 1
-        ' Skip main channel and stop at 5 thumbnails
+        ' Skip main channel and limit to 5 thumbnails
         if i <> m.currentMainIndex and thumbIndex <= 4 then
 
             channel = m.channels[i]
             thumb = m.thumbnails[thumbIndex]
 
-            ' Update logo only if changed
-            if channel.logo <> invalid and channel.logo <> "" then
+            ' --- Update logo ---
+            if channel.doesExist("logo") and channel.logo <> invalid and channel.logo <> "" then
                 if thumb.logo.uri <> channel.logo then thumb.logo.uri = channel.logo
             else
                 if thumb.logo.uri <> "" then thumb.logo.uri = ""
             end if
 
-            ' Update label
-            if channel.doesExist("nowPlaying") and channel.nowPlaying <> invalid and channel.nowPlaying <> "" then
-                nowPlaying = channel.nowPlaying
-            else
-                nowPlaying = channel.title
+            ' --- Update label / Now Playing ---
+            nowPlaying = channel.title
+            if channel.doesExist("nowPlaying") then
+                if channel.nowPlaying <> invalid and channel.nowPlaying <> "" then
+                    nowPlaying = channel.nowPlaying
+                end if
             end if
-
             if thumb.label.text <> nowPlaying then thumb.label.text = nowPlaying
 
-            ' Store channel index
+            ' --- Store channel index ---
             m.thumbnailChannelIndices[thumbIndex] = i
 
-            ' Update selection border
+            ' --- Update selection border ---
             if thumbIndex = m.selectedThumbnailIndex then
                 thumb.border.opacity = 1.0
             else
                 thumb.border.opacity = 0
             end if
 
-            ' Show components
+            ' --- Show thumbnail components ---
             thumb.background.visible = true
             thumb.border.visible = true
             thumb.logo.visible = true
@@ -177,7 +178,7 @@ sub updateThumbnails()
         if thumbIndex > 4 then exit for
     end for
 
-    ' Hide remaining thumbs
+    ' Hide any remaining unused thumbnails
     for i = thumbIndex to 4
         thumb = m.thumbnails[i]
         thumb.background.visible = false
@@ -187,6 +188,7 @@ sub updateThumbnails()
         m.thumbnailChannelIndices[i] = -1
     end for
 
+    ' Cache count of visible thumbnails
     m.visibleThumbnailCount = thumbIndex
 end sub
 
