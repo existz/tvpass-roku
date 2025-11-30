@@ -81,13 +81,14 @@ function createThumbnail(index as Integer) as Object
     m.thumbnailContainer.appendChild(teamLogo1)
     thumb.teamLogo1 = teamLogo1
 
-    ' VS Label
+    ' @ Label
     vsLabel = createObject("roSGNode", "Label")
     vsLabel.translation = [10 + 150, yPos + 50]
     vsLabel.width = 60
     vsLabel.height = 40
-    vsLabel.text = "vs"
+    vsLabel.text = "@"
     vsLabel.font = "font:MediumBoldSystemFont"
+    vsLabel.font.size = 28
     vsLabel.color = "0xCCCCCCFF"
     vsLabel.horizAlign = "center"
     vsLabel.vertAlign = "center"
