@@ -116,13 +116,16 @@ sub playMainChannel(index as Integer)
     ' Update main video
     content = createObject("roSGNode", "ContentNode")
     content.url = channel.url
-    content.title = channel.title
     content.streamFormat = "hls"
     m.mainVideo.content = content
     m.mainVideo.control = "play"
 
-    ' Update label
-    m.mainChannelLabel.text = channel.title
+    ' Update label with nowPlaying if available
+    labelText = channel.title
+    if channel.doesExist("nowPlaying") and channel.nowPlaying <> invalid and channel.nowPlaying <> ""
+        labelText = channel.nowPlaying
+    end if
+    m.mainChannelLabel.text = labelText
 
     ' Update thumbnails
     updateThumbnails()

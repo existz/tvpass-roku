@@ -440,7 +440,6 @@ sub playChannel(channel as Object)
     hideGuideElements()
     content = createObject("roSGNode", "ContentNode")
     content.url = channel.url
-    content.title = channel.title
     content.streamFormat = "hls"
     m.videoPlayer.content = content
     m.videoPlayer.control = "play"
