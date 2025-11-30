@@ -441,8 +441,19 @@ sub playChannel(channel as Object)
     content = createObject("roSGNode", "ContentNode")
     content.url = channel.url
     content.streamFormat = "hls"
+
+    ' Force HD quality settings
+    content.addField("preferredBitrate", "integer", false)
+    content.preferredBitrate = 0  ' 0 = highest available
+    content.addField("maxBandwidth", "integer", false)
+    content.maxBandwidth = 0  ' 0 = no limit
+
     m.videoPlayer.content = content
     m.videoPlayer.control = "play"
+
+    ' Set video player to prefer highest quality
+    m.videoPlayer.maxVideoDecodeResolution = "1920x1080"
+
     m.videoPlayer.enableTrickPlay = false
     m.top.setFocus(true)
 end sub

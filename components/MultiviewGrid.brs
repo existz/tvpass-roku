@@ -116,9 +116,20 @@ sub playMainChannel(index as Integer)
     ' Update main video
     content = createObject("roSGNode", "ContentNode")
     content.url = channel.url
+    content.title = ""  ' Don't show the built-in title overlay
     content.streamFormat = "hls"
+    
+    ' Force HD quality settings
+    content.addField("preferredBitrate", "integer", false)
+    content.preferredBitrate = 0  ' 0 = highest available
+    content.addField("maxBandwidth", "integer", false)
+    content.maxBandwidth = 0  ' 0 = no limit
+    
     m.mainVideo.content = content
     m.mainVideo.control = "play"
+    
+    ' Set video player to prefer highest quality
+    m.mainVideo.maxVideoDecodeResolution = "1920x1080"
 
     ' Update label with nowPlaying if available
     labelText = channel.title
