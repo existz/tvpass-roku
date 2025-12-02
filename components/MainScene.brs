@@ -224,10 +224,17 @@ sub onLogoPlaylistError()
 end sub
 
 sub onScheduleResponse()
-    epgResult = EPGParseXML(m.epgData.epgTask.response)
-    m.epgData.schedules = epgResult.schedules
-    m.epgData.programsByChannel = epgResult.programsByChannel
-    print "Parsed EPG for " + str(m.epgData.schedules.count()) + " channels"
+    if m.epgData.epgTask.response = invalid or m.epgData.epgTask.response = ""
+        print "onScheduleResponse: Empty EPG response received"
+        m.epgData.schedules = {}
+        m.epgData.programsByChannel = {}
+    else
+        print "onScheduleResponse: Processing " + str(len(m.epgData.epgTask.response)) + " bytes of EPG data"
+        epgResult = EPGParseXML(m.epgData.epgTask.response)
+        m.epgData.schedules = epgResult.schedules
+        m.epgData.programsByChannel = epgResult.programsByChannel
+        print "Parsed EPG for " + str(m.epgData.schedules.count()) + " scheduled channels and " + str(m.epgData.programsByChannel.count()) + " program channels"
+    end if
     m.epgData.epgTask = invalid
     checkPlaylistsComplete()
 end sub
@@ -289,7 +296,8 @@ sub createTimeSlotHeaders()
         if displayHour = 0 then displayHour = 12
         minutesStr = StrI(minutes).Trim()
         if minutes < 10 then minutesStr = "0" + minutesStr
-        timeStr = StrI(displayHour).Trim() + ":" + minutesStr + " " + ampm
+        hourStr = StrI(displayHour).Trim()
+        timeStr = hourStr + ":" + minutesStr + " " + ampm
         
         timeLabel = createObject("roSGNode", "Label")
         timeLabel.width = slotWidth
@@ -895,15 +903,30 @@ function EPGParseXML(xmlString as String) as Object
     result.schedules = {}
     result.programsByChannel = {}
     
+    if xmlString = invalid or xmlString = ""
+        print "EPGParseXML: Empty XML string received"
+        return result
+    end if
+    
+    print "EPGParseXML: Parsing " + str(len(xmlString)) + " bytes"
+    
     xml = CreateObject("roXMLElement")
     parseSuccess = xml.Parse(xmlString)
     if not parseSuccess
+        print "EPGParseXML: XML parse failed"
         return result
     end if
     
     now = CreateObject("roDateTime")
     currentTime = now.AsSeconds()
     programmes = xml.GetNamedElements("programme")
+    
+    print "EPGParseXML: Found " + str(programmes.count()) + " programme elements"
+    
+    if programmes.count() = 0
+        print "EPGParseXML: No programmes found in XML"
+        return result
+    end if
     
     for each programme in programmes
         channel = programme@channel

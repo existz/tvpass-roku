@@ -29,8 +29,8 @@ function runTask() as Void
     http.setPort(port)
 
     if http.asyncGetToString()
-        ' Wait for response
-        msg = wait(10000, port) ' 10 second timeout
+        ' Wait for response (30 second timeout for large EPG files)
+        msg = wait(30000, port) ' 30 second timeout
         if type(msg) = "roUrlEvent"
             responseCode = msg.getResponseCode()
             print "LoadScheduleTask: Response code " + str(responseCode)
