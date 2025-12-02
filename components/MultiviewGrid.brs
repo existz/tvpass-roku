@@ -3,6 +3,7 @@ sub init()
     m.thumbnailContainer = m.top.findNode("thumbnailContainer")
     m.mainChannelLabel = m.top.findNode("mainChannelLabel")
     
+    m.uiColors = GetUIColors()
     m.thumbnails = []
     m.thumbnailChannelIndices = []
     m.channels = []
@@ -48,7 +49,7 @@ function createThumbnail(index as Integer) as Object
     bg.translation = [0, 0]
     bg.width = 360
     bg.height = 140
-    bg.color = "0x1A1A1AFF"
+    bg.color = m.uiColors.BLACK26
     bg.visible = false
     container.appendChild(bg)
     thumb.background = bg
@@ -58,7 +59,7 @@ function createThumbnail(index as Integer) as Object
     team1Bg.translation = [0, 0]
     team1Bg.width = 180
     team1Bg.height = 140
-    team1Bg.color = "0x000000FF"
+    team1Bg.color = m.uiColors.BLACK
     team1Bg.visible = false
     container.appendChild(team1Bg)
     thumb.team1Background = team1Bg
@@ -68,7 +69,7 @@ function createThumbnail(index as Integer) as Object
     team2Bg.translation = [180, 0]
     team2Bg.width = 180
     team2Bg.height = 140
-    team2Bg.color = "0x000000FF"
+    team2Bg.color = m.uiColors.BLACK
     team2Bg.visible = false
     container.appendChild(team2Bg)
     thumb.team2Background = team2Bg
@@ -110,7 +111,7 @@ function createThumbnail(index as Integer) as Object
     label.height = 40
     label.font = "font:SmallBoldSystemFont"
     label.font.size = 22
-    label.color = "0xCCCCCCFF"
+    label.color = m.uiColors.LIGHT_GRAY
     label.horizAlign = "center"
     label.vertAlign = "center"
     label.wrap = true
@@ -124,7 +125,7 @@ function createThumbnail(index as Integer) as Object
     borderTop.translation = [0, 0]
     borderTop.width = 360
     borderTop.height = 4
-    borderTop.color = "0xFFFFFFFF"
+    borderTop.color = m.uiColors.WHITE
     borderTop.opacity = 0
     container.appendChild(borderTop)
     thumb.borderTop = borderTop
@@ -134,7 +135,7 @@ function createThumbnail(index as Integer) as Object
     borderBottom.translation = [0, 136]
     borderBottom.width = 360
     borderBottom.height = 4
-    borderBottom.color = "0xFFFFFFFF"
+    borderBottom.color = m.uiColors.WHITE
     borderBottom.opacity = 0
     container.appendChild(borderBottom)
     thumb.borderBottom = borderBottom
@@ -144,7 +145,7 @@ function createThumbnail(index as Integer) as Object
     borderLeft.translation = [0, 0]
     borderLeft.width = 4
     borderLeft.height = 140
-    borderLeft.color = "0xFFFFFFFF"
+    borderLeft.color = m.uiColors.WHITE
     borderLeft.opacity = 0
     container.appendChild(borderLeft)
     thumb.borderLeft = borderLeft
@@ -154,7 +155,7 @@ function createThumbnail(index as Integer) as Object
     borderRight.translation = [356, 0]
     borderRight.width = 4
     borderRight.height = 140
-    borderRight.color = "0xFFFFFFFF"
+    borderRight.color = m.uiColors.WHITE
     borderRight.opacity = 0
     container.appendChild(borderRight)
     thumb.borderRight = borderRight
@@ -500,12 +501,13 @@ function getTeamCode(teamName as String, league as String) as Dynamic
 end function
 
 function getTeamLogoUrl(teamCode as String, league as String) as String
-    baseUrl = "https://raw.githubusercontent.com/existz/team-logos/master/"
-    return baseUrl + league + "/" + teamCode + ".png"
+    logoUrls = GetLogoUrls()
+    return logoUrls.TEAM_LOGOS_BASE + league + "/" + teamCode + ".png"
 end function
 
 function getTeamColor(teamCode as String, league as String) as String
     palette = GetTeamColorPalette()
+    uiColors = GetUIColors()
 
     if palette.doesExist(league)
         leagueColors = palette[league]
@@ -514,7 +516,7 @@ function getTeamColor(teamCode as String, league as String) as String
         end if
     end if
 
-    return "0x1A1A1AFF" ' default
+    return uiColors.BLACK26 ' default
 end function
 
 sub selectPreviousThumbnail()

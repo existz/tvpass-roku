@@ -1,3 +1,19 @@
+function GetUIColors() as Object
+    return {
+        BLACK: "0x000000FF"
+        BLACK20: "0x0F0F0FFF"
+        BLACK26: "0x1A1A1AFF"
+        BLACK42: "0x2A2A2AFF"
+        DARK_GRAY: "0x505050FF"
+        GRAY: "0x777777FF"
+        GRAY88: "0x888888FF"
+        LIGHT_GRAY: "0xCCCCCCFF"
+        LIGHT_GRAY_DD: "0xDDDDDDFF"
+        WHITE: "0xFFFFFFFF"
+        GREEN: "0x00FF00FF"
+    }
+end function
+
 function GetTeamColorPalette() as Object
     return {
         NFL: {

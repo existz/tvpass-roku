@@ -20,6 +20,9 @@ sub init()
     m.timeSlotHeaders = m.top.findNode("timeSlotHeaders")
     m.multiviewGrid = m.top.findNode("multiviewGrid")
     
+    ' Initialize UI colors
+    m.uiColors = GetUIColors()
+    
     ' Initialize EPG data with forced refresh on startup
     m.epgData = CreateEPGData()
     m.epgData.lastUpdate = 0  ' Force refresh on first load
@@ -176,24 +179,25 @@ sub loadPlaylist()
     m.epgData.logoFallbackData = invalid
     
     timestamp = CreateObject("roDateTime").AsSeconds().ToStr()
+    apiUrls = GetTVPassUrls()
     
     ' Load main playlist
     m.epgData.playlistTask = createObject("roSGNode", "LoadPlaylistTask")
-    m.epgData.playlistTask.url = "https://tvpass.org/playlist/m3u?t=" + timestamp
+    m.epgData.playlistTask.url = apiUrls.TVPASS_PLAYLIST + "?t=" + timestamp
     m.epgData.playlistTask.observeField("response", "onTvpassPlaylistResponse")
     m.epgData.playlistTask.observeField("error", "onPlaylistError")
     m.epgData.playlistTask.control = "RUN"
     
     ' Load EPG XML
     m.epgData.epgTask = createObject("roSGNode", "LoadScheduleTask")
-    m.epgData.epgTask.url = "https://tvpass.org/epg.xml?t=" + timestamp
+    m.epgData.epgTask.url = apiUrls.TVPASS_EPG + "?t=" + timestamp
     m.epgData.epgTask.observeField("response", "onScheduleResponse")
     m.epgData.epgTask.observeField("error", "onScheduleError")
     m.epgData.epgTask.control = "RUN"
     
     ' Load logo fallback
     m.epgData.logoTask = createObject("roSGNode", "LoadPlaylistTask")
-    m.epgData.logoTask.url = "https://raw.githubusercontent.com/existz/tvpass/refs/heads/main/tvpasshd.m3u?t=" + timestamp
+    m.epgData.logoTask.url = apiUrls.TVPASS_HD_FALLBACK + "?t=" + timestamp
     m.epgData.logoTask.observeField("response", "onLogoPlaylistResponse")
     m.epgData.logoTask.observeField("error", "onLogoPlaylistError")
     m.epgData.logoTask.control = "RUN"
@@ -291,7 +295,7 @@ sub createTimeSlotHeaders()
         timeLabel.width = slotWidth
         timeLabel.height = 40
         timeLabel.font = "font:SmallBoldSystemFont"
-        timeLabel.color = "0x888888FF"
+        timeLabel.color = m.uiColors.GRAY88
         timeLabel.horizAlign = "center"
         timeLabel.vertAlign = "center"
         timeLabel.text = timeStr
@@ -1004,7 +1008,8 @@ function EPGGenerateLogoUrl(title as String) as String
 end function
 
 function EPGGetNetworkLogo(title as String) as String
-    baseUrl = "https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/"
+    logoUrls = GetLogoUrls()
+    baseUrl = logoUrls.TV_LOGOS_BASE
     networkName = title.Trim()
     parenPos = networkName.Instr("(")
     if parenPos > 0
@@ -1023,7 +1028,7 @@ function EPGGetNetworkLogo(title as String) as String
             closeParen = title.Instr(")")
             if openParen > 0 and closeParen > openParen
                 callLetters = LCase(title.Mid(openParen + 1, closeParen - openParen - 1))
-                return "https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/us-local/" + netMap[key] + callLetters + "-us.png"
+                return logoUrls.TV_LOGOS_LOCAL + netMap[key] + callLetters + "-us.png"
             end if
         end if
     end for

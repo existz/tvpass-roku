@@ -2,6 +2,7 @@ sub init()
     m.background = m.top.findNode("background")
     m.channelLabel = m.top.findNode("channelLabel")
     m.nowPlayingLabel = m.top.findNode("nowPlayingLabel")
+    m.uiColors = GetUIColors()
     setUnfocusedState()
 end sub
 
@@ -50,9 +51,9 @@ sub setFocusedState(p as Float)
 end sub
 
 sub setUnfocusedState()
-    m.background.color = "0x0F0F0FFF"
-    m.channelLabel.color = "0xCCCCCCFF"
-    m.nowPlayingLabel.color = "0x777777FF"
+    m.background.color = m.uiColors.BLACK20
+    m.channelLabel.color = m.uiColors.LIGHT_GRAY
+    m.nowPlayingLabel.color = m.uiColors.GRAY
 end sub
 
 function interpolateColor(c1 as Integer, c2 as Integer, t as Float) as String

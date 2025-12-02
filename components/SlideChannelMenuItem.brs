@@ -6,6 +6,7 @@ sub init()
     m.programDetails = m.top.findNode("programDetails")
     m.selectionIndicator = m.top.findNode("selectionIndicator")
     m.selectionIndicator.visible = false
+    m.uiColors = GetUIColors()
     
     m.top.observeField("isSelected", "onSelectedChanged")
     setUnfocusedState()
@@ -106,11 +107,11 @@ end sub
 
 sub setUnfocusedState()
     if not m.top.isSelected
-        m.background.color = "0x2A2A2AFF"
+        m.background.color = m.uiColors.BLACK42
     end if
-    m.channelNumber.color = "0xCCCCCCFF"
-    m.programTitle.color = "0xFFFFFFFF"
-    m.programDetails.color = "0x888888FF"
+    m.channelNumber.color = m.uiColors.LIGHT_GRAY
+    m.programTitle.color = m.uiColors.WHITE
+    m.programDetails.color = m.uiColors.GRAY88
 end sub
 
 function interpolateColor(c1 as Integer, c2 as Integer, t as Float) as String

@@ -3,6 +3,7 @@ sub init()
     m.channelNumber = m.top.findNode("channelNumber")
     m.channelLogo = m.top.findNode("channelLogo")
     m.programSlots = m.top.findNode("programSlots")
+    m.uiColors = GetUIColors()
     setUnfocusedState()
 end sub
 
@@ -106,7 +107,7 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 slot.translation = [offset, 0]
                 slot.width = width
                 slot.height = 75
-                slot.color = "0x1A1A1AFF"
+                slot.color = m.uiColors.BLACK26
                 
                 ' Determine display text - use subTitle for sports programs
                 displayText = program.title
@@ -136,7 +137,7 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 label.height = labelHeight
                 label.text = displayText
                 label.font = "font:SmallSystemFont"
-                label.color = "0xCCCCCCFF"
+                label.color = m.uiColors.LIGHT_GRAY
                 label.horizAlign = "left"
                 label.vertAlign = "center"
                 label.wrap = false
@@ -178,7 +179,7 @@ sub setFocusedState(p as Float)
 end sub
 
 sub setUnfocusedState()
-    m.background.color = "0x1A1A1AFF"
+    m.background.color = m.uiColors.BLACK26
 end sub
 
 function interpolateColor(c1 as Integer, c2 as Integer, t as Float) as String
