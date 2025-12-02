@@ -23,6 +23,8 @@
         <Poster
             id="logo"
             translation="[20,15]"
+            loadWidth="80"
+            loadHeight="70"
             width="80"
             height="70"
             loadDisplayMode="scaleToFit"

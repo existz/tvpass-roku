@@ -11,6 +11,8 @@
         <Poster
             id="poster"
             translation="[0,0]"
+            loadWidth="400"
+            loadHeight="250"
             width="400"
             height="250"
             loadDisplayMode="scaleToFit"

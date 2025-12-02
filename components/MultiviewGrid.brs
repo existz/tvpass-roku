@@ -11,13 +11,95 @@ sub init()
     m.selectedThumbnailIndex = 0
     m.visibleThumbnailCount = 0
 
+    ' Pre-compute ALL team logo URLs and colors at startup for instant O(1) lookups
+    m.teamLogoCache = {}
+    m.teamColorCache = {}
+    m.leagueMaps = {
+        NFL: GetNFLTeams()
+        NBA: GetNBATeams()
+        MLB: GetMLBTeams()
+        NHL: GetNHLTeams()
+    }
+    m.colorPalette = GetTeamColorPalette()
+    m.logoBaseUrl = GetLogoUrls().TEAM_LOGOS_BASE
+    
+    ' Pre-compute ALL team logo URLs and colors for all leagues
+    precomputeTeamData()
+    
+    ' Track last state to avoid redundant updates
+    m.lastMainChannelLabel = ""
+    
     ' Don't create thumbnails here - they'll be created when needed
     ' This ensures they have all the latest properties
-    
     m.mainVideo.observeField("state", "onMainVideoStateChange")
     m.top.observeField("channels", "onChannelsChanged")
     m.top.observeField("visible", "onVisibleChanged")
 end sub
+
+sub precomputeTeamData()
+    ' For each league, pre-compute logo URLs and colors for all teams
+    leagues = ["NFL", "NBA", "MLB", "NHL"]
+    
+    for each leagueName in leagues
+        if not m.leagueMaps.doesExist(leagueName)
+            print "MultiviewGrid: League not found in maps: "; leagueName
+            goto nextLeague
+        end if
+        
+        teams = m.leagueMaps[leagueName]
+        
+        for each teamName in teams
+            teamCode = teams[teamName]
+            ' Use uppercase league name for cache key to match what parseTeamMatchupFast generates
+            cacheKey = leagueName + ":" + teamCode
+            
+            ' Pre-compute logo URL
+            logoUrl = m.logoBaseUrl + leagueName + "/" + teamCode + ".png"
+            m.teamLogoCache[cacheKey] = logoUrl
+            
+            ' Pre-compute color - check both the league name and team code exist
+            if m.colorPalette.doesExist(leagueName)
+                leagueColors = m.colorPalette[leagueName]
+                if leagueColors.doesExist(teamCode)
+                    m.teamColorCache[cacheKey] = leagueColors[teamCode]
+                else
+                    m.teamColorCache[cacheKey] = m.uiColors.BLACK26
+                end if
+            else
+                m.teamColorCache[cacheKey] = m.uiColors.BLACK26
+            end if
+        end for
+        
+        nextLeague:
+    end for
+    
+    ' Cache built successfully - ready for fast lookups
+end sub
+
+' Fast lookup using pre-computed cache
+function getTeamLogoUrlFast(teamCode as String, league as String) as String
+    cacheKey = league + ":" + teamCode
+    if m.teamLogoCache.doesExist(cacheKey)
+        return m.teamLogoCache[cacheKey]
+    end if
+    ' Fallback: construct URL directly if not in cache
+    return m.logoBaseUrl + league + "/" + teamCode + ".png"
+end function
+
+function getTeamColorFast(teamCode as String, league as String) as String
+    cacheKey = league + ":" + teamCode
+    if m.teamColorCache.doesExist(cacheKey)
+        return m.teamColorCache[cacheKey]
+    end if
+    ' Fallback: try to get color directly
+    if m.colorPalette.doesExist(league)
+        leagueColors = m.colorPalette[league]
+        if leagueColors.doesExist(teamCode)
+            return leagueColors[teamCode]
+        end if
+    end if
+    return m.uiColors.BLACK26
+end function
 
 function createThumbnail(index as Integer) as Object
     ' Reduced height from 180 to 140, increased spacing from 185 to 165
@@ -42,6 +124,14 @@ function createThumbnail(index as Integer) as Object
         borderBottom: invalid
         borderLeft: invalid
         borderRight: invalid
+
+        lastLogoUri: ""
+        lastTeam1LogoUri: ""
+        lastTeam2LogoUri: ""
+        lastTeam1Color: ""
+        lastTeam2Color: ""
+        lastLabelText: ""
+        lastIsSports: invalid
     }
 
     ' Background (for non-sports)
@@ -54,7 +144,6 @@ function createThumbnail(index as Integer) as Object
     container.appendChild(bg)
     thumb.background = bg
 
-    ' Team 1 Background (left half)
     team1Bg = createObject("roSGNode", "Rectangle")
     team1Bg.translation = [0, 0]
     team1Bg.width = 180
@@ -64,7 +153,6 @@ function createThumbnail(index as Integer) as Object
     container.appendChild(team1Bg)
     thumb.team1Background = team1Bg
 
-    ' Team 2 Background (right half)
     team2Bg = createObject("roSGNode", "Rectangle")
     team2Bg.translation = [180, 0]
     team2Bg.width = 180
@@ -74,9 +162,10 @@ function createThumbnail(index as Integer) as Object
     container.appendChild(team2Bg)
     thumb.team2Background = team2Bg
 
-    ' Channel logo (for non-sports)
     logo = createObject("roSGNode", "Poster")
     logo.translation = [90, 10]
+    logo.loadWidth = 180
+    logo.loadHeight = 60
     logo.width = 180
     logo.height = 80
     logo.loadDisplayMode = "scaleToFit"
@@ -84,9 +173,10 @@ function createThumbnail(index as Integer) as Object
     container.appendChild(logo)
     thumb.logo = logo
 
-    ' Team Logo 1 (left side, centered on team background)
     teamLogo1 = createObject("roSGNode", "Poster")
     teamLogo1.translation = [40, 20]
+    teamLogo1.loadWidth = 100
+    teamLogo1.loadHeight = 100
     teamLogo1.width = 100
     teamLogo1.height = 100
     teamLogo1.loadDisplayMode = "scaleToFit"
@@ -94,9 +184,10 @@ function createThumbnail(index as Integer) as Object
     container.appendChild(teamLogo1)
     thumb.teamLogo1 = teamLogo1
 
-    ' Team Logo 2 (right side, centered on team background)
     teamLogo2 = createObject("roSGNode", "Poster")
     teamLogo2.translation = [220, 20]
+    teamLogo2.loadWidth = 100
+    teamLogo2.loadHeight = 100
     teamLogo2.width = 100
     teamLogo2.height = 100
     teamLogo2.loadDisplayMode = "scaleToFit"
@@ -104,7 +195,6 @@ function createThumbnail(index as Integer) as Object
     container.appendChild(teamLogo2)
     thumb.teamLogo2 = teamLogo2
 
-    ' Now Playing label
     label = createObject("roSGNode", "Label")
     label.translation = [0, 95]
     label.width = 360
@@ -130,7 +220,6 @@ function createThumbnail(index as Integer) as Object
     container.appendChild(borderTop)
     thumb.borderTop = borderTop
 
-    ' Bottom border
     borderBottom = createObject("roSGNode", "Rectangle")
     borderBottom.translation = [0, 136]
     borderBottom.width = 360
@@ -140,7 +229,6 @@ function createThumbnail(index as Integer) as Object
     container.appendChild(borderBottom)
     thumb.borderBottom = borderBottom
 
-    ' Left border
     borderLeft = createObject("roSGNode", "Rectangle")
     borderLeft.translation = [0, 0]
     borderLeft.width = 4
@@ -150,7 +238,6 @@ function createThumbnail(index as Integer) as Object
     container.appendChild(borderLeft)
     thumb.borderLeft = borderLeft
 
-    ' Right border
     borderRight = createObject("roSGNode", "Rectangle")
     borderRight.translation = [356, 0]
     borderRight.width = 4
@@ -248,7 +335,11 @@ sub playMainChannel(index as Integer)
     if channel.cachedNowPlaying <> invalid and channel.cachedNowPlaying <> ""
         labelText = channel.cachedNowPlaying
     end if
-    m.mainChannelLabel.text = labelText
+    
+    if labelText <> m.lastMainChannelLabel
+        m.mainChannelLabel.text = labelText
+        m.lastMainChannelLabel = labelText
+    end if
 
     ' Update thumbnails
     updateThumbnails()
@@ -281,60 +372,86 @@ sub updateThumbnails()
             end if
 
             ' Check if this is a sports matchup
-            matchup = parseTeamMatchup(nowPlaying)
+            matchup = parseTeamMatchupFast(nowPlaying)
             
             isSports = (matchup <> invalid)
+
+            needsUpdate = (thumb.lastIsSports = invalid or thumb.lastIsSports <> isSports)
             
             if isSports 
-                ' Show team backgrounds and logos
-                team1Url = getTeamLogoUrl(matchup.team1, matchup.league)
-                team2Url = getTeamLogoUrl(matchup.team2, matchup.league)
+                team1Url = getTeamLogoUrlFast(matchup.team1, matchup.league)
+                team2Url = getTeamLogoUrlFast(matchup.team2, matchup.league)
+                team1Color = getTeamColorFast(matchup.team1, matchup.league)
+                team2Color = getTeamColorFast(matchup.team2, matchup.league)
+
+                if team1Color <> thumb.lastTeam1Color
+                    thumb.team1Background.color = team1Color
+                    thumb.lastTeam1Color = team1Color
+                    needsUpdate = true
+                end if
                 
-                ' Get team colors
-                team1Color = getTeamColor(matchup.team1, matchup.league)
-                team2Color = getTeamColor(matchup.team2, matchup.league)
+                if team2Color <> thumb.lastTeam2Color
+                    thumb.team2Background.color = team2Color
+                    thumb.lastTeam2Color = team2Color
+                    needsUpdate = true
+                end if
                 
-                ' Set background colors
-                thumb.team1Background.color = team1Color
-                thumb.team2Background.color = team2Color
+                if team1Url <> thumb.lastTeam1LogoUri
+                    thumb.teamLogo1.uri = team1Url
+                    thumb.lastTeam1LogoUri = team1Url
+                    needsUpdate = true
+                end if
                 
-                ' Set logos only if changed
-                if thumb.teamLogo1.uri <> team1Url then thumb.teamLogo1.uri = team1Url
-                if thumb.teamLogo2.uri <> team2Url then thumb.teamLogo2.uri = team2Url
+                if team2Url <> thumb.lastTeam2LogoUri
+                    thumb.teamLogo2.uri = team2Url
+                    thumb.lastTeam2LogoUri = team2Url
+                    needsUpdate = true
+                end if
                 
             else
                 ' Show channel logo (non-sports) - use cached value
                 logoUrl = channel.cachedLogo
-                if logoUrl <> invalid and logoUrl <> "" then
-                    if thumb.logo.uri <> logoUrl then thumb.logo.uri = logoUrl
-                else
-                    if thumb.logo.uri <> "" then thumb.logo.uri = ""
+
+                if logoUrl <> thumb.lastLogoUri
+                    if logoUrl <> invalid and logoUrl <> ""
+                        thumb.logo.uri = logoUrl
+                    else
+                        thumb.logo.uri = ""
+                    end if
+                    thumb.lastLogoUri = logoUrl
+                    needsUpdate = true
                 end if
                 
                 ' Update label for non-sports
-                if thumb.label.text <> nowPlaying then thumb.label.text = nowPlaying
+                if nowPlaying <> thumb.lastLabelText
+                    thumb.label.text = nowPlaying
+                    thumb.lastLabelText = nowPlaying
+                    needsUpdate = true
+                end if
             end if
 
-            ' Batch visibility updates
-            sportsVisible = isSports
-            nonSportsVisible = not isSports
-            
-            thumb.team1Background.visible = sportsVisible
-            thumb.team2Background.visible = sportsVisible
-            thumb.teamLogo1.visible = sportsVisible
-            thumb.teamLogo2.visible = sportsVisible
-            thumb.background.visible = nonSportsVisible
-            thumb.logo.visible = nonSportsVisible
-            thumb.label.visible = nonSportsVisible
+            ' Batch visibility update
+            if needsUpdate or thumb.lastIsSports <> isSports
+                sportsVisible = isSports
+                nonSportsVisible = not isSports
+                
+                thumb.team1Background.visible = sportsVisible
+                thumb.team2Background.visible = sportsVisible
+                thumb.teamLogo1.visible = sportsVisible
+                thumb.teamLogo2.visible = sportsVisible
+                thumb.background.visible = nonSportsVisible
+                thumb.logo.visible = nonSportsVisible
+                thumb.label.visible = nonSportsVisible
+                
+                thumb.lastIsSports = isSports
+            end if
 
-            ' --- Store channel index ---
             m.thumbnailChannelIndices[thumbIndex] = i
 
-            ' --- Update selection border outline ---
             isSelected = (thumbIndex = m.selectedThumbnailIndex)
             borderOpacity = 0
             if isSelected then borderOpacity = 1
-            
+
             thumb.borderTop.opacity = borderOpacity
             thumb.borderBottom.opacity = borderOpacity
             thumb.borderLeft.opacity = borderOpacity
@@ -400,20 +517,15 @@ sub stopPlayback()
     m.mainVideo.control = "stop"
 end sub
 
-function parseTeamMatchup(programTitle as String) as Object
+function parseTeamMatchupFast(programTitle as String) as Object
     ' Returns { league: "NFL/NBA/MLB/NHL", team1: "BUF", team2: "ARI" } or invalid
     if programTitle = invalid or programTitle = "" then return invalid
-    
-    print "parseTeamMatchup: Analyzing: "; programTitle
     
     ' Check for "vs" or "@" pattern
     hasVs = (programTitle.Instr(" vs ") >= 0 or programTitle.Instr(" vs. ") >= 0)
     hasAt = (programTitle.Instr(" @ ") >= 0 or programTitle.Instr(" at ") >= 0)
     
-    if not hasVs and not hasAt then 
-        print "parseTeamMatchup: No vs/@ found"
-        return invalid
-    end if
+    if not hasVs and not hasAt then return invalid
     
     ' Extract team names first
     teams = invalid
@@ -431,10 +543,7 @@ function parseTeamMatchup(programTitle as String) as Object
         end if
     end if
     
-    if teams = invalid or teams.count() < 2 then 
-        print "parseTeamMatchup: Failed to split teams"
-        return invalid
-    end if
+    if teams = invalid or teams.count() < 2 then return invalid
     
     team1Name = teams[0].Trim()
     team2Name = teams[1].Trim()
@@ -445,30 +554,15 @@ function parseTeamMatchup(programTitle as String) as Object
         team2Name = team2Name.Left(parenPos).Trim()
     end if
     
-    print "parseTeamMatchup: Team 1 name: "; team1Name
-    print "parseTeamMatchup: Team 2 name: "; team2Name
-    
     ' Determine league by checking team names against known teams
-    league = detectLeagueFromTeams(team1Name, team2Name)
-    
-    if league = invalid then 
-        print "parseTeamMatchup: No league identified"
-        return invalid
-    end if
-    
-    print "parseTeamMatchup: League: "; league
+    league = detectLeagueFromTeamsFast(team1Name, team2Name)
+    if league = invalid then return invalid
     
     ' Get team codes
-    team1Code = getTeamCode(team1Name, league)
-    team2Code = getTeamCode(team2Name, league)
+    team1Code = getTeamCodeFast(team1Name, league)
+    team2Code = getTeamCodeFast(team2Name, league)
     
-    print "parseTeamMatchup: Team 1 code: "; team1Code
-    print "parseTeamMatchup: Team 2 code: "; team2Code
-    
-    if team1Code = invalid or team2Code = invalid then 
-        print "parseTeamMatchup: Failed to get team codes"
-        return invalid
-    end if
+    if team1Code = invalid or team2Code = invalid then return invalid
     
     return {
         league: league
@@ -477,51 +571,41 @@ function parseTeamMatchup(programTitle as String) as Object
     }
 end function
 
-function detectLeagueFromTeams(team1 as String, team2 as String) as Dynamic
-    ' Try NFL first
-    if GetTeamCodeByLeague(team1, "NFL") <> invalid and GetTeamCodeByLeague(team2, "NFL") <> invalid
-        return "NFL"
-    end if
+' Use cached league maps instead of function calls
+function detectLeagueFromTeamsFast(team1 as String, team2 as String) as Dynamic
+    ' Try each league using pre-loaded maps - use explicit league names
+    leagues = ["NFL", "NBA", "MLB", "NHL"]
     
-    ' Try NBA
-    if GetTeamCodeByLeague(team1, "NBA") <> invalid and GetTeamCodeByLeague(team2, "NBA") <> invalid
-        return "NBA"
-    end if
-    
-    ' Try MLB
-    if GetTeamCodeByLeague(team1, "MLB") <> invalid and GetTeamCodeByLeague(team2, "MLB") <> invalid
-        return "MLB"
-    end if
-    
-    ' Try NHL
-    if GetTeamCodeByLeague(team1, "NHL") <> invalid and GetTeamCodeByLeague(team2, "NHL") <> invalid
-        return "NHL"
-    end if
+    for each leagueName in leagues
+        if not m.leagueMaps.doesExist(leagueName) then goto nextLeague
+        
+        teams = m.leagueMaps[leagueName]
+        found1 = false
+        found2 = false
+        
+        for each teamKey in teams
+            if team1.Instr(teamKey) >= 0 then found1 = true
+            if team2.Instr(teamKey) >= 0 then found2 = true
+            if found1 and found2 then return leagueName
+        end for
+        
+        nextLeague:
+    end for
     
     return invalid
 end function
 
-function getTeamCode(teamName as String, league as String) as Dynamic
-    return GetTeamCodeByLeague(teamName, league)
-end function
-
-function getTeamLogoUrl(teamCode as String, league as String) as String
-    logoUrls = GetLogoUrls()
-    return logoUrls.TEAM_LOGOS_BASE + league + "/" + teamCode + ".png"
-end function
-
-function getTeamColor(teamCode as String, league as String) as String
-    teamColorPalette = GetTeamColorPalette()
-    uiColors = GetUIColors()
-
-    if teamColorPalette.doesExist(league)
-        leagueColors = teamColorPalette[league]
-        if leagueColors.doesExist(teamCode)
-            return leagueColors[teamCode]
+function getTeamCodeFast(teamName as String, league as String) as Dynamic
+    if not m.leagueMaps.doesExist(league) then return invalid
+    
+    teams = m.leagueMaps[league]
+    for each key in teams
+        if teamName.Instr(key) >= 0
+            return teams[key]
         end if
-    end if
-
-    return uiColors.BLACK26 ' default
+    end for
+    
+    return invalid
 end function
 
 sub selectPreviousThumbnail()

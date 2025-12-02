@@ -23,6 +23,17 @@ sub init()
     ' Initialize UI colors
     m.uiColors = GetUIColors()
     
+    ' Pre-load all URL configs once
+    m.apiUrls = GetTVPassUrls()
+    m.logoUrls = GetLogoUrls()
+    
+    ' Pre-compute network logo mappings
+    ' Cache common network name patterns for faster logo URL generation
+    m.networkLogoPatterns = {
+        abc: "abc-7-"
+        cbs: "cbs-2-"
+    }
+    
     ' Initialize EPG data with forced refresh on startup
     m.epgData = CreateEPGData()
     m.epgData.lastUpdate = 0  ' Force refresh on first load
@@ -85,15 +96,8 @@ end sub
 
 sub onLaunchMultiview()
     selectedChannels = m.channelMenu.launchMultiview
-    print "MainScene: onLaunchMultiview called"
-    print "MainScene: selectedChannels = "; selectedChannels
 
-    if selectedChannels = invalid or selectedChannels.count() = 0 then
-        print "MainScene: No channels selected or invalid"
-        return
-    end if
-
-    print "MainScene: Building PiP view with " + str(selectedChannels.count()) + " channels"
+    if selectedChannels = invalid or selectedChannels.count() = 0 then return
 
     pipChannels = []
     now = CreateObject("roDateTime").AsSeconds()
@@ -101,7 +105,6 @@ sub onLaunchMultiview()
     for each channelIdx in selectedChannels
         if channelIdx >= 0 and channelIdx < m.epgData.channels.count() then
             channel = m.epgData.channels[channelIdx]
-            print "MainScene: Adding channel " + str(channelIdx) + ": " + channel.title
 
             pipChannel = {
                 title: channel.title,
@@ -116,12 +119,7 @@ sub onLaunchMultiview()
         end if
     end for
 
-    if pipChannels.count() = 0 then
-        print "MainScene: No valid channels to show in PiP"
-        return
-    end if
-
-    print "MainScene: Starting PiP view with " + str(pipChannels.count()) + " channels"
+    if pipChannels.count() = 0 then return
 
     m.videoPlayer.visible = false
     m.videoPlayer.control = "stop"
@@ -136,7 +134,6 @@ end sub
 sub onPiPVisibleChanged()
     ' When PiP is hidden, exit multiview mode
     if not m.multiviewGrid.visible and m.isMultiviewMode then
-        print "MainScene: PiP hidden, exiting multiview mode"
         m.isMultiviewMode = false
         loadPlaylist()
     end if
@@ -163,7 +160,6 @@ end sub
 
 sub loadPlaylist()
     if not EPGNeedsUpdate(m.epgData)
-        print "EPG data is fresh, using cache"
         showGuide()
         return
     end if
@@ -178,26 +174,26 @@ sub loadPlaylist()
     m.epgData.epgData = invalid
     m.epgData.logoFallbackData = invalid
     
+    ' Use pre-loaded URLs, add cache-busting timestamp once
     timestamp = CreateObject("roDateTime").AsSeconds().ToStr()
-    apiUrls = GetTVPassUrls()
     
     ' Load main playlist
     m.epgData.playlistTask = createObject("roSGNode", "LoadPlaylistTask")
-    m.epgData.playlistTask.url = apiUrls.TVPASS_PLAYLIST + "?t=" + timestamp
+    m.epgData.playlistTask.url = m.apiUrls.TVPASS_PLAYLIST + "?t=" + timestamp
     m.epgData.playlistTask.observeField("response", "onTvpassPlaylistResponse")
     m.epgData.playlistTask.observeField("error", "onPlaylistError")
     m.epgData.playlistTask.control = "RUN"
     
     ' Load EPG XML
     m.epgData.epgTask = createObject("roSGNode", "LoadScheduleTask")
-    m.epgData.epgTask.url = apiUrls.TVPASS_EPG + "?t=" + timestamp
+    m.epgData.epgTask.url = m.apiUrls.TVPASS_EPG + "?t=" + timestamp
     m.epgData.epgTask.observeField("response", "onScheduleResponse")
     m.epgData.epgTask.observeField("error", "onScheduleError")
     m.epgData.epgTask.control = "RUN"
     
     ' Load logo fallback
     m.epgData.logoTask = createObject("roSGNode", "LoadPlaylistTask")
-    m.epgData.logoTask.url = apiUrls.TVPASS_HD_FALLBACK + "?t=" + timestamp
+    m.epgData.logoTask.url = m.apiUrls.TVPASS_HD_FALLBACK + "?t=" + timestamp
     m.epgData.logoTask.observeField("response", "onLogoPlaylistResponse")
     m.epgData.logoTask.observeField("error", "onLogoPlaylistError")
     m.epgData.logoTask.control = "RUN"
@@ -205,42 +201,35 @@ end sub
 
 sub onTvpassPlaylistResponse()
     m.epgData.playlistData = EPGParsePlaylist(m.epgData.playlistTask.response)
-    print "Parsed " + str(m.epgData.playlistData.count()) + " channels from main playlist"
     m.epgData.playlistTask = invalid
     checkPlaylistsComplete()
 end sub
 
 sub onLogoPlaylistResponse()
     m.epgData.logoFallbackData = EPGParsePlaylist(m.epgData.logoTask.response)
-    print "Parsed " + str(m.epgData.logoFallbackData.count()) + " fallback logos"
     m.epgData.logoTask = invalid
     checkPlaylistsComplete()
 end sub
 
 sub onLogoPlaylistError()
-    print "Logo fallback load failed (non-critical)"
     m.epgData.logoTask = invalid
     checkPlaylistsComplete()
 end sub
 
 sub onScheduleResponse()
     if m.epgData.epgTask.response = invalid or m.epgData.epgTask.response = ""
-        print "onScheduleResponse: Empty EPG response received"
         m.epgData.schedules = {}
         m.epgData.programsByChannel = {}
     else
-        print "onScheduleResponse: Processing " + str(len(m.epgData.epgTask.response)) + " bytes of EPG data"
         epgResult = EPGParseXML(m.epgData.epgTask.response)
         m.epgData.schedules = epgResult.schedules
         m.epgData.programsByChannel = epgResult.programsByChannel
-        print "Parsed EPG for " + str(m.epgData.schedules.count()) + " scheduled channels and " + str(m.epgData.programsByChannel.count()) + " program channels"
     end if
     m.epgData.epgTask = invalid
     checkPlaylistsComplete()
 end sub
 
 sub onScheduleError()
-    print "EPG load failed, continuing without schedule data"
     m.epgData.schedules = {}
     m.epgData.programsByChannel = {}
     m.epgData.epgTask = invalid
@@ -248,7 +237,6 @@ sub onScheduleError()
 end sub
 
 sub onPlaylistError()
-    print "Main playlist load failed"
     m.epgData.playlistTask = invalid
     m.epgData.isLoading = false
     showError("Failed to load channel list")
@@ -257,8 +245,8 @@ end sub
 sub checkPlaylistsComplete()
     m.epgData.pendingTasks = m.epgData.pendingTasks - 1
     if m.epgData.pendingTasks = 0
-        ' Enrich channels with logos
-        EPGEnrichWithLogos(m.epgData.playlistData, m.epgData.logoFallbackData)
+        ' Pass pre-loaded logo URLs to enrichment
+        EPGEnrichWithLogosFast(m.epgData.playlistData, m.epgData.logoFallbackData, m.logoUrls, m.networkLogoPatterns)
         m.epgData.channels = m.epgData.playlistData
         m.epgData.isLoading = false
         m.epgData.lastUpdate = CreateObject("roDateTime").AsSeconds()
@@ -436,7 +424,6 @@ sub onChannelSelected()
             m.lastChannelIndex = idx
             m.currentChannelIndex = idx
             channel = m.epgData.channels[idx]
-            print "Playing channel: " + channel.title
             playChannel(channel)
             m.isBackgroundPlayback = false
             updateFeaturedProgram(idx)
@@ -451,7 +438,6 @@ sub onMenuChannelSelected()
         m.lastChannelIndex = idx
         m.currentChannelIndex = idx
         channel = m.epgData.channels[idx]
-        print "Playing channel from menu: " + channel.title
         m.channelMenu.visible = false
         playChannel(channel)
         m.isBackgroundPlayback = false
@@ -469,34 +455,25 @@ sub playChannel(channel as Object)
 
     ' Force HD quality settings
     content.addField("preferredBitrate", "integer", false)
-    content.preferredBitrate = 0  ' 0 = highest available
+    content.preferredBitrate = 0
     content.addField("maxBandwidth", "integer", false)
-    content.maxBandwidth = 0  ' 0 = no limit
+    content.maxBandwidth = 0
 
     m.videoPlayer.content = content
     m.videoPlayer.control = "play"
-
-    ' Set video player to prefer highest quality
     m.videoPlayer.maxVideoDecodeResolution = "1920x1080"
-
     m.videoPlayer.enableTrickPlay = false
     m.top.setFocus(true)
 end sub
 
 sub onVideoStateChanged()
     state = m.videoPlayer.state
-    print "Video state: " + state
     errorCode = m.videoPlayer.errorCode
-    if errorCode <> invalid and errorCode <> 0
-        print "Error code: " + str(errorCode)
-    end if
-    
     hasError = (errorCode <> invalid and errorCode <> 0)
     
     if state = "error" or hasError
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
             m.retryAttempts = m.retryAttempts + 1
-            print "Retry " + str(m.retryAttempts) + "/" + str(m.maxRetryAttempts)
             m.loadingLabel.text = "Server full, retrying... (" + str(m.retryAttempts) + "/" + str(m.maxRetryAttempts) + ")"
             m.loadingLabel.visible = true
             m.videoPlayer.control = "stop"
@@ -552,7 +529,6 @@ end sub
 
 sub onBufferingTimeout()
     if m.videoPlayer.state = "buffering"
-        print "Buffering timeout"
         m.videoPlayer.control = "stop"
         m.videoPlayer.visible = false
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
@@ -577,7 +553,6 @@ end sub
 sub onPositionCheck()
     currentPosition = m.videoPlayer.position
     if currentPosition = m.lastPosition or currentPosition < 1
-        print "Video not progressing"
         m.videoPlayer.control = "stop"
         m.videoPlayer.visible = false
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
@@ -600,7 +575,6 @@ sub onPositionCheck()
 end sub
 
 sub onRetryTimer()
-    print "Retrying playback"
     if m.currentChannelIndex >= 0 and m.currentChannelIndex < m.epgData.channels.count()
         channel = m.epgData.channels[m.currentChannelIndex]
         playChannel(channel)
@@ -622,7 +596,6 @@ end sub
 sub showError(msg as String)
     m.loadingLabel.text = "Error: " + msg
     m.loadingLabel.visible = true
-    print "Error: " + msg
 end sub
 
 sub showChannelMenu()
@@ -687,7 +660,7 @@ sub showChannelMenu()
     end for
     
     m.channelMenu.currentChannelIndex = m.currentChannelIndex
-    m.channelMenu.initialChannelIndex = m.currentChannelIndex  ' Add this to track the initially playing channel
+    m.channelMenu.initialChannelIndex = m.currentChannelIndex
     m.channelMenu.channels = channelsWithInfo
     m.channelMenu.visible = true
     m.channelMenu.setFocus(true)
@@ -700,7 +673,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 
     ' Handle multiview mode (PiP)
     if m.isMultiviewMode
-        ' Let the PiP component handle ALL keys
         return false
     end if
 
@@ -789,10 +761,6 @@ sub seekForward()
         m.videoPlayer.seek = newPos
     end if
 end sub
-
-' ============================================================================
-' EPG DATA FUNCTIONS
-' ============================================================================
 
 function CreateEPGData() as Object
     epgData = {
@@ -904,16 +872,12 @@ function EPGParseXML(xmlString as String) as Object
     result.programsByChannel = {}
     
     if xmlString = invalid or xmlString = ""
-        print "EPGParseXML: Empty XML string received"
         return result
     end if
-    
-    print "EPGParseXML: Parsing " + str(len(xmlString)) + " bytes"
     
     xml = CreateObject("roXMLElement")
     parseSuccess = xml.Parse(xmlString)
     if not parseSuccess
-        print "EPGParseXML: XML parse failed"
         return result
     end if
     
@@ -921,10 +885,7 @@ function EPGParseXML(xmlString as String) as Object
     currentTime = now.AsSeconds()
     programmes = xml.GetNamedElements("programme")
     
-    print "EPGParseXML: Found " + str(programmes.count()) + " programme elements"
-    
     if programmes.count() = 0
-        print "EPGParseXML: No programmes found in XML"
         return result
     end if
     
@@ -992,7 +953,9 @@ function EPGParseXML(xmlString as String) as Object
     return result
 end function
 
-sub EPGEnrichWithLogos(channels as Object, fallbackData as Object)
+' Fast logo enrichment with pre-loaded URLs
+sub EPGEnrichWithLogosFast(channels as Object, fallbackData as Object, logoUrls as Object, networkPatterns as Object)
+    ' Build fallback map
     fallbackMap = {}
     
     if fallbackData <> invalid
@@ -1003,35 +966,40 @@ sub EPGEnrichWithLogos(channels as Object, fallbackData as Object)
         end for
     end if
     
+    ' Enrich each channel
     for each channel in channels
+        ' Skip if already has logo
         if channel.logo <> invalid and channel.logo <> ""
             goto nextCh
         end if
         
+        ' Try fallback map first
         if channel.tvgId <> invalid and fallbackMap.doesExist(channel.tvgId)
             channel.logo = fallbackMap[channel.tvgId]
             goto nextCh
         end if
         
-        channel.logo = EPGGenerateLogoUrl(channel.title)
+        ' Generate logo URL from title
+        channel.logo = EPGGenerateLogoUrlFast(channel.title, logoUrls, networkPatterns)
         
         nextCh:
     end for
 end sub
 
-function EPGGenerateLogoUrl(title as String) as String
+' Fast logo URL generation with pre-loaded configs
+function EPGGenerateLogoUrlFast(title as String, logoUrls as Object, networkPatterns as Object) as String
     if title = invalid or title = ""
         return ""
     end if
-    networkLogo = EPGGetNetworkLogo(title)
+    networkLogo = EPGGetNetworkLogoFast(title, logoUrls, networkPatterns)
     if networkLogo <> ""
         return networkLogo
     end if
     return ""
 end function
 
-function EPGGetNetworkLogo(title as String) as String
-    logoUrls = GetLogoUrls()
+' Fast network logo lookup with pre-loaded patterns
+function EPGGetNetworkLogoFast(title as String, logoUrls as Object, networkPatterns as Object) as String
     baseUrl = logoUrls.TV_LOGOS_BASE
     networkName = title.Trim()
     parenPos = networkName.Instr("(")
@@ -1039,23 +1007,19 @@ function EPGGetNetworkLogo(title as String) as String
         networkName = networkName.Left(parenPos - 1).Trim()
     end if
 
-    ' Local ABC and CBS affiliate logos
-    netMap = {
-        abc: "abc-7-"
-        cbs: "cbs-2-"
-    }
-
-    for each key in netMap
+    ' Local ABC and CBS affiliate logos using pre-loaded patterns
+    for each key in networkPatterns
         if networkName.StartsWith(UCase(key))
             openParen = title.Instr("(")
             closeParen = title.Instr(")")
             if openParen > 0 and closeParen > openParen
                 callLetters = LCase(title.Mid(openParen + 1, closeParen - openParen - 1))
-                return logoUrls.TV_LOGOS_LOCAL + netMap[key] + callLetters + "-us.png"
+                return logoUrls.TV_LOGOS_LOCAL + networkPatterns[key] + callLetters + "-us.png"
             end if
         end if
     end for
     
+    ' Remove location suffixes
     networkName = networkName.Replace(" New York", "")
     networkName = networkName.Replace(" Los Angeles", "")
     networkName = networkName.Replace(" Chicago", "")
@@ -1068,12 +1032,14 @@ function EPGGetNetworkLogo(title as String) as String
         return ""
     end if
     
+    ' Normalize network name
     normalized = networkName.Replace("&", "-and-")
     normalized = normalized.Replace(" ", "-")
     normalized = normalized.Replace("'", "")
     normalized = normalized.Replace(",", "")
     normalized = LCase(normalized)
     
+    ' Clean up double dashes
     keepCleaning = true
     while keepCleaning
         if normalized.Instr("--") > 0
@@ -1083,6 +1049,7 @@ function EPGGetNetworkLogo(title as String) as String
         end if
     end while
     
+    ' Trim leading numbers/dashes
     keepTrimming = true
     while keepTrimming and normalized.Len() > 0
         firstChar = normalized.Left(1)
@@ -1093,6 +1060,7 @@ function EPGGetNetworkLogo(title as String) as String
         end if
     end while
     
+    ' Trim trailing dashes
     keepTrimming = true
     while keepTrimming and normalized.Len() > 0
         if normalized.Right(1) = "-"
@@ -1218,11 +1186,9 @@ function GetNowPlayingForChannel(channel as Object, now as Integer) as String
             end for
 
             if isSports and prog.subTitle <> invalid and prog.subTitle <> ""
-                print "MainScene: Sports program, using subtitle: " + prog.subTitle
                 return prog.subTitle
             end if
 
-            print "MainScene: Now playing: " + programTitle
             return programTitle
         end if
     end for
