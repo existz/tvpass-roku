@@ -36,7 +36,6 @@ function createThumbnail(index as Integer) as Object
         team2Background: invalid
         teamLogo1: invalid
         teamLogo2: invalid
-        vsLabel: invalid
         label: invalid
         borderTop: invalid
         borderBottom: invalid
@@ -103,20 +102,6 @@ function createThumbnail(index as Integer) as Object
     teamLogo2.visible = false
     container.appendChild(teamLogo2)
     thumb.teamLogo2 = teamLogo2
-
-    ' VS Label (removed for sports)
-    vsLabel = createObject("roSGNode", "Label")
-    vsLabel.translation = [150, 40]
-    vsLabel.width = 60
-    vsLabel.height = 40
-    vsLabel.text = ""
-    vsLabel.font = "font:MediumBoldSystemFont"
-    vsLabel.color = "0xCCCCCCFF"
-    vsLabel.horizAlign = "center"
-    vsLabel.vertAlign = "center"
-    vsLabel.visible = false
-    container.appendChild(vsLabel)
-    thumb.vsLabel = vsLabel
 
     ' Now Playing label
     label = createObject("roSGNode", "Label")
@@ -340,7 +325,6 @@ sub updateThumbnails()
             thumb.background.visible = nonSportsVisible
             thumb.logo.visible = nonSportsVisible
             thumb.label.visible = nonSportsVisible
-            thumb.vsLabel.visible = false
 
             ' --- Store channel index ---
             m.thumbnailChannelIndices[thumbIndex] = i
@@ -371,7 +355,6 @@ sub updateThumbnails()
         thumb.team2Background.visible = false
         thumb.teamLogo1.visible = false
         thumb.teamLogo2.visible = false
-        thumb.vsLabel.visible = false
         thumb.label.visible = false
         thumb.borderTop.opacity = 0
         thumb.borderBottom.opacity = 0
