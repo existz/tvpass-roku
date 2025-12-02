@@ -495,17 +495,17 @@ end function
 
 function detectLeagueFromTeams(team1 as String, team2 as String) as Dynamic
     ' Try NFL first
-    if getTeamCode(team1, "NFL") <> invalid and getTeamCode(team2, "NFL") <> invalid
+    if GetTeamCodeByLeague(team1, "NFL") <> invalid and GetTeamCodeByLeague(team2, "NFL") <> invalid
         return "NFL"
     end if
     
     ' Try NBA
-    if getTeamCode(team1, "NBA") <> invalid and getTeamCode(team2, "NBA") <> invalid
+    if GetTeamCodeByLeague(team1, "NBA") <> invalid and GetTeamCodeByLeague(team2, "NBA") <> invalid
         return "NBA"
     end if
     
     ' Try MLB
-    if getTeamCode(team1, "MLB") <> invalid and getTeamCode(team2, "MLB") <> invalid
+    if GetTeamCodeByLeague(team1, "MLB") <> invalid and GetTeamCodeByLeague(team2, "MLB") <> invalid
         return "MLB"
     end if
     
@@ -513,141 +513,7 @@ function detectLeagueFromTeams(team1 as String, team2 as String) as Dynamic
 end function
 
 function getTeamCode(teamName as String, league as String) as Dynamic
-    print "getTeamCode: Looking for '"; teamName; "' in league "; league
-    
-    ' NFL Teams - return lowercase team name for URL
-    if league = "NFL"
-        nflTeams = {
-            "Cardinals": "cardinals", "Arizona Cardinals": "cardinals"
-            "Falcons": "falcons", "Atlanta Falcons": "falcons"
-            "Ravens": "ravens", "Baltimore Ravens": "ravens"
-            "Bills": "bills", "Buffalo Bills": "bills"
-            "Panthers": "panthers", "Carolina Panthers": "panthers"
-            "Bears": "bears", "Chicago Bears": "bears"
-            "Bengals": "bengals", "Cincinnati Bengals": "bengals"
-            "Browns": "browns", "Cleveland Browns": "browns"
-            "Cowboys": "cowboys", "Dallas Cowboys": "cowboys"
-            "Broncos": "broncos", "Denver Broncos": "broncos"
-            "Lions": "lions", "Detroit Lions": "lions"
-            "Packers": "packers", "Green Bay Packers": "packers"
-            "Texans": "texans", "Houston Texans": "texans"
-            "Colts": "colts", "Indianapolis Colts": "colts"
-            "Jaguars": "jaguars", "Jacksonville Jaguars": "jaguars"
-            "Chiefs": "chiefs", "Kansas City Chiefs": "chiefs"
-            "Raiders": "raiders", "Las Vegas Raiders": "raiders"
-            "Chargers": "chargers", "Los Angeles Chargers": "chargers"
-            "Rams": "rams", "Los Angeles Rams": "rams"
-            "Dolphins": "dolphins", "Miami Dolphins": "dolphins"
-            "Vikings": "vikings", "Minnesota Vikings": "vikings"
-            "Patriots": "patriots", "New England Patriots": "patriots"
-            "Saints": "saints", "New Orleans Saints": "saints"
-            "Giants": "giants", "New York Giants": "giants"
-            "Jets": "jets", "New York Jets": "jets"
-            "Eagles": "eagles", "Philadelphia Eagles": "eagles"
-            "Steelers": "steelers", "Pittsburgh Steelers": "steelers"
-            "49ers": "49ers", "San Francisco 49ers": "49ers"
-            "Seahawks": "seahawks", "Seattle Seahawks": "seahawks"
-            "Buccaneers": "buccaneers", "Tampa Bay Buccaneers": "buccaneers"
-            "Titans": "titans", "Tennessee Titans": "titans"
-            "Commanders": "commanders", "Washington Commanders": "commanders"
-        }
-        
-        for each key in nflTeams
-            if teamName.Instr(key) >= 0
-                print "getTeamCode: Found match for '"; key; "' -> "; nflTeams[key]
-                return nflTeams[key]
-            end if
-        end for
-    end if
-    
-    ' NBA Teams - return lowercase team name for URL
-    if league = "NBA"
-        nbaTeams = {
-            "Hawks": "hawks", "Atlanta Hawks": "hawks"
-            "Celtics": "celtics", "Boston Celtics": "celtics"
-            "Nets": "nets", "Brooklyn Nets": "nets"
-            "Hornets": "hornets", "Charlotte Hornets": "hornets"
-            "Bulls": "bulls", "Chicago Bulls": "bulls"
-            "Cavaliers": "cavaliers", "Cleveland Cavaliers": "cavaliers"
-            "Mavericks": "mavericks", "Dallas Mavericks": "mavericks"
-            "Nuggets": "nuggets", "Denver Nuggets": "nuggets"
-            "Pistons": "pistons", "Detroit Pistons": "pistons"
-            "Warriors": "warriors", "Golden State Warriors": "warriors"
-            "Rockets": "rockets", "Houston Rockets": "rockets"
-            "Pacers": "pacers", "Indiana Pacers": "pacers"
-            "Clippers": "clippers", "LA Clippers": "clippers", "Los Angeles Clippers": "clippers"
-            "Lakers": "lakers", "LA Lakers": "lakers", "Los Angeles Lakers": "lakers"
-            "Grizzlies": "grizzlies", "Memphis Grizzlies": "grizzlies"
-            "Heat": "heat", "Miami Heat": "heat"
-            "Bucks": "bucks", "Milwaukee Bucks": "bucks"
-            "Timberwolves": "timberwolves", "Minnesota Timberwolves": "timberwolves"
-            "Pelicans": "pelicans", "New Orleans Pelicans": "pelicans"
-            "Knicks": "knicks", "New York Knicks": "knicks"
-            "Thunder": "thunder", "Oklahoma City Thunder": "thunder"
-            "Magic": "magic", "Orlando Magic": "magic"
-            "76ers": "76ers", "Philadelphia 76ers": "76ers"
-            "Suns": "suns", "Phoenix Suns": "suns"
-            "Trail Blazers": "trailblazers", "Portland Trail Blazers": "trailblazers"
-            "Kings": "kings", "Sacramento Kings": "kings"
-            "Spurs": "spurs", "San Antonio Spurs": "spurs"
-            "Raptors": "raptors", "Toronto Raptors": "raptors"
-            "Jazz": "jazz", "Utah Jazz": "jazz"
-            "Wizards": "wizards", "Washington Wizards": "wizards"
-        }
-        
-        for each key in nbaTeams
-            if teamName.Instr(key) >= 0
-                print "getTeamCode: Found match for '"; key; "' -> "; nbaTeams[key]
-                return nbaTeams[key]
-            end if
-        end for
-    end if
-    
-    ' MLB Teams - return lowercase team name for URL
-    if league = "MLB"
-        mlbTeams = {
-            "Diamondbacks": "diamondbacks", "Arizona Diamondbacks": "diamondbacks"
-            "Braves": "braves", "Atlanta Braves": "braves"
-            "Orioles": "orioles", "Baltimore Orioles": "orioles"
-            "Red Sox": "red-sox", "Boston Red Sox": "red-sox"
-            "Cubs": "cubs", "Chicago Cubs": "cubs"
-            "White Sox": "white-sox", "Chicago White Sox": "white-sox"
-            "Reds": "reds", "Cincinnati Reds": "reds"
-            "Guardians": "guardians", "Cleveland Guardians": "guardians"
-            "Rockies": "rockies", "Colorado Rockies": "rockies"
-            "Tigers": "tigers", "Detroit Tigers": "tigers"
-            "Astros": "astros", "Houston Astros": "astros"
-            "Royals": "royals", "Kansas City Royals": "royals"
-            "Angels": "angels", "Los Angeles Angels": "angels"
-            "Dodgers": "dodgers", "Los Angeles Dodgers": "dodgers"
-            "Marlins": "marlins", "Miami Marlins": "marlins"
-            "Brewers": "brewers", "Milwaukee Brewers": "brewers"
-            "Twins": "twins", "Minnesota Twins": "twins"
-            "Mets": "mets", "New York Mets": "mets"
-            "Yankees": "yankees", "New York Yankees": "yankees"
-            "Athletics": "athletics", "Oakland Athletics": "athletics"
-            "Phillies": "phillies", "Philadelphia Phillies": "phillies"
-            "Pirates": "pirates", "Pittsburgh Pirates": "pirates"
-            "Padres": "padres", "San Diego Padres": "padres"
-            "Giants": "giants", "San Francisco Giants": "giants"
-            "Mariners": "mariners", "Seattle Mariners": "mariners"
-            "Cardinals": "cardinals", "St. Louis Cardinals": "cardinals"
-            "Rays": "rays", "Tampa Bay Rays": "rays"
-            "Rangers": "rangers", "Texas Rangers": "rangers"
-            "Blue Jays": "blue-jays", "Toronto Blue Jays": "blue-jays"
-            "Nationals": "nationals", "Washington Nationals": "nationals"
-        }
-        
-        for each key in mlbTeams
-            if teamName.Instr(key) >= 0
-                print "getTeamCode: Found match for '"; key; "' -> "; mlbTeams[key]
-                return mlbTeams[key]
-            end if
-        end for
-    end if
-    
-    print "getTeamCode: No match found for '"; teamName; "'"
-    return invalid
+    return GetTeamCodeByLeague(teamName, league)
 end function
 
 function getTeamLogoUrl(teamCode as String, league as String) as String
@@ -656,130 +522,16 @@ function getTeamLogoUrl(teamCode as String, league as String) as String
 end function
 
 function getTeamColor(teamCode as String, league as String) as String
-    ' NFL Team Colors
-    if league = "NFL"
-        nflColors = {
-            "cardinals": "0x97233FFF"
-            "falcons": "0xA71930FF"
-            "ravens": "0x241773FF"
-            "bills": "0x00338DFF"
-            "panthers": "0x0085CAFF"
-            "bears": "0x0B162AFF"
-            "bengals": "0xFB4F14FF"
-            "browns": "0x311D00FF"
-            "cowboys": "0x041E42FF"
-            "broncos": "0xFB4F14FF"
-            "lions": "0x0076B6FF"
-            "packers": "0x203731FF"
-            "texans": "0x03203FFF"
-            "colts": "0x002C5FFF"
-            "jaguars": "0x006778FF"
-            "chiefs": "0xE31837FF"
-            "raiders": "0x000000FF"
-            "chargers": "0x0080C6FF"
-            "rams": "0x003594FF"
-            "dolphins": "0x008E97FF"
-            "vikings": "0x4F2683FF"
-            "patriots": "0x002244FF"
-            "saints": "0x000000FF"
-            "giants": "0x0D2266FF"
-            "jets": "0x125740FF"
-            "eagles": "0x004C54FF"
-            "steelers": "0x000000FF"
-            "49ers": "0xAA0000FF"
-            "seahawks": "0x002244FF"
-            "buccaneers": "0xA71930FF"
-            "titans": "0x0C2340FF"
-            "commanders": "0x5A1414FF"
-        }
-        
-        if nflColors.doesExist(teamCode)
-            return nflColors[teamCode]
+    palette = GetTeamColorPalette()
+
+    if palette.doesExist(league)
+        leagueColors = palette[league]
+        if leagueColors.doesExist(teamCode)
+            return leagueColors[teamCode]
         end if
     end if
-    
-    ' NBA Team Colors
-    if league = "NBA"
-        nbaColors = {
-            "hawks": "0xE03C3CFF"
-            "celtics": "0x007A33FF"
-            "nets": "0x505050FF"
-            "hornets": "0x00778DFF"
-            "bulls": "0xCE1141FF"
-            "cavaliers": "0x6F263DFF"
-            "mavericks": "0x00538CFF"
-            "nuggets": "0x0E2240FF"
-            "pistons": "0x1D428AFF"
-            "warriors": "0x1D428AFF"
-            "rockets": "0xCE1141FF"
-            "pacers": "0x002D62FF"
-            "clippers": "0xC60C30FF"
-            "lakers": "0xFFFFFFFF"
-            "grizzlies": "0x12173FFF"
-            "heat": "0x98002EFF"
-            "bucks": "0x00471BFF"
-            "timberwolves": "0x0C2C56FF"
-            "pelicans": "0x0C2C56FF"
-            "knicks": "0x006BB6FF"
-            "thunder": "0x007DC5FF"
-            "magic": "0x0072CEFF"
-            "76ers": "0xED174CFF"
-            "suns": "0xE56020FF"
-            "trailblazers": "0xE03C3CFF"
-            "kings": "0x5A2D81FF"
-            "spurs": "0x000000FF"
-            "raptors": "0xCE1141FF"
-            "jazz": "0x00471BFF"
-            "wizards": "0x002B81FF"
-        }
-        
-        if nbaColors.doesExist(teamCode)
-            return nbaColors[teamCode]
-        end if
-    end if
-    
-    ' MLB Team Colors
-    if league = "MLB"
-        mlbColors = {
-            "diamondbacks": "0xA71930FF"
-            "braves": "0x13274FFF"
-            "orioles": "0xDF4601FF"
-            "red-sox": "0xBD3039FF"
-            "cubs": "0x0E3386FF"
-            "white-sox": "0x27251FFF"
-            "reds": "0xC6011FFF"
-            "guardians": "0x00385DFF"
-            "rockies": "0x333366FF"
-            "tigers": "0x0C2340FF"
-            "astros": "0x002D72FF"
-            "royals": "0x005A9CFF"
-            "angels": "0xBA0021FF"
-            "dodgers": "0x005A9CFF"
-            "marlins": "0x0077C0FF"
-            "brewers": "0x0A2351FF"
-            "twins": "0x002B5CFF"
-            "mets": "0x005A9CFF"
-            "yankees": "0x0C2340FF"
-            "athletics": "0x004C38FF"
-            "phillies": "0xE81828FF"
-            "pirates": "0x000000FF"
-            "padres": "0x2F241DFF"
-            "giants": "0xFD5A1EFF"
-            "mariners": "0x0C2C56FF"
-            "cardinals": "0xC41E3AFF"
-            "rays": "0x092C5CFF"
-            "rangers": "0x003278FF"
-            "blue-jays": "0x134A8EFF"
-            "nationals": "0xAB0003FF"
-        }
-        
-        if mlbColors.doesExist(teamCode)
-            return mlbColors[teamCode]
-        end if
-    end if
-    
-    ' Default color if not found
-    return "0x1A1A1AFF"
+
+    return "0x1A1A1AFF" ' default
 end function
 
 sub selectPreviousThumbnail()
