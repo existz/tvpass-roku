@@ -20,8 +20,9 @@ sub init()
     m.timeSlotHeaders = m.top.findNode("timeSlotHeaders")
     m.multiviewGrid = m.top.findNode("multiviewGrid")
     
-    ' Initialize EPG data
+    ' Initialize EPG data with forced refresh on startup
     m.epgData = CreateEPGData()
+    m.epgData.lastUpdate = 0  ' Force refresh on first load
     
     ' Track state
     m.isBackgroundPlayback = false
@@ -63,8 +64,20 @@ sub init()
     m.retryTimer.repeat = false
     m.retryTimer.observeField("fire", "onRetryTimer")
     
+    ' App lifecycle observer to clear cache on exit
+    m.top.observeField("focusedChild", "onFocusChanged")
+    
     updateClock()
     loadPlaylist()
+end sub
+
+sub onFocusChanged()
+    ' Clear EPG cache when app loses focus
+    if m.top.focusedChild = invalid then
+        if m.epgData <> invalid then
+            m.epgData.lastUpdate = 0
+        end if
+    end if
 end sub
 
 sub onLaunchMultiview()
@@ -792,11 +805,13 @@ function EPGNeedsUpdate(epg as Object) as Boolean
     if epg.lastUpdate = 0
         return true
     end if
+
     currentTime = CreateObject("roDateTime").AsSeconds()
     elapsed = currentTime - epg.lastUpdate
     if elapsed >= epg.updateInterval
         return true
     end if
+
     return false
 end function
 
