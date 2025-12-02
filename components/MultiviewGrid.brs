@@ -511,11 +511,11 @@ function getTeamLogoUrl(teamCode as String, league as String) as String
 end function
 
 function getTeamColor(teamCode as String, league as String) as String
-    palette = GetTeamColorPalette()
+    teamColorPalette = GetTeamColorPalette()
     uiColors = GetUIColors()
 
-    if palette.doesExist(league)
-        leagueColors = palette[league]
+    if teamColorPalette.doesExist(league)
+        leagueColors = teamColorPalette[league]
         if leagueColors.doesExist(teamCode)
             return leagueColors[teamCode]
         end if
