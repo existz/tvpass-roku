@@ -105,6 +105,43 @@ function GetMLBTeams() as Object
     }
 end function
 
+function GetNHLTeams() as Object
+    return {
+        "Ducks": "ducks", "Anaheim Ducks": "ducks"
+        "Coyotes": "coyotes", "Arizona Coyotes": "coyotes"
+        "Bruins": "bruins", "Boston Bruins": "bruins"
+        "Sabres": "sabres", "Buffalo Sabres": "sabres"
+        "Flames": "flames", "Calgary Flames": "flames"
+        "Hurricanes": "hurricanes", "Carolina Hurricanes": "hurricanes"
+        "Blackhawks": "blackhawks", "Chicago Blackhawks": "blackhawks"
+        "Avalanche": "avalanche", "Colorado Avalanche": "avalanche"
+        "Blue Jackets": "blue-jackets", "Columbus Blue Jackets": "blue-jackets"
+        "Stars": "stars", "Dallas Stars": "stars"
+        "Red Wings": "red-wings", "Detroit Red Wings": "red-wings"
+        "Oilers": "oilers", "Edmonton Oilers": "oilers"
+        "Panthers": "panthers", "Florida Panthers": "panthers"
+        "Kings": "kings", "Los Angeles Kings": "kings"
+        "Wild": "wild", "Minnesota Wild": "wild"
+        "Canadiens": "canadiens", "Montreal Canadiens": "canadiens"
+        "Predators": "predators", "Nashville Predators": "predators"
+        "Devils": "devils", "New Jersey Devils": "devils"
+        "Islanders": "islanders", "New York Islanders": "islanders"
+        "Rangers": "rangers", "New York Rangers": "rangers"
+        "Senators": "senators", "Ottawa Senators": "senators"
+        "Flyers": "flyers", "Philadelphia Flyers": "flyers"
+        "Penguins": "penguins", "Pittsburgh Penguins": "penguins"
+        "Sharks": "sharks", "San Jose Sharks": "sharks"
+        "Kraken": "kraken", "Seattle Kraken": "kraken"
+        "Blues": "blues", "St. Louis Blues": "blues"
+        "Lightning": "lightning", "Tampa Bay Lightning": "lightning"
+        "Maple Leafs": "maple-leafs", "Toronto Maple Leafs": "maple-leafs"
+        "Canucks": "canucks", "Vancouver Canucks": "canucks"
+        "Golden Knights": "golden-knights", "Vegas Golden Knights": "golden-knights"
+        "Capitals": "capitals", "Washington Capitals": "capitals"
+        "Jets": "jets", "Winnipeg Jets": "jets"
+    }
+end function
+
 function GetTeamCodeByLeague(teamName as String, league as String) as Dynamic
     print "GetTeamCodeByLeague: Looking for '"; teamName; "' in league "; league
     
@@ -126,6 +163,14 @@ function GetTeamCodeByLeague(teamName as String, league as String) as Dynamic
         end for
     else if league = "MLB"
         teams = GetMLBTeams()
+        for each key in teams
+            if teamName.Instr(key) >= 0
+                print "GetTeamCodeByLeague: Found match for '"; key; "' -> "; teams[key]
+                return teams[key]
+            end if
+        end for
+    else if league = "NHL"
+        teams = GetNHLTeams()
         for each key in teams
             if teamName.Instr(key) >= 0
                 print "GetTeamCodeByLeague: Found match for '"; key; "' -> "; teams[key]

@@ -401,7 +401,7 @@ sub stopPlayback()
 end sub
 
 function parseTeamMatchup(programTitle as String) as Object
-    ' Returns { league: "NFL/MLB/NBA", team1: "BUF", team2: "ARI" } or invalid
+    ' Returns { league: "NFL/NBA/MLB/NHL", team1: "BUF", team2: "ARI" } or invalid
     if programTitle = invalid or programTitle = "" then return invalid
     
     print "parseTeamMatchup: Analyzing: "; programTitle
@@ -491,6 +491,11 @@ function detectLeagueFromTeams(team1 as String, team2 as String) as Dynamic
     ' Try MLB
     if GetTeamCodeByLeague(team1, "MLB") <> invalid and GetTeamCodeByLeague(team2, "MLB") <> invalid
         return "MLB"
+    end if
+    
+    ' Try NHL
+    if GetTeamCodeByLeague(team1, "NHL") <> invalid and GetTeamCodeByLeague(team2, "NHL") <> invalid
+        return "NHL"
     end if
     
     return invalid
