@@ -3,10 +3,6 @@ sub init()
     m.menuBackground = m.top.findNode("menuBackground")
     m.menuTitle = m.top.findNode("menuTitle")
     m.channelList = m.top.findNode("channelList")
-    m.instructionLabel = m.top.findNode("instructionLabel")
-    
-    ' OPTIMIZATION: Removed unused animation objects
-    ' m.slideAnimation and m.fadeAnimation were created but never used
     
     ' Multiview state
     m.selectedChannels = []
@@ -25,7 +21,6 @@ sub onVisibleChanged()
     if isVisible
         m.selectedChannels = []
         m.isLongPress = false
-        updateInstructionLabel()
         
         if m.top.currentChannelIndex >= 0 and m.channelList.content <> invalid
             itemCount = m.channelList.content.getChildCount()
@@ -37,17 +32,6 @@ sub onVisibleChanged()
         
         m.top.setFocus(true)
         m.channelList.setFocus(true)
-    end if
-end sub
-
-sub updateInstructionLabel()
-    numSelected = m.selectedChannels.count()
-    if numSelected = 0
-        m.instructionLabel.text = "Select channel or long-press OK for Picture-in-Picture"
-    else if numSelected < m.maxMultiviewChannels
-        m.instructionLabel.text = "Selected " + str(numSelected) + "/" + str(m.maxMultiviewChannels) + " - Press Back for PiP mode"
-    else
-        m.instructionLabel.text = "Max channels selected - Press Back for PiP mode"
     end if
 end sub
 
@@ -150,7 +134,6 @@ sub toggleChannelSelection(channelIndex as Integer)
         end if
     end if
     
-    updateInstructionLabel()
     updateSelectionIndicators()
 end sub
 

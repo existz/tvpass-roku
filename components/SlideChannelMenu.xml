@@ -41,19 +41,6 @@
             horizAlign="left"
             vertAlign="center"/>
 
-        <!-- Instruction label for multiview -->
-        <Label
-            id="instructionLabel"
-            translation="[1110,960]"
-            width="780"
-            height="80"
-            text="Select channel or long-press OK for multiview"
-            font="font:SmallSystemFont"
-            color="0xCCCCCCFF"
-            horizAlign="left"
-            vertAlign="top"
-            wrap="true"/>
-
         <!-- Channel list -->
         <MarkupList
             id="channelList"
@@ -61,7 +48,7 @@
             itemComponentName="SlideChannelMenuItem"
             itemSize="[780,120]"
             itemSpacing="[0,5]"
-            numRows="7"
+            numRows="8"
             drawFocusFeedback="false"/>
     </children>
 </component>
