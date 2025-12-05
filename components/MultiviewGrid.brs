@@ -174,22 +174,22 @@ function createThumbnail(index as Integer) as Object
     thumb.logo = logo
 
     teamLogo1 = createObject("roSGNode", "Poster")
-    teamLogo1.translation = [40, 20]
-    teamLogo1.loadWidth = 100
-    teamLogo1.loadHeight = 100
-    teamLogo1.width = 100
-    teamLogo1.height = 100
+    teamLogo1.translation = [25, 10]
+    teamLogo1.loadWidth = 130
+    teamLogo1.loadHeight = 120
+    teamLogo1.width = 130
+    teamLogo1.height = 120
     teamLogo1.loadDisplayMode = "scaleToFit"
     teamLogo1.visible = false
     container.appendChild(teamLogo1)
     thumb.teamLogo1 = teamLogo1
 
     teamLogo2 = createObject("roSGNode", "Poster")
-    teamLogo2.translation = [220, 20]
-    teamLogo2.loadWidth = 100
-    teamLogo2.loadHeight = 100
-    teamLogo2.width = 100
-    teamLogo2.height = 100
+    teamLogo2.translation = [205, 10]
+    teamLogo2.loadWidth = 130
+    teamLogo2.loadHeight = 120
+    teamLogo2.width = 130
+    teamLogo2.height = 120
     teamLogo2.loadDisplayMode = "scaleToFit"
     teamLogo2.visible = false
     container.appendChild(teamLogo2)
