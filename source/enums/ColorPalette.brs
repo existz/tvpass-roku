@@ -147,6 +147,7 @@ function GetTeamColorPalette() as Object
             "golden-knights": "0xB4975AFF"
             "capitals": "0x002D62FF"
             "jets": "0x002E62FF"
+            "mammoth": "0x010101FF"
         }
     }
 end function

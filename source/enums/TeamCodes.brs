@@ -139,6 +139,7 @@ function GetNHLTeams() as Object
         "Golden Knights": "golden-knights", "Vegas Golden Knights": "golden-knights"
         "Capitals": "capitals", "Washington Capitals": "capitals"
         "Jets": "jets", "Winnipeg Jets": "jets"
+        "Mammoth": "mammoth", "Utah Mammoth": "mammoth"
     }
 end function
 
