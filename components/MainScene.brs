@@ -28,15 +28,17 @@ sub init()
     m.logoUrls = GetLogoUrls()
     
     ' Pre-compute network logo mappings
-    ' Cache common network name patterns for faster logo URL generation
     m.networkLogoPatterns = {
         abc: "abc-7-"
         cbs: "cbs-2-"
     }
     
+    ' Pre-compile sports keywords for faster matching
+    m.sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
+    
     ' Initialize EPG data with forced refresh on startup
     m.epgData = CreateEPGData()
-    m.epgData.lastUpdate = 0  ' Force refresh on first load
+    m.epgData.lastUpdate = 0
     
     ' Track state
     m.isBackgroundPlayback = false
@@ -48,15 +50,32 @@ sub init()
     m.longPressThreshold = 500
     m.leftButtonPressTime = 0
     m.rightButtonPressTime = 0
-    m.isLongPressing = false
     
     ' Retry logic
     m.retryAttempts = 0
     m.maxRetryAttempts = 10
     m.retryDelay = 2
-    m.bufferingTimer = invalid
-    m.positionCheckTimer = invalid
     m.lastPosition = 0
+
+    ' Pre-create all timers in init() — CRITICAL: Prevents runtime crashes from createChild("Timer")
+    m.clockTimer = createObject("roSGNode", "Timer")
+    m.clockTimer.repeat = true
+    m.clockTimer.duration = 60
+    m.clockTimer.observeField("fire", "updateClock")
+
+    m.retryTimer = createObject("roSGNode", "Timer")
+    m.retryTimer.repeat = false
+    m.retryTimer.observeField("fire", "onRetryTimer")
+    
+    m.bufferingTimer = createObject("roSGNode", "Timer")
+    m.bufferingTimer.repeat = false
+    m.bufferingTimer.duration = 10
+    m.bufferingTimer.observeField("fire", "onBufferingTimeout")
+
+    m.positionCheckTimer = createObject("roSGNode", "Timer")
+    m.positionCheckTimer.repeat = false
+    m.positionCheckTimer.duration = 3
+    m.positionCheckTimer.observeField("fire", "onPositionCheck")
 
     ' Observe events
     m.channelList.observeField("itemSelected", "onChannelSelected")
@@ -66,27 +85,15 @@ sub init()
     m.channelMenu.observeField("launchMultiview", "onLaunchMultiview")
     m.multiviewGrid.observeField("visible", "onPiPVisibleChanged")
 
-    ' Start clock update timer
-    m.clockTimer = createObject("roSGNode", "Timer")
-    m.clockTimer.repeat = true
-    m.clockTimer.duration = 60
-    m.clockTimer.observeField("fire", "updateClock")
-    m.clockTimer.control = "start"
-    
-    ' Retry timer
-    m.retryTimer = createObject("roSGNode", "Timer")
-    m.retryTimer.repeat = false
-    m.retryTimer.observeField("fire", "onRetryTimer")
-    
     ' App lifecycle observer to clear cache on exit
     m.top.observeField("focusedChild", "onFocusChanged")
     
+    m.clockTimer.control = "start"
     updateClock()
     loadPlaylist()
 end sub
 
 sub onFocusChanged()
-    ' Clear EPG cache when app loses focus
     if m.top.focusedChild = invalid then
         if m.epgData <> invalid then
             m.epgData.lastUpdate = 0
@@ -96,7 +103,6 @@ end sub
 
 sub onLaunchMultiview()
     selectedChannels = m.channelMenu.launchMultiview
-
     if selectedChannels = invalid or selectedChannels.count() = 0 then return
 
     pipChannels = []
@@ -105,16 +111,13 @@ sub onLaunchMultiview()
     for each channelIdx in selectedChannels
         if channelIdx >= 0 and channelIdx < m.epgData.channels.count() then
             channel = m.epgData.channels[channelIdx]
-
             pipChannel = {
                 title: channel.title,
                 url: channel.url,
                 logo: channel.logo,
                 tvgId: channel.tvgId,
-                nowPlaying: ""
+                nowPlaying: GetNowPlayingForChannel(channel, now)
             }
-
-            pipChannel.nowPlaying = GetNowPlayingForChannel(channel, now)
             pipChannels.push(pipChannel)
         end if
     end for
@@ -132,7 +135,6 @@ sub onLaunchMultiview()
 end sub
 
 sub onPiPVisibleChanged()
-    ' When PiP is hidden, exit multiview mode
     if not m.multiviewGrid.visible and m.isMultiviewMode then
         m.isMultiviewMode = false
         loadPlaylist()
@@ -148,9 +150,7 @@ sub updateClock()
     
     if hour >= 12 then
         ampm = "pm"
-        if hour > 12 then
-            hour = hour - 12
-        end if
+        if hour > 12 then hour = hour - 12
     end if
     if hour = 0 then hour = 12
     
@@ -174,7 +174,6 @@ sub loadPlaylist()
     m.epgData.epgData = invalid
     m.epgData.logoFallbackData = invalid
     
-    ' Use pre-loaded URLs, add cache-busting timestamp once
     timestamp = CreateObject("roDateTime").AsSeconds().ToStr()
     
     ' Load main playlist
@@ -221,7 +220,7 @@ sub onScheduleResponse()
         m.epgData.schedules = {}
         m.epgData.programsByChannel = {}
     else
-        epgResult = EPGParseXML(m.epgData.epgTask.response)
+        epgResult = EPGParseXMLOptimized(m.epgData.epgTask.response)
         m.epgData.schedules = epgResult.schedules
         m.epgData.programsByChannel = epgResult.programsByChannel
     end if
@@ -245,7 +244,6 @@ end sub
 sub checkPlaylistsComplete()
     m.epgData.pendingTasks = m.epgData.pendingTasks - 1
     if m.epgData.pendingTasks = 0
-        ' Pass pre-loaded logo URLs to enrichment
         EPGEnrichWithLogosFast(m.epgData.playlistData, m.epgData.logoFallbackData, m.logoUrls, m.networkLogoPatterns)
         m.epgData.channels = m.epgData.playlistData
         m.epgData.isLoading = false
@@ -282,10 +280,12 @@ sub createTimeSlotHeaders()
             end if
         end if
         if displayHour = 0 then displayHour = 12
-        minutesStr = StrI(minutes).Trim()
-        if minutes < 10 then minutesStr = "0" + minutesStr
-        hourStr = StrI(displayHour).Trim()
-        timeStr = hourStr + ":" + minutesStr + " " + ampm
+        hourStr = str(displayHour)
+        if left(hourStr, 1) = " " then hourStr = right(hourStr, 1)
+        minuteStr = str(minutes)
+        if left(minuteStr, 1) = " " then minuteStr = right(minuteStr, 1)
+        minuteStr = right("0" + minuteStr, 2)
+        timeStr = hourStr + ":" + minuteStr + " " + ampm
         
         timeLabel = createObject("roSGNode", "Label")
         timeLabel.width = slotWidth
@@ -312,7 +312,7 @@ sub showGuide()
         item.addField("isLongChannelName", "boolean", false)
         
         if len(channel.title) > 30
-            item.title = "Ch " + str(i + 1)
+            item.title = "Ch " + Stri(i + 1)
             item.addField("nowPlaying", "string", false)
             item.nowPlaying = channel.title
             item.isLongChannelName = true
@@ -383,31 +383,17 @@ sub updateFeaturedProgram(index as Integer)
 end sub
 
 sub showGuideElements()
-    m.guideBackground.visible = true
-    m.headerBackground.visible = true
-    m.featuredLogo.visible = true
-    m.featuredTitle.visible = true
-    m.featuredTime.visible = true
-    m.featuredDescription.visible = true
-    m.currentTimeLabel.visible = true
-    m.guideHeaderLabel.visible = true
-    m.allChannelsLabel.visible = true
-    m.timeSlotHeaders.visible = true
-    m.channelList.visible = true
+    elements = [m.guideBackground, m.headerBackground, m.featuredLogo, m.featuredTitle, m.featuredTime, m.featuredDescription, m.currentTimeLabel, m.guideHeaderLabel, m.allChannelsLabel, m.timeSlotHeaders, m.channelList]
+    for each element in elements
+        element.visible = true
+    end for
 end sub
 
 sub hideGuideElements()
-    m.guideBackground.visible = false
-    m.headerBackground.visible = false
-    m.featuredLogo.visible = false
-    m.featuredTitle.visible = false
-    m.featuredTime.visible = false
-    m.featuredDescription.visible = false
-    m.currentTimeLabel.visible = false
-    m.guideHeaderLabel.visible = false
-    m.allChannelsLabel.visible = false
-    m.timeSlotHeaders.visible = false
-    m.channelList.visible = false
+    elements = [m.guideBackground, m.headerBackground, m.featuredLogo, m.featuredTitle, m.featuredTime, m.featuredDescription, m.currentTimeLabel, m.guideHeaderLabel, m.allChannelsLabel, m.timeSlotHeaders, m.channelList]
+    for each element in elements
+        element.visible = false
+    end for
 end sub
 
 sub onChannelSelected()
@@ -452,8 +438,6 @@ sub playChannel(channel as Object)
     content = createObject("roSGNode", "ContentNode")
     content.url = channel.url
     content.streamFormat = "hls"
-
-    ' Force HD quality settings
     content.addField("preferredBitrate", "integer", false)
     content.preferredBitrate = 0
     content.addField("maxBandwidth", "integer", false)
@@ -463,7 +447,7 @@ sub playChannel(channel as Object)
     m.videoPlayer.control = "play"
     m.videoPlayer.maxVideoDecodeResolution = "1920x1080"
     m.videoPlayer.enableTrickPlay = false
-    m.top.setFocus(true)
+    m.videoPlayer.setFocus(true)
 end sub
 
 sub onVideoStateChanged()
@@ -474,7 +458,7 @@ sub onVideoStateChanged()
     if state = "error" or hasError
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
             m.retryAttempts = m.retryAttempts + 1
-            m.loadingLabel.text = "Server full, retrying... (" + str(m.retryAttempts) + "/" + str(m.maxRetryAttempts) + ")"
+            m.loadingLabel.text = "Server full, retrying... (" + Stri(m.retryAttempts) + "/" + Stri(m.maxRetryAttempts) + ")"
             m.loadingLabel.visible = true
             m.videoPlayer.control = "stop"
             m.retryTimer.duration = m.retryDelay
@@ -484,11 +468,11 @@ sub onVideoStateChanged()
             m.loadingLabel.visible = true
             m.videoPlayer.control = "stop"
             m.videoPlayer.visible = false
-            returnTimer = createObject("roSGNode", "Timer")
-            returnTimer.duration = 3
-            returnTimer.repeat = false
-            returnTimer.observeField("fire", "returnToGuide")
-            returnTimer.control = "start"
+            ' Reuse timer
+            m.retryTimer.duration = 3
+            m.retryTimer.unobserveFieldScoped("fire")
+            m.retryTimer.observeFieldScoped("fire", "returnToGuide")
+            m.retryTimer.control = "start"
         end if
         return
     end if
@@ -504,25 +488,14 @@ sub onVideoStateChanged()
         m.loadingLabel.visible = false
         if m.bufferingTimer <> invalid
             m.bufferingTimer.control = "stop"
-            m.bufferingTimer = invalid
         end if
-        if m.positionCheckTimer = invalid or not m.positionCheckTimer.isSubtype("Timer")
-            m.positionCheckTimer = m.top.createChild("Timer")
-            m.positionCheckTimer.duration = 3
-            m.positionCheckTimer.repeat = false
-            m.positionCheckTimer.observeField("fire", "onPositionCheck")
+        if m.positionCheckTimer = invalid
             m.lastPosition = m.videoPlayer.position
+            m.positionCheckTimer.control = "start"
         end if
-        m.positionCheckTimer.control = "start"
     end if
     
     if state = "buffering"
-        if m.bufferingTimer = invalid or not m.bufferingTimer.isSubtype("Timer")
-            m.bufferingTimer = m.top.createChild("Timer")
-            m.bufferingTimer.duration = 10
-            m.bufferingTimer.repeat = false
-            m.bufferingTimer.observeField("fire", "onBufferingTimeout")
-        end if
         m.bufferingTimer.control = "start"
     end if
 end sub
@@ -533,21 +506,20 @@ sub onBufferingTimeout()
         m.videoPlayer.visible = false
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
             m.retryAttempts = m.retryAttempts + 1
-            m.loadingLabel.text = "Timeout, retrying... (" + str(m.retryAttempts) + "/" + str(m.maxRetryAttempts) + ")"
+            m.loadingLabel.text = "Timeout, retrying... (" + Stri(m.retryAttempts) + "/" + Stri(m.maxRetryAttempts) + ")"
             m.loadingLabel.visible = true
             m.retryTimer.duration = m.retryDelay
             m.retryTimer.control = "start"
         else
             m.loadingLabel.text = "Connection timeout"
             m.loadingLabel.visible = true
-            returnTimer = createObject("roSGNode", "Timer")
-            returnTimer.duration = 3
-            returnTimer.repeat = false
-            returnTimer.observeField("fire", "returnToGuide")
-            returnTimer.control = "start"
+            ' Reuse timer
+            m.retryTimer.duration = 3
+            m.retryTimer.unobserveFieldScoped("fire")
+            m.retryTimer.observeFieldScoped("fire", "returnToGuide")
+            m.retryTimer.control = "start"
         end if
     end if
-    m.bufferingTimer = invalid
 end sub
 
 sub onPositionCheck()
@@ -557,21 +529,20 @@ sub onPositionCheck()
         m.videoPlayer.visible = false
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
             m.retryAttempts = m.retryAttempts + 1
-            m.loadingLabel.text = "Server full, retrying... (" + str(m.retryAttempts) + "/" + str(m.maxRetryAttempts) + ")"
+            m.loadingLabel.text = "Server full, retrying... (" + Stri(m.retryAttempts) + "/" + Stri(m.maxRetryAttempts) + ")"
             m.loadingLabel.visible = true
             m.retryTimer.duration = m.retryDelay
             m.retryTimer.control = "start"
         else
             m.loadingLabel.text = "Unable to connect"
             m.loadingLabel.visible = true
-            returnTimer = m.top.createChild("Timer")
-            returnTimer.duration = 3
-            returnTimer.repeat = false
-            returnTimer.observeField("fire", "returnToGuide")
-            returnTimer.control = "start"
+            ' Reuse timer
+            m.retryTimer.duration = 3
+            m.retryTimer.unobserveFieldScoped("fire")
+            m.retryTimer.observeFieldScoped("fire", "returnToGuide")
+            m.retryTimer.control = "start"
         end if
     end if
-    m.positionCheckTimer = invalid
 end sub
 
 sub onRetryTimer()
@@ -598,6 +569,14 @@ sub showError(msg as String)
     m.loadingLabel.visible = true
 end sub
 
+' Use pre-compiled sports keywords
+function IsSportsProgram(title as String) as Boolean
+    for each keyword in m.sportsKeywords
+        if title.Instr(keyword) >= 0 then return true
+    end for
+    return false
+end function
+
 sub showChannelMenu()
     channelsWithInfo = []
     for i = 0 to m.epgData.channels.count() - 1
@@ -612,7 +591,6 @@ sub showChannelMenu()
             programDetails: ""
         }
         
-        ' Get current program info
         if channel.tvgId <> invalid
             currentProgram = EPGGetCurrentProgram(m.epgData, channel.tvgId)
             if currentProgram <> ""
@@ -621,28 +599,13 @@ sub showChannelMenu()
                 channelData.nowPlaying = channel.title
             end if
             
-            ' Get program details (episode info)
             programs = EPGGetPrograms(m.epgData, channel.tvgId)
             if programs.count() > 0
-                ' Find current program for details
                 now = CreateObject("roDateTime").AsSeconds()
                 for each prog in programs
                     if prog.startTime <= now and prog.endTime > now
-                        ' Check if this is a sports program by looking at the title
-                        programTitle = prog.title
-                        isSportsProgram = false
+                        isSportsProgram = IsSportsProgram(prog.title)
                         
-                        ' List of sports program titles to check
-                        sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
-                        
-                        for each keyword in sportsKeywords
-                            if programTitle.Instr(keyword) >= 0
-                                isSportsProgram = true
-                                exit for
-                            end if
-                        end for
-                        
-                        ' Use sub-title for sports, description for others
                         if isSportsProgram and prog.subTitle <> invalid and prog.subTitle <> ""
                             channelData.programDetails = prog.subTitle
                         else if prog.description <> invalid and prog.description <> ""
@@ -668,10 +631,9 @@ end sub
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
     dt = CreateObject("roDateTime")
-    currentTime& = dt.AsSeconds()
-    currentTimeMs& = (currentTime& * 1000) + dt.GetMilliseconds()
+    currentTime = dt.AsSeconds()
+    currentTimeMs = (currentTime * 1000) + dt.GetMilliseconds()
 
-    ' Handle multiview mode (PiP)
     if m.isMultiviewMode
         return false
     end if
@@ -687,15 +649,16 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     
     if press
         if key = "left" and m.videoPlayer.visible
-            m.leftButtonPressTime = currentTimeMs&
+            m.leftButtonPressTime = currentTimeMs
+            m.channelMenu.visible = false
             return true
         end if
         if key = "right" and m.videoPlayer.visible
-            m.rightButtonPressTime = currentTimeMs&
+            m.rightButtonPressTime = currentTimeMs
+            showChannelMenu()
             return true
         end if
         if (key = "up" or key = "down") and m.videoPlayer.visible
-            showChannelMenu()
             return true
         end if
         if key = "back" and m.videoPlayer.visible
@@ -716,7 +679,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
     else
         if key = "left" and m.leftButtonPressTime > 0
-            duration = currentTimeMs& - m.leftButtonPressTime
+            duration = currentTimeMs - m.leftButtonPressTime
             m.leftButtonPressTime = 0
             if duration >= m.longPressThreshold and m.videoPlayer.visible
                 seekBackward()
@@ -727,7 +690,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             end if
         end if
         if key = "right" and m.rightButtonPressTime > 0
-            duration = currentTimeMs& - m.rightButtonPressTime
+            duration = currentTimeMs - m.rightButtonPressTime
             m.rightButtonPressTime = 0
             if duration >= m.longPressThreshold and m.videoPlayer.visible
                 seekForward()
@@ -744,9 +707,7 @@ end function
 sub seekBackward()
     if m.videoPlayer.content <> invalid
         newPos = m.videoPlayer.position - 10
-        if newPos < 0
-            newPos = 0
-        end if
+        if newPos < 0 then newPos = 0
         m.videoPlayer.seek = newPos
     end if
 end sub
@@ -755,9 +716,7 @@ sub seekForward()
     if m.videoPlayer.content <> invalid
         newPos = m.videoPlayer.position + 10
         dur = m.videoPlayer.duration
-        if dur > 0 and newPos > dur
-            newPos = dur
-        end if
+        if dur > 0 and newPos > dur then newPos = dur
         m.videoPlayer.seek = newPos
     end if
 end sub
@@ -782,31 +741,21 @@ function CreateEPGData() as Object
 end function
 
 function EPGNeedsUpdate(epg as Object) as Boolean
-    if epg.lastUpdate = 0
-        return true
-    end if
-
+    if epg.lastUpdate = 0 then return true
     currentTime = CreateObject("roDateTime").AsSeconds()
     elapsed = currentTime - epg.lastUpdate
-    if elapsed >= epg.updateInterval
-        return true
-    end if
-
-    return false
+    return (elapsed >= epg.updateInterval)
 end function
 
 function EPGParsePlaylist(content as String) as Object
     channels = []
-    content = content.Replace(chr(13), "")
-    content = content.Replace(chr(10)+chr(10), chr(10))
+    content = content.Replace(chr(13), "").Replace(chr(10)+chr(10), chr(10))
     lines = content.Split(chr(10))
     current = invalid
     
     for each line in lines
         line = line.Trim()
-        if line = ""
-            goto nextLine
-        end if
+        if line = "" then continue for
         
         if line.StartsWith("#EXTINF:")
             if current <> invalid and current.url <> invalid
@@ -855,8 +804,6 @@ function EPGParsePlaylist(content as String) as Object
                 current.url = line
             end if
         end if
-        
-        nextLine:
     end for
     
     if current <> invalid and current.url <> invalid
@@ -866,50 +813,47 @@ function EPGParsePlaylist(content as String) as Object
     return channels
 end function
 
-function EPGParseXML(xmlString as String) as Object
-    result = {}
-    result.schedules = {}
-    result.programsByChannel = {}
+' Parse XML more efficiently by filtering early
+function EPGParseXMLOptimized(xmlString as String) as Object
+    result = {
+        schedules: {}
+        programsByChannel: {}
+    }
     
-    if xmlString = invalid or xmlString = ""
-        return result
-    end if
+    if xmlString = invalid or xmlString = "" then return result
     
     xml = CreateObject("roXMLElement")
-    parseSuccess = xml.Parse(xmlString)
-    if not parseSuccess
-        return result
-    end if
+    if not xml.Parse(xmlString) then return result
     
     now = CreateObject("roDateTime")
     currentTime = now.AsSeconds()
-    programmes = xml.GetNamedElements("programme")
+    windowStart = currentTime - 7200
+    windowEnd = currentTime + 7200
     
-    if programmes.count() = 0
-        return result
-    end if
+    programmes = xml.GetNamedElements("programme")
+    if programmes.count() = 0 then return result
     
     for each programme in programmes
-        channel = programme@channel
+        ' Quick time check first before parsing
         startTime = programme@start
         stopTime = programme@stop
         
-        if channel = invalid or startTime = invalid or stopTime = invalid
-            goto nextProg
-        end if
-        
-        normalizedChannel = EPGNormalizeChannelId(channel)
+        if startTime = invalid or stopTime = invalid then continue for
+
         startSec = EPGParseXmltvTime(startTime)
         stopSec = EPGParseXmltvTime(stopTime)
         
-        if startSec > (currentTime + 7200) or stopSec < currentTime
-            goto nextProg
-        end if
+        ' Skip if completely outside time window (include programs from 2 hours in the past)
+        if startSec > windowEnd or stopSec < windowStart then continue for
+        
+        ' NOW parse remaining fields
+        channel = programme@channel
+        if channel = invalid then continue for
+        
+        normalizedChannel = EPGNormalizeChannelId(channel)
         
         titleNode = programme.GetNamedElements("title")
-        if titleNode.Count() = 0
-            goto nextProg
-        end if
+        if titleNode.Count() = 0 then continue for
         
         programTitle = titleNode[0].GetText()
         
@@ -919,14 +863,12 @@ function EPGParseXML(xmlString as String) as Object
             programDesc = descNode[0].GetText()
         end if
         
-        ' Capture sub-title
         programSubTitle = ""
         subTitleNode = programme.GetNamedElements("sub-title")
         if subTitleNode.Count() > 0
             programSubTitle = subTitleNode[0].GetText()
         end if
         
-        ' Handle Movie special case
         if programTitle = "Movie" and programSubTitle <> ""
             programTitle = programSubTitle
         end if
@@ -939,23 +881,20 @@ function EPGParseXML(xmlString as String) as Object
             result.programsByChannel[normalizedChannel] = []
         end if
         
-        programInfo = {}
-        programInfo.title = programTitle
-        programInfo.description = programDesc
-        programInfo.subTitle = programSubTitle
-        programInfo.startTime = startSec
-        programInfo.endTime = stopSec
+        programInfo = {
+            title: programTitle
+            description: programDesc
+            subTitle: programSubTitle
+            startTime: startSec
+            endTime: stopSec
+        }
         result.programsByChannel[normalizedChannel].push(programInfo)
-        
-        nextProg:
     end for
     
     return result
 end function
 
-' Fast logo enrichment with pre-loaded URLs
 sub EPGEnrichWithLogosFast(channels as Object, fallbackData as Object, logoUrls as Object, networkPatterns as Object)
-    ' Build fallback map
     fallbackMap = {}
     
     if fallbackData <> invalid
@@ -966,39 +905,24 @@ sub EPGEnrichWithLogosFast(channels as Object, fallbackData as Object, logoUrls 
         end for
     end if
     
-    ' Enrich each channel
     for each channel in channels
-        ' Skip if already has logo
-        if channel.logo <> invalid and channel.logo <> ""
-            goto nextCh
-        end if
+        if channel.logo <> invalid and channel.logo <> "" then continue for
         
-        ' Try fallback map first
         if channel.tvgId <> invalid and fallbackMap.doesExist(channel.tvgId)
             channel.logo = fallbackMap[channel.tvgId]
-            goto nextCh
+            continue for
         end if
         
-        ' Generate logo URL from title
         channel.logo = EPGGenerateLogoUrlFast(channel.title, logoUrls, networkPatterns)
-        
-        nextCh:
     end for
 end sub
 
-' Fast logo URL generation with pre-loaded configs
 function EPGGenerateLogoUrlFast(title as String, logoUrls as Object, networkPatterns as Object) as String
-    if title = invalid or title = ""
-        return ""
-    end if
+    if title = invalid or title = "" then return ""
     networkLogo = EPGGetNetworkLogoFast(title, logoUrls, networkPatterns)
-    if networkLogo <> ""
-        return networkLogo
-    end if
-    return ""
+    return networkLogo
 end function
 
-' Fast network logo lookup with pre-loaded patterns
 function EPGGetNetworkLogoFast(title as String, logoUrls as Object, networkPatterns as Object) as String
     baseUrl = logoUrls.TV_LOGOS_BASE
     networkName = title.Trim()
@@ -1007,7 +931,6 @@ function EPGGetNetworkLogoFast(title as String, logoUrls as Object, networkPatte
         networkName = networkName.Left(parenPos - 1).Trim()
     end if
 
-    ' Local ABC and CBS affiliate logos using pre-loaded patterns
     for each key in networkPatterns
         if networkName.StartsWith(UCase(key))
             openParen = title.Instr("(")
@@ -1019,24 +942,12 @@ function EPGGetNetworkLogoFast(title as String, logoUrls as Object, networkPatte
         end if
     end for
     
-    ' Remove location suffixes
-    networkName = networkName.Replace(" New York", "")
-    networkName = networkName.Replace(" Los Angeles", "")
-    networkName = networkName.Replace(" Chicago", "")
-    networkName = networkName.Replace(", LA", "")
-    networkName = networkName.Replace(", NY", "")
-    networkName = networkName.Replace(", CA", "")
-    networkName = networkName.Trim()
+    ' Chain multiple replacements
+    networkName = networkName.Replace(" New York", "").Replace(" Los Angeles", "").Replace(" Chicago", "").Replace(", LA", "").Replace(", NY", "").Replace(", CA", "").Trim()
     
-    if networkName = ""
-        return ""
-    end if
-    
-    ' Normalize network name
-    normalized = networkName.Replace("&", "-and-")
-    normalized = normalized.Replace(" ", "-")
-    normalized = normalized.Replace("'", "")
-    normalized = normalized.Replace(",", "")
+    if networkName = "" then return ""
+
+    normalized = networkName.Replace("&", "-and-").Replace(" ", "-").Replace("'", "").Replace(",", "")
     normalized = LCase(normalized)
     
     ' Clean up double dashes
@@ -1070,17 +981,13 @@ function EPGGetNetworkLogoFast(title as String, logoUrls as Object, networkPatte
         end if
     end while
     
-    if normalized = ""
-        return ""
-    end if
+    if normalized = "" then return ""
     
     return baseUrl + normalized + "-us.png"
 end function
 
 function EPGNormalizeChannelId(id as String) as String
-    if id = invalid
-        return ""
-    end if
+    if id = invalid then return ""
     
     id = id.Trim()
     
@@ -1097,9 +1004,7 @@ function EPGNormalizeChannelId(id as String) as String
 end function
 
 function EPGParseXmltvTime(xmltvTime as String) as LongInteger
-    if xmltvTime.Len() < 14
-        return 0
-    end if
+    if xmltvTime.Len() < 14 then return 0
     
     year = val(xmltvTime.Mid(0, 4))
     month = val(xmltvTime.Mid(4, 2))
@@ -1132,9 +1037,7 @@ function EPGParseXmltvTime(xmltvTime as String) as LongInteger
 end function
 
 function EPGGetCurrentProgram(epg as Object, tvgId as String) as String
-    if tvgId = invalid
-        return ""
-    end if
+    if tvgId = invalid then return ""
     
     normalizedId = EPGNormalizeChannelId(tvgId)
     
@@ -1146,9 +1049,7 @@ function EPGGetCurrentProgram(epg as Object, tvgId as String) as String
 end function
 
 function EPGGetPrograms(epg as Object, tvgId as String) as Object
-    if tvgId = invalid
-        return []
-    end if
+    if tvgId = invalid then return []
     
     normalizedId = EPGNormalizeChannelId(tvgId)
     
@@ -1160,30 +1061,16 @@ function EPGGetPrograms(epg as Object, tvgId as String) as Object
 end function
 
 function GetNowPlayingForChannel(channel as Object, now as Integer) as String
-    if channel.tvgId = invalid
-        return channel.title
-    end if
+    if channel.tvgId = invalid then return channel.title
 
     programs = EPGGetPrograms(m.epgData, channel.tvgId)
-    if programs = invalid or programs.count() = 0
-        return channel.title
-    end if
+    if programs = invalid or programs.count() = 0 then return channel.title
 
     for each prog in programs
         if prog.startTime <= now and prog.endTime > now then
             programTitle = prog.title
-            sportsKeywords = [
-                "College Basketball", "College Football", "College Baseball",
-                "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"
-            ]
 
-            isSports = false
-            for each keyword in sportsKeywords
-                if programTitle.Instr(keyword) >= 0
-                    isSports = true
-                    exit for
-                end if
-            end for
+            isSports = IsSportsProgram(programTitle)
 
             if isSports and prog.subTitle <> invalid and prog.subTitle <> ""
                 return prog.subTitle

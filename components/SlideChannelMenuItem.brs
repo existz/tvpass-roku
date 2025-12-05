@@ -17,7 +17,6 @@ sub onSelectedChanged()
     if m.top.isSelected
         m.background.color = "0x0078D4FF"
     else
-        ' Reset to unfocused state if not focused
         if m.top.focusPercent = 0
             setUnfocusedState()
         end if
@@ -27,7 +26,6 @@ end sub
 sub onContentChanged()
     content = m.top.itemContent
     if content <> invalid
-        ' Set channel number - check if field exists first
         if content.doesExist("channelNumber") and content.channelNumber <> invalid
             m.channelNumber.horizAlign = "center"
             m.channelNumber.text = str(content.channelNumber)
@@ -35,7 +33,6 @@ sub onContentChanged()
             m.channelNumber.text = ""
         end if
         
-        ' Set logo
         if content.logo <> invalid and content.logo <> ""
             m.logo.uri = content.logo
             m.logo.visible = true
@@ -43,7 +40,6 @@ sub onContentChanged()
             m.logo.visible = false
         end if
         
-        ' Set program title (what's currently playing)
         if content.doesExist("nowPlaying") and content.nowPlaying <> invalid and content.nowPlaying <> ""
             m.programTitle.text = content.nowPlaying
         else if content.title <> invalid
@@ -52,7 +48,6 @@ sub onContentChanged()
             m.programTitle.text = ""
         end if
         
-        ' Set program details (episode info or description)
         if content.doesExist("programDetails") and content.programDetails <> invalid and content.programDetails <> ""
             m.programDetails.text = content.programDetails
             m.programDetails.font.size = 28
@@ -60,10 +55,8 @@ sub onContentChanged()
             m.programDetails.text = ""
         end if
         
-        ' Check if this item is selected
         if content.doesExist("isSelected") and content.isSelected <> invalid
             m.top.isSelected = content.isSelected
-            ' Observe changes to isSelected in content
             content.observeField("isSelected", "onContentSelectedChanged")
         end if
     else

@@ -5,8 +5,8 @@ sub init()
     m.channelList = m.top.findNode("channelList")
     m.instructionLabel = m.top.findNode("instructionLabel")
     
-    ' Don't observe itemSelected initially - we'll handle it manually
-    ' m.channelList.observeField("itemSelected", "onChannelSelected")
+    ' OPTIMIZATION: Removed unused animation objects
+    ' m.slideAnimation and m.fadeAnimation were created but never used
     
     ' Multiview state
     m.selectedChannels = []
@@ -15,30 +15,18 @@ sub init()
     m.longPressThreshold = 500
     m.isLongPress = false
     
-    ' Observe channels field
     m.top.observeField("channels", "onChannelsChanged")
     m.top.observeField("visible", "onVisibleChanged")
     m.top.observeField("currentChannelIndex", "onCurrentChannelIndexChanged")
-    
-    ' Animate in from right
-    m.slideAnimation = createObject("roSGNode", "Animation")
-    m.slideAnimation.duration = 0.3
-    m.slideAnimation.easeFunction = "outCubic"
-    
-    m.fadeAnimation = createObject("roSGNode", "Animation")
-    m.fadeAnimation.duration = 0.3
-    m.fadeAnimation.easeFunction = "linear"
 end sub
 
 sub onVisibleChanged()
     isVisible = m.top.visible
     if isVisible
-        ' Reset multiview selection when menu opens
         m.selectedChannels = []
         m.isLongPress = false
         updateInstructionLabel()
         
-        ' When menu becomes visible, jump to current channel
         if m.top.currentChannelIndex >= 0 and m.channelList.content <> invalid
             itemCount = m.channelList.content.getChildCount()
             if m.top.currentChannelIndex < itemCount
@@ -47,7 +35,6 @@ sub onVisibleChanged()
             end if
         end if
         
-        ' Make sure menu component itself can receive key events
         m.top.setFocus(true)
         m.channelList.setFocus(true)
     end if
@@ -65,7 +52,6 @@ sub updateInstructionLabel()
 end sub
 
 sub onCurrentChannelIndexChanged()
-    ' When current channel changes, update the jump position if menu is visible
     if m.top.visible and m.top.currentChannelIndex >= 0 and m.channelList.content <> invalid
         itemCount = m.channelList.content.getChildCount()
         if m.top.currentChannelIndex < itemCount
@@ -76,9 +62,7 @@ end sub
 
 sub onChannelsChanged()
     channels = m.top.channels
-    if channels = invalid or channels.count() = 0 then
-        return
-    end if
+    if channels = invalid or channels.count() = 0 then return
     
     content = createObject("roSGNode", "ContentNode")
     
@@ -86,7 +70,6 @@ sub onChannelsChanged()
         channel = channels[i]
         item = content.createChild("ContentNode")
         
-        ' Use nowPlaying if available, otherwise use title
         if channel.nowPlaying <> invalid and channel.nowPlaying <> ""
             item.title = channel.nowPlaying
         else
@@ -125,7 +108,6 @@ sub onChannelsChanged()
     
     m.channelList.content = content
     
-    ' Jump to current channel after content is set
     if m.top.currentChannelIndex >= 0 and m.top.currentChannelIndex < channels.count()
         m.channelList.jumpToItem = m.top.currentChannelIndex
         m.channelList.itemFocused = m.top.currentChannelIndex
@@ -143,7 +125,6 @@ sub playSelectedChannel()
 end sub
 
 sub toggleChannelSelection(channelIndex as Integer)
-    ' Check if already selected
     alreadySelected = false
     selectedIndex = -1
     
@@ -156,7 +137,6 @@ sub toggleChannelSelection(channelIndex as Integer)
     end for
     
     if alreadySelected
-        ' Remove from selection
         newSelection = []
         for i = 0 to m.selectedChannels.count() - 1
             if i <> selectedIndex
@@ -165,7 +145,6 @@ sub toggleChannelSelection(channelIndex as Integer)
         end for
         m.selectedChannels = newSelection
     else
-        ' Add to selection if under limit
         if m.selectedChannels.count() < m.maxMultiviewChannels
             m.selectedChannels.push(channelIndex)
         end if
@@ -176,7 +155,6 @@ sub toggleChannelSelection(channelIndex as Integer)
 end sub
 
 sub updateSelectionIndicators()
-    ' Update visual indicators for all items
     if m.channelList.content = invalid then return
     
     itemCount = m.channelList.content.getChildCount()
@@ -197,14 +175,13 @@ sub updateSelectionIndicators()
         end if
     end for
     
-    ' Force list to refresh items
     m.channelList.itemFocused = m.channelList.itemFocused
 end sub
 
 sub show()
     m.top.visible = true
-    m.top.setFocus(true)  ' Set focus on the menu itself
-    m.channelList.setFocus(true)  ' Then set focus on the list
+    m.top.setFocus(true)
+    m.channelList.setFocus(true)
 end sub
 
 sub hide()
@@ -216,17 +193,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     currentTime& = dt.AsSeconds()
     currentTimeMs& = (currentTime& * 1000) + dt.GetMilliseconds()
     
-    ' Only handle key press, not release for most keys
     if key = "back"
         if press
-            ' If channels are selected, launch multiview
             if m.selectedChannels.count() > 0
-                print "SlideChannelMenu: Launching multiview with " + str(m.selectedChannels.count()) + " selected channels"
-                
-                ' Build final list including initial channel if not already selected
                 finalChannels = []
                 
-                ' Add initial channel first (the one that was playing when menu opened)
                 if m.top.initialChannelIndex >= 0
                     alreadyIncluded = false
                     for each idx in m.selectedChannels
@@ -237,21 +208,17 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
                     end for
                     if not alreadyIncluded
                         finalChannels.push(m.top.initialChannelIndex)
-                        print "SlideChannelMenu: Adding initial channel " + str(m.top.initialChannelIndex)
                     end if
                 end if
                 
-                ' Add all selected channels
                 for each idx in m.selectedChannels
                     finalChannels.push(idx)
                 end for
                 
-                print "SlideChannelMenu: Final multiview channels: "; finalChannels
                 m.top.launchMultiview = finalChannels
                 m.top.visible = false
                 return true
             else
-                print "SlideChannelMenu: No channels selected, closing menu"
                 m.top.visible = false
                 return true
             end if
@@ -263,7 +230,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         if key = "OK"
             m.okButtonPressTime = currentTimeMs&
             m.isLongPress = false
-            return true ' Consume the key press
+            return true
         end if
     else
         if key = "OK" and m.okButtonPressTime > 0
@@ -271,8 +238,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             m.okButtonPressTime = 0
             
             if duration >= m.longPressThreshold
-                ' Long press - toggle multiview selection
-                print "SlideChannelMenu: Long press detected"
                 m.isLongPress = true
                 focusedIdx = m.channelList.itemFocused
                 if focusedIdx >= 0
@@ -283,8 +248,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
                 end if
                 return true
             else
-                ' Short press - play the selected channel
-                print "SlideChannelMenu: Short press detected"
                 if not m.isLongPress
                     playSelectedChannel()
                 end if
@@ -293,7 +256,6 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
     end if
     
-    ' Let the list handle navigation keys
     if key = "up" or key = "down"
         return false
     end if

@@ -4,19 +4,21 @@ sub init()
     m.channelLogo = m.top.findNode("channelLogo")
     m.programSlots = m.top.findNode("programSlots")
     m.uiColors = GetUIColors()
+    
+    ' Pre-compile sports keywords for faster matching
+    m.sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
+    
     setUnfocusedState()
 end sub
 
 sub onContentChanged()
     content = m.top.itemContent
     if content <> invalid
-        ' Set channel number
         if content.channelNumber <> invalid
             m.channelNumber.text = str(content.channelNumber)
             m.channelNumber.horizAlign = "center"
         end if
         
-        ' Set channel logo
         if content.logo <> invalid and content.logo <> ""
             m.channelLogo.uri = content.logo
             m.channelLogo.visible = true
@@ -25,7 +27,6 @@ sub onContentChanged()
             m.channelLogo.visible = false
         end if
         
-        ' Create program slots
         isLongName = false
         if content.doesExist("isLongChannelName")
             isLongName = content.isLongChannelName
@@ -36,28 +37,24 @@ sub onContentChanged()
 end sub
 
 sub createProgramSlots(content as Object, isLongName as Boolean)
-    ' Clear existing slots
     m.programSlots.removeChildrenIndex(m.programSlots.getChildCount(), 0)
     
-    ' Get current UTC time and calculate time window
     now = CreateObject("roDateTime")
     currentTime = now.AsSeconds()
     
-    ' Round down to nearest 30-minute interval
     windowStartTime = int(currentTime / 1800) * 1800
-    
-    ' 1.5 hour window (3 x 30-minute blocks)
-    windowEndTime = windowStartTime + (1.5 * 3600)
+    windowEndTime = windowStartTime + 5400  ' 1.5 hours
     slotWidth = 517
     totalWidth = slotWidth * 3
     
-    ' Get programs for this channel
+    ' Pre-calculate time scale factor
+    timeScale = totalWidth / 5400.0
+    
     programs = []
     if content.programs <> invalid
         programs = content.programs
     end if
     
-    ' If no programs but nowPlaying, create a synthetic program
     if programs.count() = 0 and content.nowPlaying <> invalid and content.nowPlaying <> ""
         syntheticProgram = {
             title: content.nowPlaying,
@@ -67,65 +64,36 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
         programs.push(syntheticProgram)
     end if
     
-    ' Create blocks for each program
     for each program in programs
         if program <> invalid and program.title <> invalid
-            progStart = invalid
-            progEnd = invalid
+            progStart = program.startTime
+            progEnd = program.endTime
             
-            ' Try to get time fields
-            if program.startTime <> invalid
-                progStart = program.startTime
-            end if
-            if program.endTime <> invalid
-                progEnd = program.endTime
-            end if
+            if progStart = invalid or progEnd = invalid then goto nextProgram
             
-            if progStart = invalid or progEnd = invalid
-                goto nextProgram
-            end if
-            
-            ' Show programs that overlap with the display window
             if progStart < windowEndTime and progEnd > windowStartTime
-                
-                ' Clamp to window
                 displayStart = progStart
                 displayEnd = progEnd
-                if displayStart < windowStartTime
-                    displayStart = windowStartTime
-                end if
-                if displayEnd > windowEndTime
-                    displayEnd = windowEndTime
-                end if
+                if displayStart < windowStartTime then displayStart = windowStartTime
+                if displayEnd > windowEndTime then displayEnd = windowEndTime
                 
-                ' Calculate position and width based on time
-                offset = ((displayStart - windowStartTime) * totalWidth) / (1.5 * 3600)
-                width = ((displayEnd - displayStart) * totalWidth) / (1.5 * 3600)
+                ' Use pre-calculated time scale
+                offset = (displayStart - windowStartTime) * timeScale
+                width = (displayEnd - displayStart) * timeScale
                 
-                ' Create program block
                 slot = createObject("roSGNode", "Rectangle")
                 slot.translation = [offset, 0]
                 slot.width = width
                 slot.height = 75
                 slot.color = m.uiColors.BLACK26
                 
-                ' Determine display text - use subTitle for sports programs
                 displayText = program.title
-                isSportsProgram = false
-                sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
-                
-                for each keyword in sportsKeywords
-                    if program.title.Instr(keyword) >= 0
-                        isSportsProgram = true
-                        exit for
-                    end if
-                end for
+                isSportsProgram = IsSportsProgram(program.title)
                 
                 if isSportsProgram and program.subTitle <> invalid and program.subTitle <> ""
                     displayText = program.subTitle
                 end if
                 
-                ' Create label for program
                 label = createObject("roSGNode", "Label")
                 slotHeight = 75
                 labelHeight = 30
@@ -142,7 +110,6 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 label.vertAlign = "center"
                 label.wrap = false
                 
-                ' Truncate text based on block width (35 chars per 517px)
                 maxChars = int((width / 517.0) * 35)
                 if maxChars < 10 then maxChars = 10
                 if len(displayText) > maxChars
@@ -156,8 +123,15 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
             nextProgram:
         end if
     end for
-    
 end sub
+
+' Shared sports detection function
+function IsSportsProgram(title as String) as Boolean
+    for each keyword in m.sportsKeywords
+        if title.Instr(keyword) >= 0 then return true
+    end for
+    return false
+end function
 
 sub onFocusPercentChanged()
     fp = m.top.focusPercent

@@ -11,7 +11,7 @@ sub init()
     m.selectedThumbnailIndex = 0
     m.visibleThumbnailCount = 0
 
-    ' Pre-compute ALL team logo URLs and colors at startup for instant O(1) lookups
+    ' Pre-compute ALL team logo URLs and colors at startup
     m.teamLogoCache = {}
     m.teamColorCache = {}
     m.leagueMaps = {
@@ -23,41 +23,30 @@ sub init()
     m.colorPalette = GetTeamColorPalette()
     m.logoBaseUrl = GetLogoUrls().TEAM_LOGOS_BASE
     
-    ' Pre-compute ALL team logo URLs and colors for all leagues
     precomputeTeamData()
     
-    ' Track last state to avoid redundant updates
     m.lastMainChannelLabel = ""
     
-    ' Don't create thumbnails here - they'll be created when needed
-    ' This ensures they have all the latest properties
     m.mainVideo.observeField("state", "onMainVideoStateChange")
     m.top.observeField("channels", "onChannelsChanged")
     m.top.observeField("visible", "onVisibleChanged")
 end sub
 
 sub precomputeTeamData()
-    ' For each league, pre-compute logo URLs and colors for all teams
     leagues = ["NFL", "NBA", "MLB", "NHL"]
     
     for each leagueName in leagues
-        if not m.leagueMaps.doesExist(leagueName)
-            print "MultiviewGrid: League not found in maps: "; leagueName
-            goto nextLeague
-        end if
+        if not m.leagueMaps.doesExist(leagueName) then goto nextLeague
         
         teams = m.leagueMaps[leagueName]
         
         for each teamName in teams
             teamCode = teams[teamName]
-            ' Use uppercase league name for cache key to match what parseTeamMatchupFast generates
             cacheKey = leagueName + ":" + teamCode
             
-            ' Pre-compute logo URL
             logoUrl = m.logoBaseUrl + leagueName + "/" + teamCode + ".png"
             m.teamLogoCache[cacheKey] = logoUrl
             
-            ' Pre-compute color - check both the league name and team code exist
             if m.colorPalette.doesExist(leagueName)
                 leagueColors = m.colorPalette[leagueName]
                 if leagueColors.doesExist(teamCode)
@@ -72,17 +61,13 @@ sub precomputeTeamData()
         
         nextLeague:
     end for
-    
-    ' Cache built successfully - ready for fast lookups
 end sub
 
-' Fast lookup using pre-computed cache
 function getTeamLogoUrlFast(teamCode as String, league as String) as String
     cacheKey = league + ":" + teamCode
     if m.teamLogoCache.doesExist(cacheKey)
         return m.teamLogoCache[cacheKey]
     end if
-    ' Fallback: construct URL directly if not in cache
     return m.logoBaseUrl + league + "/" + teamCode + ".png"
 end function
 
@@ -91,7 +76,6 @@ function getTeamColorFast(teamCode as String, league as String) as String
     if m.teamColorCache.doesExist(cacheKey)
         return m.teamColorCache[cacheKey]
     end if
-    ' Fallback: try to get color directly
     if m.colorPalette.doesExist(league)
         leagueColors = m.colorPalette[league]
         if leagueColors.doesExist(teamCode)
@@ -102,10 +86,8 @@ function getTeamColorFast(teamCode as String, league as String) as String
 end function
 
 function createThumbnail(index as Integer) as Object
-    ' Reduced height from 180 to 140, increased spacing from 185 to 165
     yPos = 10 + (index * 165)
     
-    ' Create a single container group for this thumbnail
     container = createObject("roSGNode", "Group")
     container.translation = [10, yPos]
     
@@ -124,7 +106,6 @@ function createThumbnail(index as Integer) as Object
         borderBottom: invalid
         borderLeft: invalid
         borderRight: invalid
-
         lastLogoUri: ""
         lastTeam1LogoUri: ""
         lastTeam2LogoUri: ""
@@ -134,7 +115,6 @@ function createThumbnail(index as Integer) as Object
         lastIsSports: invalid
     }
 
-    ' Background (for non-sports)
     bg = createObject("roSGNode", "Rectangle")
     bg.translation = [0, 0]
     bg.width = 360
@@ -164,8 +144,6 @@ function createThumbnail(index as Integer) as Object
 
     logo = createObject("roSGNode", "Poster")
     logo.translation = [90, 10]
-    logo.loadWidth = 180
-    logo.loadHeight = 60
     logo.width = 180
     logo.height = 80
     logo.loadDisplayMode = "scaleToFit"
@@ -174,22 +152,18 @@ function createThumbnail(index as Integer) as Object
     thumb.logo = logo
 
     teamLogo1 = createObject("roSGNode", "Poster")
-    teamLogo1.translation = [25, 10]
-    teamLogo1.loadWidth = 130
-    teamLogo1.loadHeight = 120
-    teamLogo1.width = 130
-    teamLogo1.height = 120
+    teamLogo1.translation = [40, 20]
+    teamLogo1.width = 100
+    teamLogo1.height = 100
     teamLogo1.loadDisplayMode = "scaleToFit"
     teamLogo1.visible = false
     container.appendChild(teamLogo1)
     thumb.teamLogo1 = teamLogo1
 
     teamLogo2 = createObject("roSGNode", "Poster")
-    teamLogo2.translation = [205, 10]
-    teamLogo2.loadWidth = 130
-    teamLogo2.loadHeight = 120
-    teamLogo2.width = 130
-    teamLogo2.height = 120
+    teamLogo2.translation = [220, 20]
+    teamLogo2.width = 100
+    teamLogo2.height = 100
     teamLogo2.loadDisplayMode = "scaleToFit"
     teamLogo2.visible = false
     container.appendChild(teamLogo2)
@@ -209,8 +183,6 @@ function createThumbnail(index as Integer) as Object
     container.appendChild(label)
     thumb.label = label
 
-    ' Border outline (4 rectangles forming a frame)
-    ' Top border
     borderTop = createObject("roSGNode", "Rectangle")
     borderTop.translation = [0, 0]
     borderTop.width = 360
@@ -247,7 +219,6 @@ function createThumbnail(index as Integer) as Object
     container.appendChild(borderRight)
     thumb.borderRight = borderRight
 
-    ' Append the entire container at once to thumbnailContainer
     m.thumbnailContainer.appendChild(container)
 
     return thumb
@@ -255,7 +226,6 @@ end function
 
 sub onVisibleChanged()
     if m.top.visible
-        ' Force recreation of thumbnails when multiview becomes visible
         m.thumbnails = []
         m.thumbnailChannelIndices = []
         
@@ -273,25 +243,22 @@ sub onChannelsChanged()
     m.channels = m.top.channels
     if m.channels = invalid or m.channels.count() = 0 then return
 
-    ' Cache channel metadata for fast access
+    ' Cache channel metadata
     for i = 0 to m.channels.count() - 1
         channel = m.channels[i]
         
-        ' Cache logo
         if channel.doesExist("logo") and channel.logo <> invalid
             channel.cachedLogo = channel.logo
         else
             channel.cachedLogo = ""
         end if
         
-        ' Cache nowPlaying
         if channel.doesExist("nowPlaying") and channel.nowPlaying <> invalid
             channel.cachedNowPlaying = channel.nowPlaying
         else
             channel.cachedNowPlaying = ""
         end if
         
-        ' Cache title
         if channel.doesExist("title") and channel.title <> invalid
             channel.cachedTitle = channel.title
         else
@@ -312,25 +279,19 @@ sub playMainChannel(index as Integer)
     m.currentMainIndex = index
     channel = m.channels[index]
 
-    ' Update main video
     content = createObject("roSGNode", "ContentNode")
     content.url = channel.url
-    content.title = ""  ' Don't show the built-in title overlay
+    content.title = ""
     content.streamFormat = "hls"
-
-    ' Force HD quality settings
     content.addField("preferredBitrate", "integer", false)
-    content.preferredBitrate = 0  ' 0 = highest available
+    content.preferredBitrate = 0
     content.addField("maxBandwidth", "integer", false)
-    content.maxBandwidth = 0  ' 0 = no limit
+    content.maxBandwidth = 0
 
     m.mainVideo.content = content
     m.mainVideo.control = "play"
-
-    ' Set video player to prefer highest quality
     m.mainVideo.maxVideoDecodeResolution = "1920x1080"
 
-    ' Update label with nowPlaying if available - use cached values
     labelText = channel.cachedTitle
     if channel.cachedNowPlaying <> invalid and channel.cachedNowPlaying <> ""
         labelText = channel.cachedNowPlaying
@@ -341,12 +302,11 @@ sub playMainChannel(index as Integer)
         m.lastMainChannelLabel = labelText
     end if
 
-    ' Update thumbnails
     updateThumbnails()
 end sub
 
 sub updateThumbnails()
-    ' Create thumbnails if they don't exist yet
+    ' Create thumbnails if needed
     if m.thumbnails.count() = 0
         for i = 0 to 4
             thumb = createThumbnail(i)
@@ -357,25 +317,18 @@ sub updateThumbnails()
     
     thumbIndex = 0
 
-    ' Loop through channels and fill up to 5 thumbnails
     for i = 0 to m.channels.count() - 1
-        ' Skip main channel and limit to 5 thumbnails
         if i <> m.currentMainIndex and thumbIndex <= 4 then
-
             channel = m.channels[i]
             thumb = m.thumbnails[thumbIndex]
 
-            ' Get now playing text - use cached values
             nowPlaying = channel.cachedTitle
             if channel.cachedNowPlaying <> invalid and channel.cachedNowPlaying <> ""
                 nowPlaying = channel.cachedNowPlaying
             end if
 
-            ' Check if this is a sports matchup
             matchup = parseTeamMatchupFast(nowPlaying)
-            
             isSports = (matchup <> invalid)
-
             needsUpdate = (thumb.lastIsSports = invalid or thumb.lastIsSports <> isSports)
             
             if isSports 
@@ -407,9 +360,7 @@ sub updateThumbnails()
                     thumb.lastTeam2LogoUri = team2Url
                     needsUpdate = true
                 end if
-                
             else
-                ' Show channel logo (non-sports) - use cached value
                 logoUrl = channel.cachedLogo
 
                 if logoUrl <> thumb.lastLogoUri
@@ -422,7 +373,6 @@ sub updateThumbnails()
                     needsUpdate = true
                 end if
                 
-                ' Update label for non-sports
                 if nowPlaying <> thumb.lastLabelText
                     thumb.label.text = nowPlaying
                     thumb.lastLabelText = nowPlaying
@@ -430,11 +380,12 @@ sub updateThumbnails()
                 end if
             end if
 
-            ' Batch visibility update
+            ' OPTIMIZATION: Only update visibility if state changed
             if needsUpdate or thumb.lastIsSports <> isSports
                 sportsVisible = isSports
                 nonSportsVisible = not isSports
                 
+                ' OPTIMIZATION: Batch visibility updates
                 thumb.team1Background.visible = sportsVisible
                 thumb.team2Background.visible = sportsVisible
                 thumb.teamLogo1.visible = sportsVisible
@@ -452,19 +403,21 @@ sub updateThumbnails()
             borderOpacity = 0
             if isSelected then borderOpacity = 1
 
-            thumb.borderTop.opacity = borderOpacity
-            thumb.borderBottom.opacity = borderOpacity
-            thumb.borderLeft.opacity = borderOpacity
-            thumb.borderRight.opacity = borderOpacity
+            ' OPTIMIZATION: Only update border if selection changed
+            if thumb.borderTop.opacity <> borderOpacity
+                thumb.borderTop.opacity = borderOpacity
+                thumb.borderBottom.opacity = borderOpacity
+                thumb.borderLeft.opacity = borderOpacity
+                thumb.borderRight.opacity = borderOpacity
+            end if
 
             thumbIndex = thumbIndex + 1
         end if
 
-        ' Stop if we filled all 5 thumbnails
         if thumbIndex > 4 then exit for
     end for
 
-    ' Hide any remaining unused thumbnails - batch visibility
+    ' OPTIMIZATION: Batch hide unused thumbnails
     for i = thumbIndex to 4
         thumb = m.thumbnails[i]
         thumb.background.visible = false
@@ -481,7 +434,6 @@ sub updateThumbnails()
         m.thumbnailChannelIndices[i] = -1
     end for
 
-    ' Cache count of visible thumbnails
     m.visibleThumbnailCount = thumbIndex
 end sub
 
@@ -491,7 +443,6 @@ sub swapToThumbnail(thumbIndex as Integer)
     newChannelIndex = m.thumbnailChannelIndices[thumbIndex]
     if newChannelIndex < 0 or newChannelIndex >= m.channels.count() then return
 
-    ' Update border selection
     oldThumb = m.thumbnails[m.selectedThumbnailIndex]
     oldThumb.borderTop.opacity = 0
     oldThumb.borderBottom.opacity = 0
@@ -505,7 +456,6 @@ sub swapToThumbnail(thumbIndex as Integer)
     newThumb.borderLeft.opacity = 1
     newThumb.borderRight.opacity = 1
 
-    ' Play new main channel
     m.mainVideo.control = "stop"
     playMainChannel(newChannelIndex)
 end sub
@@ -518,16 +468,13 @@ sub stopPlayback()
 end sub
 
 function parseTeamMatchupFast(programTitle as String) as Object
-    ' Returns { league: "NFL/NBA/MLB/NHL", team1: "BUF", team2: "ARI" } or invalid
     if programTitle = invalid or programTitle = "" then return invalid
     
-    ' Check for "vs" or "@" pattern
     hasVs = (programTitle.Instr(" vs ") >= 0 or programTitle.Instr(" vs. ") >= 0)
     hasAt = (programTitle.Instr(" @ ") >= 0 or programTitle.Instr(" at ") >= 0)
     
     if not hasVs and not hasAt then return invalid
     
-    ' Extract team names first
     teams = invalid
     if hasVs
         if programTitle.Instr(" vs ") >= 0
@@ -548,17 +495,14 @@ function parseTeamMatchupFast(programTitle as String) as Object
     team1Name = teams[0].Trim()
     team2Name = teams[1].Trim()
     
-    ' Remove date/time info from team2Name (e.g., "(11/30 1:00 PM ET)")
     parenPos = team2Name.Instr("(")
     if parenPos >= 0
         team2Name = team2Name.Left(parenPos).Trim()
     end if
     
-    ' Determine league by checking team names against known teams
     league = detectLeagueFromTeamsFast(team1Name, team2Name)
     if league = invalid then return invalid
     
-    ' Get team codes
     team1Code = getTeamCodeFast(team1Name, league)
     team2Code = getTeamCodeFast(team2Name, league)
     
@@ -571,9 +515,7 @@ function parseTeamMatchupFast(programTitle as String) as Object
     }
 end function
 
-' Use cached league maps instead of function calls
 function detectLeagueFromTeamsFast(team1 as String, team2 as String) as Dynamic
-    ' Try each league using pre-loaded maps - use explicit league names
     leagues = ["NFL", "NBA", "MLB", "NHL"]
     
     for each leagueName in leagues
