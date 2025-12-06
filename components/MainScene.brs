@@ -443,6 +443,8 @@ sub playChannel(channel as Object)
     content.addField("maxBandwidth", "integer", false)
     content.maxBandwidth = 0
 
+    print "Playing channel: " + content.url
+
     m.videoPlayer.content = content
     m.videoPlayer.control = "play"
     m.videoPlayer.maxVideoDecodeResolution = "1920x1080"
