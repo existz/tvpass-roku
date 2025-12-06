@@ -143,7 +143,7 @@ function GetTeamColorPalette() as Object
             "blues": "0x002F87FF"
             "lightning": "0x002868FF"
             "maple-leafs": "0x00205BFF"
-            "canucks": "0x00205BFF"
+            "canucks": "0x041C2CFF"
             "golden-knights": "0xB4975AFF"
             "capitals": "0x002D62FF"
             "jets": "0x002E62FF"
