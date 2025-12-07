@@ -23,6 +23,12 @@ sub init()
     m.colorPalette = GetTeamColorPalette()
     m.logoBaseUrl = GetLogoUrls().TEAM_LOGOS_BASE
     
+    ' Pre-compile matchup parsing regex patterns
+    m.separatorPatterns = [" vs ", " vs. ", " @ ", " at "]
+    
+    ' Cache for parsed matchups to avoid re-parsing
+    m.matchupCache = {}
+    
     precomputeTeamData()
     
     m.lastMainChannelLabel = ""
@@ -233,7 +239,9 @@ sub onVisibleChanged()
         m.thumbnails = []
         m.thumbnailChannelIndices = []
         
+        ' Pre-parse all channel matchups before displaying
         if m.channels.count() > 0
+            preParseAllMatchups()
             m.selectedThumbnailIndex = 0
             playMainChannel(0)
         end if
@@ -241,6 +249,24 @@ sub onVisibleChanged()
     else
         stopPlayback()
     end if
+end sub
+
+' Pre-parse all sports matchups when entering multiview
+sub preParseAllMatchups()
+    for i = 0 to m.channels.count() - 1
+        channel = m.channels[i]
+        
+        nowPlaying = channel.cachedTitle
+        if channel.cachedNowPlaying <> invalid and channel.cachedNowPlaying <> ""
+            nowPlaying = channel.cachedNowPlaying
+        end if
+        
+        ' Parse and cache immediately
+        if not m.matchupCache.doesExist(nowPlaying)
+            matchup = parseTeamMatchupFast(nowPlaying)
+            m.matchupCache[nowPlaying] = matchup
+        end if
+    end for
 end sub
 
 sub onChannelsChanged()
@@ -331,7 +357,15 @@ sub updateThumbnails()
                 nowPlaying = channel.cachedNowPlaying
             end if
 
-            matchup = parseTeamMatchupFast(nowPlaying)
+            ' Use cached matchup data
+            matchup = invalid
+            if m.matchupCache.doesExist(nowPlaying)
+                matchup = m.matchupCache[nowPlaying]
+            else
+                matchup = parseTeamMatchupFast(nowPlaying)
+                m.matchupCache[nowPlaying] = matchup
+            end if
+            
             isSports = (matchup <> invalid)
             needsUpdate = (thumb.lastIsSports = invalid or thumb.lastIsSports <> isSports)
             
@@ -341,55 +375,42 @@ sub updateThumbnails()
                 team1Color = getTeamColorFast(matchup.team1, matchup.league)
                 team2Color = getTeamColorFast(matchup.team2, matchup.league)
 
-                if team1Color <> thumb.lastTeam1Color
+                ' Batch all updates together to minimize render cycles
+                if team1Color <> thumb.lastTeam1Color or team2Color <> thumb.lastTeam2Color or team1Url <> thumb.lastTeam1LogoUri or team2Url <> thumb.lastTeam2LogoUri or needsUpdate
                     thumb.team1Background.color = team1Color
-                    thumb.lastTeam1Color = team1Color
-                    needsUpdate = true
-                end if
-                
-                if team2Color <> thumb.lastTeam2Color
                     thumb.team2Background.color = team2Color
-                    thumb.lastTeam2Color = team2Color
-                    needsUpdate = true
-                end if
-                
-                if team1Url <> thumb.lastTeam1LogoUri
                     thumb.teamLogo1.uri = team1Url
-                    thumb.lastTeam1LogoUri = team1Url
-                    needsUpdate = true
-                end if
-                
-                if team2Url <> thumb.lastTeam2LogoUri
                     thumb.teamLogo2.uri = team2Url
+                    
+                    thumb.lastTeam1Color = team1Color
+                    thumb.lastTeam2Color = team2Color
+                    thumb.lastTeam1LogoUri = team1Url
                     thumb.lastTeam2LogoUri = team2Url
                     needsUpdate = true
                 end if
             else
                 logoUrl = channel.cachedLogo
 
-                if logoUrl <> thumb.lastLogoUri
+                if logoUrl <> thumb.lastLogoUri or nowPlaying <> thumb.lastLabelText or needsUpdate
                     if logoUrl <> invalid and logoUrl <> ""
                         thumb.logo.uri = logoUrl
                     else
                         thumb.logo.uri = ""
                     end if
-                    thumb.lastLogoUri = logoUrl
-                    needsUpdate = true
-                end if
-                
-                if nowPlaying <> thumb.lastLabelText
                     thumb.label.text = nowPlaying
+                    
+                    thumb.lastLogoUri = logoUrl
                     thumb.lastLabelText = nowPlaying
                     needsUpdate = true
                 end if
             end if
 
-            ' OPTIMIZATION: Only update visibility if state changed
+            ' Only update visibility if state changed
             if needsUpdate or thumb.lastIsSports <> isSports
                 sportsVisible = isSports
                 nonSportsVisible = not isSports
                 
-                ' OPTIMIZATION: Batch visibility updates
+                ' Batch visibility updates
                 thumb.team1Background.visible = sportsVisible
                 thumb.team2Background.visible = sportsVisible
                 thumb.teamLogo1.visible = sportsVisible
@@ -407,7 +428,7 @@ sub updateThumbnails()
             borderOpacity = 0
             if isSelected then borderOpacity = 1
 
-            ' OPTIMIZATION: Only update border if selection changed
+            ' Only update border if selection changed
             if thumb.borderTop.opacity <> borderOpacity
                 thumb.borderTop.opacity = borderOpacity
                 thumb.borderBottom.opacity = borderOpacity
@@ -421,7 +442,7 @@ sub updateThumbnails()
         if thumbIndex > 4 then exit for
     end for
 
-    ' OPTIMIZATION: Batch hide unused thumbnails
+    ' Batch hide unused thumbnails
     for i = thumbIndex to 4
         thumb = m.thumbnails[i]
         thumb.background.visible = false
@@ -471,34 +492,32 @@ sub stopPlayback()
     m.mainVideo.control = "stop"
 end sub
 
+' Faster parsing with early exits and cached patterns
 function parseTeamMatchupFast(programTitle as String) as Object
     if programTitle = invalid or programTitle = "" then return invalid
     
-    hasVs = (programTitle.Instr(" vs ") >= 0 or programTitle.Instr(" vs. ") >= 0)
-    hasAt = (programTitle.Instr(" @ ") >= 0 or programTitle.Instr(" at ") >= 0)
-    
-    if not hasVs and not hasAt then return invalid
-    
-    teams = invalid
-    if hasVs
-        if programTitle.Instr(" vs ") >= 0
-            teams = programTitle.Split(" vs ")
-        else
-            teams = programTitle.Split(" vs. ")
+    ' Quick check for any separator
+    hasSeparator = false
+    separatorFound = ""
+    for each sep in m.separatorPatterns
+        if programTitle.Instr(sep) >= 0
+            hasSeparator = true
+            separatorFound = sep
+            exit for
         end if
-    else if hasAt
-        if programTitle.Instr(" @ ") >= 0
-            teams = programTitle.Split(" @ ")
-        else
-            teams = programTitle.Split(" at ")
-        end if
-    end if
+    end for
+    
+    if not hasSeparator then return invalid
+    
+    ' Split on found separator
+    teams = programTitle.Split(separatorFound)
     
     if teams = invalid or teams.count() < 2 then return invalid
     
     team1Name = teams[0].Trim()
     team2Name = teams[1].Trim()
     
+    ' Quick parenthesis removal
     parenPos = team2Name.Instr("(")
     if parenPos >= 0
         team2Name = team2Name.Left(parenPos).Trim()
