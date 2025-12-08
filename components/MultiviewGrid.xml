@@ -8,23 +8,22 @@
 
     <interface>
         <field id="channels" type="array" />
+        <field id="originalVideoPlayer" type="node" />
+        <field id="wasPlayingBeforeMultiview" type="boolean" />
+        <field id="shouldRestoreVideo" type="boolean" />
+        <field id="switchToChannelIndex" type="integer" alwaysNotify="true" />
     </interface>
 
     <children>
-        <!-- Main Video Player -->
-        <Video
-            id="mainVideo"
-            translation="[0,0]"
-            width="1540"
-            height="1080"
-            enableTrickPlay="false"/>
-
-        <!-- Main Channel Label -->
+        <!-- Main Channel Label - only covers top strip -->
         <Rectangle
+            id="labelBackground"
             translation="[0,0]"
             width="1540"
             height="60"
-            color="0x000000CC"/>
+            color="0x000000CC"
+            opacity="0.8"
+            visible="true"/>
         
         <Label
             id="mainChannelLabel"
@@ -34,18 +33,23 @@
             font="font:LargeBoldSystemFont"
             color="0xFFFFFFFF"
             horizAlign="left"
-            vertAlign="center"/>
+            vertAlign="center"
+            visible="true"/>
 
         <!-- Thumbnail Container (right side) - Wider for better visibility -->
         <Rectangle
+            id="thumbnailBackground"
             translation="[1540,0]"
             width="380"
             height="1080"
-            color="0x000000CC"/>
+            color="0x000000CC"
+            opacity="0.95"
+            visible="true"/>
         
         <Group 
             id="thumbnailContainer"
-            translation="[1540,60]"/>
+            translation="[1540,60]"
+            visible="true"/>
 
         <!-- Instructions -->
         <Rectangle
@@ -74,7 +78,7 @@
             translation="[1550,1010]"
             width="360"
             height="60"
-            text="↑↓ Select  OK/→ Swap"
+            text="↑↓ Select  OK/→ Swap  Back Exit"
             font="font:SmallSystemFont"
             color="0xCCCCCCFF"
             horizAlign="center"

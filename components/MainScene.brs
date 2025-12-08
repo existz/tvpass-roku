@@ -45,6 +45,7 @@ sub init()
     m.currentChannelIndex = -1
     m.lastChannelIndex = 0
     m.isMultiviewMode = false
+    m.wasPlayingBeforeMultiview = false
     
     ' Long press detection
     m.longPressThreshold = 500
@@ -84,6 +85,7 @@ sub init()
     m.channelMenu.observeField("selectedChannel", "onMenuChannelSelected")
     m.channelMenu.observeField("launchMultiview", "onLaunchMultiview")
     m.multiviewGrid.observeField("visible", "onPiPVisibleChanged")
+    m.multiviewGrid.observeField("switchToChannelIndex", "onMultiviewChannelSwitch")
 
     ' App lifecycle observer to clear cache on exit
     m.top.observeField("focusedChild", "onFocusChanged")
@@ -108,15 +110,45 @@ sub onLaunchMultiview()
     pipChannels = []
     now = CreateObject("roDateTime").AsSeconds()
 
+    ' Add current playing channel first if video is playing
+    if m.videoPlayer.visible and m.currentChannelIndex >= 0 and m.currentChannelIndex < m.epgData.channels.count()
+        currentChannel = m.epgData.channels[m.currentChannelIndex]
+        pipChannel = {
+            title: currentChannel.title,
+            url: currentChannel.url,
+            logo: currentChannel.logo,
+            tvgId: currentChannel.tvgId,
+            channelIndex: m.currentChannelIndex,
+            nowPlaying: GetNowPlayingForChannel(currentChannel, now),
+            isOriginalStream: true
+        }
+        pipChannels.push(pipChannel)
+        m.wasPlayingBeforeMultiview = true
+        
+        ' Resize the video player for multiview mode WITHOUT stopping it
+        m.videoPlayer.translation = [0, 0]
+        m.videoPlayer.width = 1540
+        m.videoPlayer.height = 1080
+        m.videoPlayer.visible = true
+    else
+        m.wasPlayingBeforeMultiview = false
+    end if
+
+    ' Add selected channels
     for each channelIdx in selectedChannels
         if channelIdx >= 0 and channelIdx < m.epgData.channels.count() then
+            ' Skip if it's the current channel (already added)
+            if channelIdx = m.currentChannelIndex then continue for
+            
             channel = m.epgData.channels[channelIdx]
             pipChannel = {
                 title: channel.title,
                 url: channel.url,
                 logo: channel.logo,
                 tvgId: channel.tvgId,
-                nowPlaying: GetNowPlayingForChannel(channel, now)
+                channelIndex: channelIdx,
+                nowPlaying: GetNowPlayingForChannel(channel, now),
+                isOriginalStream: false
             }
             pipChannels.push(pipChannel)
         end if
@@ -124,21 +156,79 @@ sub onLaunchMultiview()
 
     if pipChannels.count() = 0 then return
 
-    m.videoPlayer.visible = false
-    m.videoPlayer.control = "stop"
     hideGuideElements()
+    m.channelMenu.visible = false
 
     m.isMultiviewMode = true
     m.multiviewGrid.visible = true
+    
+    ' CRITICAL: Set these BEFORE setting channels to ensure proper initialization order
+    m.multiviewGrid.originalVideoPlayer = m.videoPlayer
+    m.multiviewGrid.wasPlayingBeforeMultiview = m.wasPlayingBeforeMultiview
+    
+    ' Set channels LAST so when onChannelsChanged fires, the flags are already set
     m.multiviewGrid.channels = pipChannels
+    
     m.multiviewGrid.setFocus(true)
 end sub
 
 sub onPiPVisibleChanged()
     if not m.multiviewGrid.visible and m.isMultiviewMode then
         m.isMultiviewMode = false
-        loadPlaylist()
+        ' Check if we should restore the original video or load playlist
+        if m.multiviewGrid.shouldRestoreVideo then
+            ' Video was already resized by multiview before hiding
+            ' Just set focus
+            m.videoPlayer.setFocus(true)
+            
+            ' Reset flag so next back press works
+            m.wasPlayingBeforeMultiview = false
+        else
+            ' User pressed back again from full screen video, go back to guide
+            m.videoPlayer.control = "stop"
+            m.videoPlayer.visible = false
+            m.videoPlayer.translation = [0, 0]
+            m.videoPlayer.width = 1920
+            m.videoPlayer.height = 1080
+            m.wasPlayingBeforeMultiview = false
+            loadPlaylist()
+        end if
     end if
+end sub
+
+sub onMultiviewChannelSwitch()
+    channelIdx = m.multiviewGrid.switchToChannelIndex
+    if channelIdx < 0 or channelIdx >= m.epgData.channels.count() then
+        return
+    end if
+
+    m.retryAttempts = 0
+    m.currentChannelIndex = channelIdx
+    channel = m.epgData.channels[channelIdx]
+    
+    ' Play channel but keep it in multiview size
+    m.videoPlayer.translation = [0, 0]
+    m.videoPlayer.width = 1540
+    m.videoPlayer.height = 1080
+    m.videoPlayer.visible = true
+    
+    content = createObject("roSGNode", "ContentNode")
+    content.url = channel.url
+    content.streamFormat = "hls"
+    content.addField("preferredBitrate", "integer", false)
+    content.preferredBitrate = 0
+    content.addField("maxBandwidth", "integer", false)
+    content.maxBandwidth = 0
+
+    print "Playing channel: " + content.url
+
+    m.videoPlayer.content = content
+    m.videoPlayer.control = "play"
+    m.videoPlayer.maxVideoDecodeResolution = "1920x1080"
+    m.videoPlayer.enableTrickPlay = false
+    
+    ' Update that we're no longer using the original stream
+    m.wasPlayingBeforeMultiview = false
 end sub
 
 sub updateClock()
@@ -636,6 +726,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     currentTime = dt.AsSeconds()
     currentTimeMs = (currentTime * 1000) + dt.GetMilliseconds()
 
+    ' Let multiview handle its own keys
     if m.isMultiviewMode
         return false
     end if
@@ -650,20 +741,21 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     
     if press
-        if key = "left" and m.videoPlayer.visible
+        if key = "left" and m.videoPlayer.visible and not m.isMultiviewMode
             m.leftButtonPressTime = currentTimeMs
             m.channelMenu.visible = false
             return true
         end if
-        if key = "right" and m.videoPlayer.visible
+        if key = "right" and m.videoPlayer.visible and not m.isMultiviewMode
             m.rightButtonPressTime = currentTimeMs
             showChannelMenu()
             return true
         end if
-        if (key = "up" or key = "down") and m.videoPlayer.visible
+        if (key = "up" or key = "down") and m.videoPlayer.visible and not m.isMultiviewMode
             return true
         end if
-        if key = "back" and m.videoPlayer.visible
+        if key = "back" and m.videoPlayer.visible and not m.isMultiviewMode
+            ' Back button from full screen video - return to guide
             m.isBackgroundPlayback = true
             m.videoPlayer.opacity = 1.0
             m.videoPlayer.visible = true

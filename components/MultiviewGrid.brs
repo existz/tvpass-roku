@@ -1,5 +1,4 @@
 sub init()
-    m.mainVideo = m.top.findNode("mainVideo")
     m.thumbnailContainer = m.top.findNode("thumbnailContainer")
     m.mainChannelLabel = m.top.findNode("mainChannelLabel")
     
@@ -10,6 +9,9 @@ sub init()
     m.currentMainIndex = 0
     m.selectedThumbnailIndex = 0
     m.visibleThumbnailCount = 0
+    m.usingOriginalPlayer = false
+    m.originalVideoPlayer = invalid
+    m.wasPlayingBeforeMultiview = false
 
     ' Pre-compute ALL team logo URLs and colors at startup
     m.teamLogoCache = {}
@@ -33,9 +35,24 @@ sub init()
     
     m.lastMainChannelLabel = ""
     
-    m.mainVideo.observeField("state", "onMainVideoStateChange")
     m.top.observeField("channels", "onChannelsChanged")
     m.top.observeField("visible", "onVisibleChanged")
+    m.top.observeField("originalVideoPlayer", "onOriginalVideoPlayerChanged")
+    m.top.observeField("wasPlayingBeforeMultiview", "onWasPlayingBeforeMultiviewChanged")
+    
+    ' Fields for communicating with MainScene
+    m.top.addField("shouldRestoreVideo", "boolean", false)
+    m.top.addField("switchToChannelIndex", "integer", false)
+    m.top.shouldRestoreVideo = false
+    m.top.switchToChannelIndex = -1
+end sub
+
+sub onOriginalVideoPlayerChanged()
+    m.originalVideoPlayer = m.top.originalVideoPlayer
+end sub
+
+sub onWasPlayingBeforeMultiviewChanged()
+    m.wasPlayingBeforeMultiview = m.top.wasPlayingBeforeMultiview
 end sub
 
 sub precomputeTeamData()
@@ -243,11 +260,12 @@ sub onVisibleChanged()
         if m.channels.count() > 0
             preParseAllMatchups()
             m.selectedThumbnailIndex = 0
-            playMainChannel(0)
+            setupMainChannel(0)
         end if
         m.top.setFocus(true)
     else
-        stopPlayback()
+        ' Clean up when hiding - make sure label is cleared
+        m.mainChannelLabel.text = ""
     end if
 end sub
 
@@ -294,33 +312,44 @@ sub onChannelsChanged()
         else
             channel.cachedTitle = ""
         end if
+        
+        ' Check if this is the original stream
+        if channel.doesExist("isOriginalStream")
+            channel.cachedIsOriginal = channel.isOriginalStream
+        else
+            channel.cachedIsOriginal = false
+        end if
     end for
 
     if m.top.visible
         m.currentMainIndex = 0
         m.selectedThumbnailIndex = 0
-        playMainChannel(0)
+        setupMainChannel(0)
     end if
 end sub
 
-sub playMainChannel(index as Integer)
+sub setupMainChannel(index as Integer)
     if index < 0 or index >= m.channels.count() then return
 
     m.currentMainIndex = index
     channel = m.channels[index]
 
-    content = createObject("roSGNode", "ContentNode")
-    content.url = channel.url
-    content.title = ""
-    content.streamFormat = "hls"
-    content.addField("preferredBitrate", "integer", false)
-    content.preferredBitrate = 0
-    content.addField("maxBandwidth", "integer", false)
-    content.maxBandwidth = 0
+    ' Check if this is the original stream
+    if channel.cachedIsOriginal = true and m.wasPlayingBeforeMultiview = true
+        ' Original stream is already playing and resized - don't do anything
+        m.usingOriginalPlayer = true
+    else
+        ' Tell MainScene to switch to a different channel
+        m.usingOriginalPlayer = false
+        
+        ' Find the actual channel index in the full channel list
+        channelIndex = -1
+        if channel.doesExist("channelIndex")
+            channelIndex = channel.channelIndex
+        end if
 
-    m.mainVideo.content = content
-    m.mainVideo.control = "play"
-    m.mainVideo.maxVideoDecodeResolution = "1920x1080"
+        m.top.switchToChannelIndex = channelIndex
+    end if
 
     labelText = channel.cachedTitle
     if channel.cachedNowPlaying <> invalid and channel.cachedNowPlaying <> ""
@@ -481,15 +510,19 @@ sub swapToThumbnail(thumbIndex as Integer)
     newThumb.borderLeft.opacity = 1
     newThumb.borderRight.opacity = 1
 
-    m.mainVideo.control = "stop"
-    playMainChannel(newChannelIndex)
+    setupMainChannel(newChannelIndex)
 end sub
 
-sub onMainVideoStateChange()
-end sub
-
-sub stopPlayback()
-    m.mainVideo.control = "stop"
+sub restoreOriginalVideo()
+    if m.originalVideoPlayer <> invalid
+        print "MultiviewGrid: Resizing video to full screen"
+        ' Restore original video player to full screen
+        ' Don't touch visibility - it should already be visible
+        m.originalVideoPlayer.translation = [0, 0]
+        m.originalVideoPlayer.width = 1920
+        m.originalVideoPlayer.height = 1080
+        print "MultiviewGrid: Video resized to 1920x1080"
+    end if
 end sub
 
 ' Faster parsing with early exits and cached patterns
@@ -591,6 +624,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
     if key = "back"
+        
+        ' Resize the video BEFORE hiding multiview to avoid black screen
+        restoreOriginalVideo()
+        m.top.shouldRestoreVideo = true
+        ' Hide multiview after resize
         m.top.visible = false
         return true
     else if key = "up"
