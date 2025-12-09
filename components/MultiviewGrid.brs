@@ -624,12 +624,18 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
     if key = "back"
-        
         ' Resize the video BEFORE hiding multiview to avoid black screen
         restoreOriginalVideo()
         m.top.shouldRestoreVideo = true
+
         ' Hide multiview after resize
         m.top.visible = false
+        
+        ' IMPORTANT: Signal MainScene to reset isMultiviewMode immediately
+        ' Using a new field so MainScene can reset the flag right away
+        m.top.addField("exitMultiview", "boolean", true)
+        m.top.exitMultiview = true
+        
         return true
     else if key = "up"
         selectPreviousThumbnail()

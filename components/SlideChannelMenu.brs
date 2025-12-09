@@ -14,6 +14,9 @@ sub init()
     m.top.observeField("channels", "onChannelsChanged")
     m.top.observeField("visible", "onVisibleChanged")
     m.top.observeField("currentChannelIndex", "onCurrentChannelIndexChanged")
+    
+    ' Initialize menuClosed field
+    m.top.menuClosed = false
 end sub
 
 sub onVisibleChanged()
@@ -32,6 +35,9 @@ sub onVisibleChanged()
         
         m.top.setFocus(true)
         m.channelList.setFocus(true)
+    else
+        ' Clear selected channels when menu closes
+        m.selectedChannels = []
     end if
 end sub
 
@@ -177,6 +183,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     currentTimeMs& = (currentTime& * 1000) + dt.GetMilliseconds()
     
     if key = "back"
+        ' Handle both press and release to consume the entire back button event
         if press
             if m.selectedChannels.count() > 0
                 finalChannels = []
@@ -200,13 +207,16 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
                 
                 m.top.launchMultiview = finalChannels
                 m.top.visible = false
+                m.top.menuClosed = true
                 return true
             else
                 m.top.visible = false
+                m.top.menuClosed = true
                 return true
             end if
         end if
-        return false
+        ' Also consume the release event
+        return true
     end if
     
     if press

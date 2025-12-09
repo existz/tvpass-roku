@@ -8,6 +8,7 @@
         <field id="initialChannelIndex" type="integer" />
         <field id="selectedChannel" type="integer" alwaysNotify="true" />
         <field id="launchMultiview" type="array" alwaysNotify="true" />
+        <field id="menuClosed" type="boolean" alwaysNotify="true" />
     </interface>
 
     <!-- Make the menu focusable so it can receive key events -->

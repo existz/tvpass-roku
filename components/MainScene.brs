@@ -84,6 +84,7 @@ sub init()
     m.videoPlayer.observeField("state", "onVideoStateChanged")
     m.channelMenu.observeField("selectedChannel", "onMenuChannelSelected")
     m.channelMenu.observeField("launchMultiview", "onLaunchMultiview")
+    m.channelMenu.observeField("menuClosed", "onMenuClosed")
     m.multiviewGrid.observeField("visible", "onPiPVisibleChanged")
     m.multiviewGrid.observeField("switchToChannelIndex", "onMultiviewChannelSwitch")
 
@@ -103,9 +104,26 @@ sub onFocusChanged()
     end if
 end sub
 
+sub onMenuClosed()
+    if m.isMultiviewMode
+        m.multiviewGrid.setFocus(true)
+    else if m.videoPlayer.visible
+        m.videoPlayer.setFocus(true)
+    end if
+end sub
+
 sub onLaunchMultiview()
     selectedChannels = m.channelMenu.launchMultiview
-    if selectedChannels = invalid or selectedChannels.count() = 0 then return
+    
+    ' Only launch if the menu is actually being hidden with selections
+    if selectedChannels = invalid or selectedChannels.count() = 0 then
+        return
+    end if
+    
+    ' Don't re-launch if already in multiview mode
+    if m.isMultiviewMode then
+        return
+    end if
 
     pipChannels = []
     now = CreateObject("roDateTime").AsSeconds()
@@ -173,8 +191,11 @@ sub onLaunchMultiview()
 end sub
 
 sub onPiPVisibleChanged()
+    
+    ' Only process if multiview grid visibility changed while in multiview mode
     if not m.multiviewGrid.visible and m.isMultiviewMode then
         m.isMultiviewMode = false
+
         ' Check if we should restore the original video or load playlist
         if m.multiviewGrid.shouldRestoreVideo then
             ' Video was already resized by multiview before hiding
@@ -734,27 +755,28 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     if m.channelMenu.visible
         if (key = "back" or key = "left") and press
             m.channelMenu.visible = false
-            m.top.setFocus(true)
+            ' Give focus back to video player
+            m.videoPlayer.setFocus(true)
             return true
         end if
         return false
     end if
     
     if press
-        if key = "left" and m.videoPlayer.visible and not m.isMultiviewMode
+        if key = "left" and m.videoPlayer.visible
             m.leftButtonPressTime = currentTimeMs
             m.channelMenu.visible = false
             return true
         end if
-        if key = "right" and m.videoPlayer.visible and not m.isMultiviewMode
+        if key = "right" and m.videoPlayer.visible
             m.rightButtonPressTime = currentTimeMs
             showChannelMenu()
             return true
         end if
-        if (key = "up" or key = "down") and m.videoPlayer.visible and not m.isMultiviewMode
+        if (key = "up" or key = "down") and m.videoPlayer.visible
             return true
         end if
-        if key = "back" and m.videoPlayer.visible and not m.isMultiviewMode
+        if key = "back" and m.videoPlayer.visible
             ' Back button from full screen video - return to guide
             m.isBackgroundPlayback = true
             m.videoPlayer.opacity = 1.0
