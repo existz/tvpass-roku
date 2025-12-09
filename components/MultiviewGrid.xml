@@ -78,7 +78,7 @@
             translation="[1550,1010]"
             width="360"
             height="60"
-            text="↑↓ Select  OK/→ Swap  Back Exit"
+            text="↑↓ Select  OK/→ Swap"
             font="font:SmallSystemFont"
             color="0xCCCCCCFF"
             horizAlign="center"
