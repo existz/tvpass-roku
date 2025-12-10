@@ -5,6 +5,7 @@
   <script type="text/brightscript" uri="pkg:/source/enums/ColorPalette.brs" />
   <script type="text/brightscript" uri="pkg:/source/enums/URLs.brs" />
   <script type="text/brightscript" uri="pkg:/source/enums/TeamCodes.brs" />
+  <script type="text/brightscript" uri="pkg:/source/enums/Utils.brs" />
 
   <children>
     <!-- Video Player (bottom layer) -->

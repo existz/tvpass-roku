@@ -33,13 +33,14 @@ sub init()
         cbs: "cbs-2-"
     }
     
-    ' Pre-compile sports keywords for faster matching
-    m.sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
+    ' Pre-compile sports keywords for faster matching - use shared function
+    m.sportsKeywords = GetSportsKeywords()
     
     ' Initialize EPG data with forced refresh on startup
     m.epgData = CreateEPGData()
     m.epgData.lastUpdate = 0
-
+    
+    ' Pass EPG data reference to multiview for logo preloading
     m.multiviewGrid.epgData = m.epgData
     
     ' Track state
@@ -687,14 +688,6 @@ sub showError(msg as String)
     m.loadingLabel.visible = true
 end sub
 
-' Use pre-compiled sports keywords
-function IsSportsProgram(title as String) as Boolean
-    for each keyword in m.sportsKeywords
-        if title.Instr(keyword) >= 0 then return true
-    end for
-    return false
-end function
-
 sub showChannelMenu()
     channelsWithInfo = []
     for i = 0 to m.epgData.channels.count() - 1
@@ -722,7 +715,7 @@ sub showChannelMenu()
                 now = CreateObject("roDateTime").AsSeconds()
                 for each prog in programs
                     if prog.startTime <= now and prog.endTime > now
-                        isSportsProgram = IsSportsProgram(prog.title)
+                        isSportsProgram = IsSportsProgram(prog.title, m.sportsKeywords)
                         
                         if isSportsProgram and prog.subTitle <> invalid and prog.subTitle <> ""
                             channelData.programDetails = prog.subTitle
@@ -742,7 +735,7 @@ sub showChannelMenu()
     
     m.channelMenu.currentChannelIndex = m.currentChannelIndex
     m.channelMenu.initialChannelIndex = m.currentChannelIndex
-    m.channelMenu.epgData = m.epgData  ' <-- ADD THIS LINE
+    m.channelMenu.epgData = m.epgData
     m.channelMenu.channels = channelsWithInfo
     m.channelMenu.visible = true
     m.channelMenu.setFocus(true)
@@ -1108,23 +1101,6 @@ function EPGGetNetworkLogoFast(title as String, logoUrls as Object, networkPatte
     return baseUrl + normalized + "-us.png"
 end function
 
-function EPGNormalizeChannelId(id as String) as String
-    if id = invalid then return ""
-    
-    id = id.Trim()
-    
-    if id.StartsWith("channel")
-        return id.Mid(7)
-    end if
-    
-    dotPos = id.Instr(".")
-    if dotPos > 0
-        return Left(id, dotPos - 1)
-    end if
-    
-    return id
-end function
-
 function EPGParseXmltvTime(xmltvTime as String) as LongInteger
     if xmltvTime.Len() < 14 then return 0
     
@@ -1170,18 +1146,6 @@ function EPGGetCurrentProgram(epg as Object, tvgId as String) as String
     return ""
 end function
 
-function EPGGetPrograms(epg as Object, tvgId as String) as Object
-    if tvgId = invalid then return []
-    
-    normalizedId = EPGNormalizeChannelId(tvgId)
-    
-    if epg.programsByChannel.doesExist(normalizedId)
-        return epg.programsByChannel[normalizedId]
-    end if
-    
-    return []
-end function
-
 function GetNowPlayingForChannel(channel as Object, now as Integer) as String
     if channel.tvgId = invalid then return channel.title
 
@@ -1192,7 +1156,7 @@ function GetNowPlayingForChannel(channel as Object, now as Integer) as String
         if prog.startTime <= now and prog.endTime > now then
             programTitle = prog.title
 
-            isSports = IsSportsProgram(programTitle)
+            isSports = IsSportsProgram(programTitle, m.sportsKeywords)
 
             if isSports and prog.subTitle <> invalid and prog.subTitle <> ""
                 return prog.subTitle

@@ -4,6 +4,7 @@
     <!-- Shared enums -->
     <script type="text/brightscript" uri="pkg:/source/enums/TeamCodes.brs" />
     <script type="text/brightscript" uri="pkg:/source/enums/URLs.brs" />
+    <script type="text/brightscript" uri="pkg:/source/enums/Utils.brs" />
 
     <interface>
         <field id="channels" type="array" onChange="onChannelsChanged" />
@@ -17,6 +18,12 @@
 
     <!-- Make the menu focusable so it can receive key events -->
     <children focusable="true">
+        <!-- Hidden container for preloading sports logos -->
+        <Group
+            id="preloadContainer"
+            translation="[-2000,-2000]"
+            visible="false"/>
+
         <!-- Semi-transparent background overlay -->
         <Rectangle
             id="overlay"

@@ -5,8 +5,8 @@ sub init()
     m.programSlots = m.top.findNode("programSlots")
     m.uiColors = GetUIColors()
     
-    ' Pre-compile sports keywords for faster matching
-    m.sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
+    ' Pre-compile sports keywords for faster matching - use shared function
+    m.sportsKeywords = GetSportsKeywords()
     
     setUnfocusedState()
 end sub
@@ -88,7 +88,7 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 slot.color = m.uiColors.BLACK26
                 
                 displayText = program.title
-                isSportsProgram = IsSportsProgram(program.title)
+                isSportsProgram = IsSportsProgram(program.title, m.sportsKeywords)
                 
                 if isSportsProgram and program.subTitle <> invalid and program.subTitle <> ""
                     displayText = program.subTitle
@@ -124,14 +124,6 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
         end if
     end for
 end sub
-
-' Shared sports detection function
-function IsSportsProgram(title as String) as Boolean
-    for each keyword in m.sportsKeywords
-        if title.Instr(keyword) >= 0 then return true
-    end for
-    return false
-end function
 
 sub onFocusPercentChanged()
     fp = m.top.focusPercent

@@ -3,6 +3,7 @@ sub init()
     m.menuBackground = m.top.findNode("menuBackground")
     m.menuTitle = m.top.findNode("menuTitle")
     m.channelList = m.top.findNode("channelList")
+    m.preloadContainer = m.top.findNode("preloadContainer")
     
     ' Multiview state
     m.selectedChannels = []
@@ -11,17 +12,13 @@ sub init()
     m.longPressThreshold = 500
     m.isLongPress = false
     
-    ' Sports detection
-    m.sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
-    m.separatorPatterns = [" vs ", " vs. ", " @ ", " at "]
+    ' Track if we've already preloaded current EPG data
+    m.epgDataPreloaded = false
     
-    ' Team data for preloading
-    m.leagueMaps = {
-        NFL: GetNFLTeams()
-        NBA: GetNBATeams()
-        MLB: GetMLBTeams()
-        NHL: GetNHLTeams()
-    }
+    ' Sports detection - use shared utilities
+    m.sportsKeywords = GetSportsKeywords()
+    m.separatorPatterns = GetSeparatorPatterns()
+    m.leagueMaps = GetLeagueMaps()
     m.logoBaseUrl = GetLogoUrls().TEAM_LOGOS_BASE
     
     m.top.observeField("channels", "onChannelsChanged")
@@ -38,6 +35,12 @@ sub onVisibleChanged()
     if isVisible
         m.selectedChannels = []
         m.isLongPress = false
+        
+        ' Preload sports logos if EPG data arrived before menu opened
+        if m.top.epgData <> invalid and not m.epgDataPreloaded
+            preloadSportsLogosFromEPG(m.top.epgData)
+            m.epgDataPreloaded = true
+        end if
         
         if m.top.currentChannelIndex >= 0 and m.channelList.content <> invalid
             itemCount = m.channelList.content.getChildCount()
@@ -65,103 +68,17 @@ sub onCurrentChannelIndexChanged()
 end sub
 
 sub onEPGDataChanged()
-    ' When EPG data arrives, preload sports logos
+    ' When EPG data arrives, preload sports logos immediately
     epgData = m.top.epgData
     if epgData = invalid or epgData.channels = invalid then return
     
+    ' Reset preload flag since we have new EPG data
+    m.epgDataPreloaded = false
+    
+    ' Preload immediately when EPG data arrives
     preloadSportsLogosFromEPG(epgData)
+    m.epgDataPreloaded = true
 end sub
-
-function IsSportsProgram(title as String) as Boolean
-    for each keyword in m.sportsKeywords
-        if title.Instr(keyword) >= 0 then return true
-    end for
-    return false
-end function
-
-function parseTeamMatchupFast(programTitle as String) as Object
-    if programTitle = invalid or programTitle = "" then return invalid
-    
-    ' Quick check for any separator
-    hasSeparator = false
-    separatorFound = ""
-    for each sep in m.separatorPatterns
-        if programTitle.Instr(sep) >= 0
-            hasSeparator = true
-            separatorFound = sep
-            exit for
-        end if
-    end for
-    
-    if not hasSeparator then return invalid
-    
-    ' Split on found separator
-    teams = programTitle.Split(separatorFound)
-    
-    if teams = invalid or teams.count() < 2 then return invalid
-    
-    team1Name = teams[0].Trim()
-    team2Name = teams[1].Trim()
-    
-    ' Quick parenthesis removal
-    parenPos = team2Name.Instr("(")
-    if parenPos >= 0
-        team2Name = team2Name.Left(parenPos).Trim()
-    end if
-    
-    league = detectLeagueFromTeamsFast(team1Name, team2Name)
-    if league = invalid then return invalid
-    
-    team1Code = getTeamCodeFast(team1Name, league)
-    team2Code = getTeamCodeFast(team2Name, league)
-    
-    if team1Code = invalid or team2Code = invalid then return invalid
-    
-    return {
-        league: league
-        team1: team1Code
-        team2: team2Code
-    }
-end function
-
-function detectLeagueFromTeamsFast(team1 as String, team2 as String) as Dynamic
-    leagues = ["NFL", "NBA", "MLB", "NHL"]
-    
-    for each leagueName in leagues
-        if not m.leagueMaps.doesExist(leagueName) then goto nextLeague
-        
-        teams = m.leagueMaps[leagueName]
-        found1 = false
-        found2 = false
-        
-        for each teamKey in teams
-            if team1.Instr(teamKey) >= 0 then found1 = true
-            if team2.Instr(teamKey) >= 0 then found2 = true
-            if found1 and found2 then return leagueName
-        end for
-        
-        nextLeague:
-    end for
-    
-    return invalid
-end function
-
-function getTeamCodeFast(teamName as String, league as String) as Dynamic
-    if not m.leagueMaps.doesExist(league) then return invalid
-    
-    teams = m.leagueMaps[league]
-    for each key in teams
-        if teamName.Instr(key) >= 0
-            return teams[key]
-        end if
-    end for
-    
-    return invalid
-end function
-
-function getTeamLogoUrlFast(teamCode as String, league as String) as String
-    return m.logoBaseUrl + league + "/" + teamCode + ".png"
-end function
 
 sub preloadSportsLogosFromEPG(epgData as Object)
     ' Collect unique team codes from EPG programs
@@ -177,7 +94,7 @@ sub preloadSportsLogosFromEPG(epgData as Object)
             if program.title = invalid then continue for
             
             ' Check if it's a sports program
-            if not IsSportsProgram(program.title) then continue for
+            if not IsSportsProgram(program.title, m.sportsKeywords) then continue for
             
             ' Use subtitle for sports programs if available
             displayText = program.title
@@ -186,7 +103,7 @@ sub preloadSportsLogosFromEPG(epgData as Object)
             end if
             
             ' Parse matchup
-            matchup = parseTeamMatchupFast(displayText)
+            matchup = ParseTeamMatchupFast(displayText, m.separatorPatterns, m.leagueMaps)
             if matchup <> invalid
                 ' Add both teams to preload list
                 key1 = matchup.league + ":" + matchup.team1
@@ -198,54 +115,27 @@ sub preloadSportsLogosFromEPG(epgData as Object)
     end for
     
     ' Now preload all unique team logos
-    print "SlideChannelMenu: Preloading " + Stri(teamsToPreload.count()) + " sports team logos"
-    
-    for each teamKey in teamsToPreload
-        ' Parse league and team code from key
-        parts = teamKey.Split(":")
-        if parts.count() = 2
-            league = parts[0]
-            teamCode = parts[1]
-            
-            ' Create a hidden poster to trigger download
-            preloadPoster = createObject("roSGNode", "Poster")
-            preloadPoster.uri = getTeamLogoUrlFast(teamCode, league)
-            preloadPoster.loadWidth = 1
-            preloadPoster.loadHeight = 1
-            preloadPoster.visible = false
-            m.channelList.appendChild(preloadPoster)
-        end if
-    end for
+    if teamsToPreload.count() > 0
+        print "SlideChannelMenu: Preloading " + Stri(teamsToPreload.count()) + " sports team logos"
+        
+        for each teamKey in teamsToPreload
+            ' Parse league and team code from key
+            parts = teamKey.Split(":")
+            if parts.count() = 2
+                league = parts[0]
+                teamCode = parts[1]
+                
+                ' Create a hidden poster to trigger download
+                preloadPoster = createObject("roSGNode", "Poster")
+                preloadPoster.uri = GetTeamLogoUrlFast(teamCode, league, m.logoBaseUrl)
+                preloadPoster.loadWidth = 130
+                preloadPoster.loadHeight = 120
+                preloadPoster.visible = false
+                m.preloadContainer.appendChild(preloadPoster)
+            end if
+        end for
+    end if
 end sub
-
-function EPGGetPrograms(epg as Object, tvgId as String) as Object
-    if tvgId = invalid then return []
-    
-    normalizedId = EPGNormalizeChannelId(tvgId)
-    
-    if epg.programsByChannel.doesExist(normalizedId)
-        return epg.programsByChannel[normalizedId]
-    end if
-    
-    return []
-end function
-
-function EPGNormalizeChannelId(id as String) as String
-    if id = invalid then return ""
-    
-    id = id.Trim()
-    
-    if id.StartsWith("channel")
-        return id.Mid(7)
-    end if
-    
-    dotPos = id.Instr(".")
-    if dotPos > 0
-        return Left(id, dotPos - 1)
-    end if
-    
-    return id
-end function
 
 sub onChannelsChanged()
     channels = m.top.channels

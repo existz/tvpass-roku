@@ -1,6 +1,7 @@
 sub init()
     m.thumbnailContainer = m.top.findNode("thumbnailContainer")
     m.mainChannelLabel = m.top.findNode("mainChannelLabel")
+    m.preloadContainer = m.top.findNode("preloadContainer")
     
     m.uiColors = GetUIColors()
     m.thumbnails = []
@@ -16,23 +17,21 @@ sub init()
     ' Pre-compute ALL team logo URLs and colors at startup
     m.teamLogoCache = {}
     m.teamColorCache = {}
-    m.leagueMaps = {
-        NFL: GetNFLTeams()
-        NBA: GetNBATeams()
-        MLB: GetMLBTeams()
-        NHL: GetNHLTeams()
-    }
+    m.leagueMaps = GetLeagueMaps()
     m.colorPalette = GetTeamColorPalette()
     m.logoBaseUrl = GetLogoUrls().TEAM_LOGOS_BASE
     
     ' Pre-compile matchup parsing regex patterns
-    m.separatorPatterns = [" vs ", " vs. ", " @ ", " at "]
+    m.separatorPatterns = GetSeparatorPatterns()
     
     ' Cache for parsed matchups to avoid re-parsing
     m.matchupCache = {}
     
     ' Sports keywords for detection
-    m.sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
+    m.sportsKeywords = GetSportsKeywords()
+    
+    ' Track if we've already preloaded current EPG data
+    m.epgDataPreloaded = false
     
     precomputeTeamData()
     
@@ -64,15 +63,13 @@ sub onEPGDataChanged()
     epgData = m.top.epgData
     if epgData = invalid or epgData.channels = invalid then return
     
+    ' Reset preload flag since we have new EPG data
+    m.epgDataPreloaded = false
+    
+    ' Preload immediately when EPG data arrives
     preloadSportsLogosFromEPG(epgData)
+    m.epgDataPreloaded = true
 end sub
-
-function IsSportsProgram(title as String) as Boolean
-    for each keyword in m.sportsKeywords
-        if title.Instr(keyword) >= 0 then return true
-    end for
-    return false
-end function
 
 sub preloadSportsLogosFromEPG(epgData as Object)
     ' Collect unique team codes from EPG programs
@@ -88,7 +85,7 @@ sub preloadSportsLogosFromEPG(epgData as Object)
             if program.title = invalid then continue for
             
             ' Check if it's a sports program
-            if not IsSportsProgram(program.title) then continue for
+            if not IsSportsProgram(program.title, m.sportsKeywords) then continue for
             
             ' Use subtitle for sports programs if available
             displayText = program.title
@@ -97,7 +94,7 @@ sub preloadSportsLogosFromEPG(epgData as Object)
             end if
             
             ' Parse matchup
-            matchup = parseTeamMatchupFast(displayText)
+            matchup = ParseTeamMatchupFast(displayText, m.separatorPatterns, m.leagueMaps)
             if matchup <> invalid
                 ' Add both teams to preload list
                 key1 = matchup.league + ":" + matchup.team1
@@ -109,54 +106,27 @@ sub preloadSportsLogosFromEPG(epgData as Object)
     end for
     
     ' Now preload all unique team logos
-    print "MultiviewGrid: Preloading " + Stri(teamsToPreload.count()) + " sports team logos"
-    
-    for each teamKey in teamsToPreload
-        ' Parse league and team code from key
-        parts = teamKey.Split(":")
-        if parts.count() = 2
-            league = parts[0]
-            teamCode = parts[1]
-            
-            ' Create a hidden poster to trigger download
-            preloadPoster = createObject("roSGNode", "Poster")
-            preloadPoster.uri = getTeamLogoUrlFast(teamCode, league)
-            preloadPoster.loadWidth = 1
-            preloadPoster.loadHeight = 1
-            preloadPoster.visible = false
-            m.thumbnailContainer.appendChild(preloadPoster)
-        end if
-    end for
+    if teamsToPreload.count() > 0
+        print "MultiviewGrid: Preloading " + Stri(teamsToPreload.count()) + " sports team logos"
+        
+        for each teamKey in teamsToPreload
+            ' Parse league and team code from key
+            parts = teamKey.Split(":")
+            if parts.count() = 2
+                league = parts[0]
+                teamCode = parts[1]
+                
+                ' Create a hidden poster to trigger download
+                preloadPoster = createObject("roSGNode", "Poster")
+                preloadPoster.uri = GetTeamLogoUrlFast(teamCode, league, m.logoBaseUrl)
+                preloadPoster.loadWidth = 130
+                preloadPoster.loadHeight = 120
+                preloadPoster.visible = false
+                m.preloadContainer.appendChild(preloadPoster)
+            end if
+        end for
+    end if
 end sub
-
-function EPGGetPrograms(epg as Object, tvgId as String) as Object
-    if tvgId = invalid then return []
-    
-    normalizedId = EPGNormalizeChannelId(tvgId)
-    
-    if epg.programsByChannel.doesExist(normalizedId)
-        return epg.programsByChannel[normalizedId]
-    end if
-    
-    return []
-end function
-
-function EPGNormalizeChannelId(id as String) as String
-    if id = invalid then return ""
-    
-    id = id.Trim()
-    
-    if id.StartsWith("channel")
-        return id.Mid(7)
-    end if
-    
-    dotPos = id.Instr(".")
-    if dotPos > 0
-        return Left(id, dotPos - 1)
-    end if
-    
-    return id
-end function
 
 sub precomputeTeamData()
     leagues = ["NFL", "NBA", "MLB", "NHL"]
@@ -189,15 +159,15 @@ sub precomputeTeamData()
     end for
 end sub
 
-function getTeamLogoUrlFast(teamCode as String, league as String) as String
+function getCachedTeamLogoUrl(teamCode as String, league as String) as String
     cacheKey = league + ":" + teamCode
     if m.teamLogoCache.doesExist(cacheKey)
         return m.teamLogoCache[cacheKey]
     end if
-    return m.logoBaseUrl + league + "/" + teamCode + ".png"
+    return GetTeamLogoUrlFast(teamCode, league, m.logoBaseUrl)
 end function
 
-function getTeamColorFast(teamCode as String, league as String) as String
+function getCachedTeamColor(teamCode as String, league as String) as String
     cacheKey = league + ":" + teamCode
     if m.teamColorCache.doesExist(cacheKey)
         return m.teamColorCache[cacheKey]
@@ -359,6 +329,12 @@ sub onVisibleChanged()
         m.thumbnails = []
         m.thumbnailChannelIndices = []
         
+        ' Preload sports logos if EPG data arrived before multiview opened
+        if m.top.epgData <> invalid and not m.epgDataPreloaded
+            preloadSportsLogosFromEPG(m.top.epgData)
+            m.epgDataPreloaded = true
+        end if
+        
         ' Pre-parse all channel matchups before displaying
         if m.channels.count() > 0
             preParseAllMatchups()
@@ -372,7 +348,6 @@ sub onVisibleChanged()
     end if
 end sub
 
-' Pre-parse all sports matchups when entering multiview
 sub preParseAllMatchups()
     for i = 0 to m.channels.count() - 1
         channel = m.channels[i]
@@ -384,7 +359,7 @@ sub preParseAllMatchups()
         
         ' Parse and cache immediately
         if not m.matchupCache.doesExist(nowPlaying)
-            matchup = parseTeamMatchupFast(nowPlaying)
+            matchup = ParseTeamMatchupFast(nowPlaying, m.separatorPatterns, m.leagueMaps)
             m.matchupCache[nowPlaying] = matchup
         end if
     end for
@@ -494,7 +469,7 @@ sub updateThumbnails()
             if m.matchupCache.doesExist(nowPlaying)
                 matchup = m.matchupCache[nowPlaying]
             else
-                matchup = parseTeamMatchupFast(nowPlaying)
+                matchup = ParseTeamMatchupFast(nowPlaying, m.separatorPatterns, m.leagueMaps)
                 m.matchupCache[nowPlaying] = matchup
             end if
             
@@ -502,10 +477,10 @@ sub updateThumbnails()
             needsUpdate = (thumb.lastIsSports = invalid or thumb.lastIsSports <> isSports)
             
             if isSports 
-                team1Url = getTeamLogoUrlFast(matchup.team1, matchup.league)
-                team2Url = getTeamLogoUrlFast(matchup.team2, matchup.league)
-                team1Color = getTeamColorFast(matchup.team1, matchup.league)
-                team2Color = getTeamColorFast(matchup.team2, matchup.league)
+                team1Url = getCachedTeamLogoUrl(matchup.team1, matchup.league)
+                team2Url = getCachedTeamLogoUrl(matchup.team2, matchup.league)
+                team1Color = getCachedTeamColor(matchup.team1, matchup.league)
+                team2Color = getCachedTeamColor(matchup.team2, matchup.league)
 
                 ' Batch all updates together to minimize render cycles
                 if team1Color <> thumb.lastTeam1Color or team2Color <> thumb.lastTeam2Color or team1Url <> thumb.lastTeam1LogoUri or team2Url <> thumb.lastTeam2LogoUri or needsUpdate
@@ -628,101 +603,6 @@ sub restoreOriginalVideo()
     end if
 end sub
 
-' Faster parsing with early exits and cached patterns
-function parseTeamMatchupFast(programTitle as String) as Object
-    if programTitle = invalid or programTitle = "" then return invalid
-    
-    ' Quick check for any separator
-    hasSeparator = false
-    separatorFound = ""
-    for each sep in m.separatorPatterns
-        if programTitle.Instr(sep) >= 0
-            hasSeparator = true
-            separatorFound = sep
-            exit for
-        end if
-    end for
-    
-    if not hasSeparator then return invalid
-    
-    ' Split on found separator
-    teams = programTitle.Split(separatorFound)
-    
-    if teams = invalid or teams.count() < 2 then return invalid
-    
-    team1Name = teams[0].Trim()
-    team2Name = teams[1].Trim()
-    
-    ' Quick parenthesis removal
-    parenPos = team2Name.Instr("(")
-    if parenPos >= 0
-        team2Name = team2Name.Left(parenPos).Trim()
-    end if
-    
-    league = detectLeagueFromTeamsFast(team1Name, team2Name)
-    if league = invalid then return invalid
-    
-    team1Code = getTeamCodeFast(team1Name, league)
-    team2Code = getTeamCodeFast(team2Name, league)
-    
-    if team1Code = invalid or team2Code = invalid then return invalid
-    
-    return {
-        league: league
-        team1: team1Code
-        team2: team2Code
-    }
-end function
-
-function detectLeagueFromTeamsFast(team1 as String, team2 as String) as Dynamic
-    leagues = ["NFL", "NBA", "MLB", "NHL"]
-    
-    for each leagueName in leagues
-        if not m.leagueMaps.doesExist(leagueName) then goto nextLeague
-        
-        teams = m.leagueMaps[leagueName]
-        found1 = false
-        found2 = false
-        
-        for each teamKey in teams
-            if team1.Instr(teamKey) >= 0 then found1 = true
-            if team2.Instr(teamKey) >= 0 then found2 = true
-            if found1 and found2 then return leagueName
-        end for
-        
-        nextLeague:
-    end for
-    
-    return invalid
-end function
-
-function getTeamCodeFast(teamName as String, league as String) as Dynamic
-    if not m.leagueMaps.doesExist(league) then return invalid
-    
-    teams = m.leagueMaps[league]
-    for each key in teams
-        if teamName.Instr(key) >= 0
-            return teams[key]
-        end if
-    end for
-    
-    return invalid
-end function
-
-sub selectPreviousThumbnail()
-    if m.selectedThumbnailIndex > 0
-        m.selectedThumbnailIndex = m.selectedThumbnailIndex - 1
-        updateThumbnails()
-    end if
-end sub
-
-sub selectNextThumbnail()
-    if m.selectedThumbnailIndex < m.visibleThumbnailCount - 1
-        m.selectedThumbnailIndex = m.selectedThumbnailIndex + 1
-        updateThumbnails()
-    end if
-end sub
-
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
@@ -741,10 +621,16 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         
         return true
     else if key = "up"
-        selectPreviousThumbnail()
+        if m.selectedThumbnailIndex > 0
+            m.selectedThumbnailIndex = m.selectedThumbnailIndex - 1
+            updateThumbnails()
+        end if
         return true
     else if key = "down"
-        selectNextThumbnail()
+        if m.selectedThumbnailIndex < m.visibleThumbnailCount - 1
+            m.selectedThumbnailIndex = m.selectedThumbnailIndex + 1
+            updateThumbnails()
+        end if
         return true
     else if key = "OK" or key = "right"
         swapToThumbnail(m.selectedThumbnailIndex)

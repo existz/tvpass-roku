@@ -3,6 +3,7 @@
     <script type="text/brightscript" uri="pkg:/components/GuideChannelItem.brs" />
     <!-- Shared enums -->
     <script type="text/brightscript" uri="pkg:/source/enums/ColorPalette.brs" />
+    <script type="text/brightscript" uri="pkg:/source/enums/Utils.brs" />
 
     <interface>
         <field id="itemContent" type="node" onChange="onContentChanged" />
