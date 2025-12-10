@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="SlideChannelMenu" extends="Group">
     <script type="text/brightscript" uri="pkg:/components/SlideChannelMenu.brs" />
+    <!-- Shared enums -->
+    <script type="text/brightscript" uri="pkg:/source/enums/TeamCodes.brs" />
+    <script type="text/brightscript" uri="pkg:/source/enums/URLs.brs" />
 
     <interface>
         <field id="channels" type="array" onChange="onChannelsChanged" />
@@ -9,6 +12,7 @@
         <field id="selectedChannel" type="integer" alwaysNotify="true" />
         <field id="launchMultiview" type="array" alwaysNotify="true" />
         <field id="menuClosed" type="boolean" alwaysNotify="true" />
+        <field id="epgData" type="assocarray" />
     </interface>
 
     <!-- Make the menu focusable so it can receive key events -->

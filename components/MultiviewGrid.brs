@@ -31,6 +31,9 @@ sub init()
     ' Cache for parsed matchups to avoid re-parsing
     m.matchupCache = {}
     
+    ' Sports keywords for detection
+    m.sportsKeywords = ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
+    
     precomputeTeamData()
     
     m.lastMainChannelLabel = ""
@@ -39,6 +42,7 @@ sub init()
     m.top.observeField("visible", "onVisibleChanged")
     m.top.observeField("originalVideoPlayer", "onOriginalVideoPlayerChanged")
     m.top.observeField("wasPlayingBeforeMultiview", "onWasPlayingBeforeMultiviewChanged")
+    m.top.observeField("epgData", "onEPGDataChanged")
     
     ' Fields for communicating with MainScene
     m.top.addField("shouldRestoreVideo", "boolean", false)
@@ -54,6 +58,105 @@ end sub
 sub onWasPlayingBeforeMultiviewChanged()
     m.wasPlayingBeforeMultiview = m.top.wasPlayingBeforeMultiview
 end sub
+
+sub onEPGDataChanged()
+    ' When EPG data arrives, preload sports logos based on actual matchups in EPG
+    epgData = m.top.epgData
+    if epgData = invalid or epgData.channels = invalid then return
+    
+    preloadSportsLogosFromEPG(epgData)
+end sub
+
+function IsSportsProgram(title as String) as Boolean
+    for each keyword in m.sportsKeywords
+        if title.Instr(keyword) >= 0 then return true
+    end for
+    return false
+end function
+
+sub preloadSportsLogosFromEPG(epgData as Object)
+    ' Collect unique team codes from EPG programs
+    teamsToPreload = {}
+    
+    for each channel in epgData.channels
+        if channel.tvgId = invalid then continue for
+        
+        programs = EPGGetPrograms(epgData, channel.tvgId)
+        if programs = invalid then continue for
+        
+        for each program in programs
+            if program.title = invalid then continue for
+            
+            ' Check if it's a sports program
+            if not IsSportsProgram(program.title) then continue for
+            
+            ' Use subtitle for sports programs if available
+            displayText = program.title
+            if program.subTitle <> invalid and program.subTitle <> ""
+                displayText = program.subTitle
+            end if
+            
+            ' Parse matchup
+            matchup = parseTeamMatchupFast(displayText)
+            if matchup <> invalid
+                ' Add both teams to preload list
+                key1 = matchup.league + ":" + matchup.team1
+                key2 = matchup.league + ":" + matchup.team2
+                teamsToPreload[key1] = true
+                teamsToPreload[key2] = true
+            end if
+        end for
+    end for
+    
+    ' Now preload all unique team logos
+    print "MultiviewGrid: Preloading " + Stri(teamsToPreload.count()) + " sports team logos"
+    
+    for each teamKey in teamsToPreload
+        ' Parse league and team code from key
+        parts = teamKey.Split(":")
+        if parts.count() = 2
+            league = parts[0]
+            teamCode = parts[1]
+            
+            ' Create a hidden poster to trigger download
+            preloadPoster = createObject("roSGNode", "Poster")
+            preloadPoster.uri = getTeamLogoUrlFast(teamCode, league)
+            preloadPoster.loadWidth = 1
+            preloadPoster.loadHeight = 1
+            preloadPoster.visible = false
+            m.thumbnailContainer.appendChild(preloadPoster)
+        end if
+    end for
+end sub
+
+function EPGGetPrograms(epg as Object, tvgId as String) as Object
+    if tvgId = invalid then return []
+    
+    normalizedId = EPGNormalizeChannelId(tvgId)
+    
+    if epg.programsByChannel.doesExist(normalizedId)
+        return epg.programsByChannel[normalizedId]
+    end if
+    
+    return []
+end function
+
+function EPGNormalizeChannelId(id as String) as String
+    if id = invalid then return ""
+    
+    id = id.Trim()
+    
+    if id.StartsWith("channel")
+        return id.Mid(7)
+    end if
+    
+    dotPos = id.Instr(".")
+    if dotPos > 0
+        return Left(id, dotPos - 1)
+    end if
+    
+    return id
+end function
 
 sub precomputeTeamData()
     leagues = ["NFL", "NBA", "MLB", "NHL"]

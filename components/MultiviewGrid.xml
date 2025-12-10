@@ -12,6 +12,7 @@
         <field id="wasPlayingBeforeMultiview" type="boolean" />
         <field id="shouldRestoreVideo" type="boolean" />
         <field id="switchToChannelIndex" type="integer" alwaysNotify="true" />
+        <field id="epgData" type="assocarray" />
     </interface>
 
     <children>

@@ -39,6 +39,8 @@ sub init()
     ' Initialize EPG data with forced refresh on startup
     m.epgData = CreateEPGData()
     m.epgData.lastUpdate = 0
+
+    m.multiviewGrid.epgData = m.epgData
     
     ' Track state
     m.isBackgroundPlayback = false
@@ -359,6 +361,9 @@ sub checkPlaylistsComplete()
         m.epgData.channels = m.epgData.playlistData
         m.epgData.isLoading = false
         m.epgData.lastUpdate = CreateObject("roDateTime").AsSeconds()
+        
+        ' Update multiview's EPG data reference for logo preloading
+        m.multiviewGrid.epgData = m.epgData
         
         if m.epgData.channels.count() > 0
             showGuide()
@@ -737,6 +742,7 @@ sub showChannelMenu()
     
     m.channelMenu.currentChannelIndex = m.currentChannelIndex
     m.channelMenu.initialChannelIndex = m.currentChannelIndex
+    m.channelMenu.epgData = m.epgData  ' <-- ADD THIS LINE
     m.channelMenu.channels = channelsWithInfo
     m.channelMenu.visible = true
     m.channelMenu.setFocus(true)
