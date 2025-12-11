@@ -107,6 +107,6 @@ sub onAnimationTick()
 end sub
 
 sub onHideTimer()
-    ' Auto-hide after 5 seconds
+    ' Auto-hide after 10 seconds
     m.top.showOverlay = false
 end sub

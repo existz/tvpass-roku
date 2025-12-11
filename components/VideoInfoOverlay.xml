@@ -17,7 +17,7 @@
             width="1920"
             height="270"
             color="0x000000CC"
-            opacity="0.95"/>
+            opacity="0.98"/>
 
         <!-- Channel Logo (upper right) -->
         <Poster
@@ -51,7 +51,7 @@
             horizAlign="left"
             vertAlign="top"
             font="font:MediumSystemFont"
-            color="0xCCCCCCFF"
+            color="0xFFFFFFFF"
             wrap="true"
             numLines="0"/>
     </children>
