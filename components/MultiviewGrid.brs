@@ -600,23 +600,61 @@ end sub
 sub swapToThumbnail(thumbIndex as Integer)
     if thumbIndex < 0 or thumbIndex >= m.visibleThumbnailCount then return
 
-    newChannelIndex = m.thumbnailChannelIndices[thumbIndex]
-    if newChannelIndex < 0 or newChannelIndex >= m.channels.count() then return
+    ' Get the channel index in the m.channels array that this thumbnail represents
+    newMainChannelIndex = m.thumbnailChannelIndices[thumbIndex]
+    if newMainChannelIndex < 0 or newMainChannelIndex >= m.channels.count() then return
 
+    ' Don't swap if already the main channel
+    if newMainChannelIndex = m.currentMainIndex then
+        return
+    end if
+
+    ' Save the current main and selected channels
+    oldMainChannel = m.channels[m.currentMainIndex]
+    newMainChannel = m.channels[newMainChannelIndex]
+    
+    ' Build new channel order:
+    ' 1. New main channel goes first
+    ' 2. Old main channel goes where the new main was
+    ' 3. Everything else stays in order
+    newChannelOrder = []
+    
+    ' Add new main channel first
+    newChannelOrder.push(newMainChannel)
+    
+    ' Add all other channels, replacing the old position with old main
+    for i = 0 to m.channels.count() - 1
+        if i = m.currentMainIndex then
+            ' Skip old main, we'll add it in the right spot
+            continue for
+        else if i = newMainChannelIndex then
+            ' Replace new main's old position with old main
+            newChannelOrder.push(oldMainChannel)
+        else
+            ' Keep all other channels in order
+            newChannelOrder.push(m.channels[i])
+        end if
+    end for
+    
+    ' Update the channels array
+    m.channels = newChannelOrder
+    
+    ' Clear the selection highlight on the old thumbnail position
     oldThumb = m.thumbnails[m.selectedThumbnailIndex]
     oldThumb.borderTop.opacity = 0
     oldThumb.borderBottom.opacity = 0
     oldThumb.borderLeft.opacity = 0
     oldThumb.borderRight.opacity = 0
     
-    m.selectedThumbnailIndex = thumbIndex
-    newThumb = m.thumbnails[m.selectedThumbnailIndex]
-    newThumb.borderTop.opacity = 1
-    newThumb.borderBottom.opacity = 1
-    newThumb.borderLeft.opacity = 1
-    newThumb.borderRight.opacity = 1
-
-    setupMainChannel(newChannelIndex)
+    ' Keep the selector at the same thumbnail position
+    ' (which now shows the old main channel after the swap)
+    ' Don't change m.selectedThumbnailIndex - it stays at thumbIndex
+    
+    ' The new main is now always at index 0
+    setupMainChannel(0)
+    
+    ' Re-apply the border to the same thumbnail position
+    ' (updateThumbnails is called by setupMainChannel, which will set borders)
 end sub
 
 sub restoreOriginalVideo()
