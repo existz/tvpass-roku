@@ -175,7 +175,15 @@ sub onChannelsChanged()
             item.addField("programDetails", "string", false)
             item.programDetails = "Unavailable"
         end if
-        
+
+        if channel.isSports <> invalid
+            item.addField("isSports", "boolean", false)
+            item.isSports = channel.isSports
+        else
+            item.addField("isSports", "boolean", false)
+            item.isSports = false
+        end if
+
         item.addField("channelIndex", "integer", false)
         item.channelIndex = i
         

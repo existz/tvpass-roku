@@ -41,12 +41,24 @@ sub onContentChanged()
             m.logo.visible = false
         end if
         
-        if content.doesExist("nowPlaying") and content.nowPlaying <> invalid and content.nowPlaying <> ""
-            m.programTitle.text = content.nowPlaying
-        else if content.title <> invalid
-            m.programTitle.text = content.title
+        if content.doesExist("isSports") and content.isSports
+            if content.doesExist("programDetails") and content.programDetails <> invalid and content.programDetails <> ""
+                m.programTitle.text = content.programDetails
+            else if content.doesExist("nowPlaying") and content.nowPlaying <> invalid and content.nowPlaying <> ""
+                m.programTitle.text = content.nowPlaying
+            else if content.title <> invalid
+                m.programTitle.text = content.title
+            else
+                m.programTitle.text = ""
+            end if
         else
-            m.programTitle.text = ""
+            if content.doesExist("nowPlaying") and content.nowPlaying <> invalid and content.nowPlaying <> ""
+                m.programTitle.text = content.nowPlaying
+            else if content.title <> invalid
+                m.programTitle.text = content.title
+            else
+                m.programTitle.text = ""
+            end if
         end if
         
         if content.doesExist("isSelected") and content.isSelected <> invalid

@@ -19,6 +19,7 @@ sub init()
     m.allChannelsLabel = m.top.findNode("allChannelsLabel")
     m.timeSlotHeaders = m.top.findNode("timeSlotHeaders")
     m.multiviewGrid = m.top.findNode("multiviewGrid")
+    m.videoInfoOverlay = m.top.findNode("videoInfoOverlay")
     
     ' Initialize UI colors
     m.uiColors = GetUIColors()
@@ -55,6 +56,7 @@ sub init()
     m.longPressThreshold = 500
     m.leftButtonPressTime = 0
     m.rightButtonPressTime = 0
+    m.upButtonPressTime = 0
     
     ' Retry logic
     m.retryAttempts = 0
@@ -181,6 +183,7 @@ sub onLaunchMultiview()
 
     hideGuideElements()
     m.channelMenu.visible = false
+    m.videoInfoOverlay.showOverlay = false
 
     m.isMultiviewMode = true
     m.multiviewGrid.visible = true
@@ -572,6 +575,7 @@ sub playChannel(channel as Object)
     m.videoPlayer.opacity = 1.0
     m.videoPlayer.visible = true
     m.videoOverlay.visible = false
+    m.videoInfoOverlay.showOverlay = false
     hideGuideElements()
     content = createObject("roSGNode", "ContentNode")
     content.url = channel.url
@@ -588,6 +592,53 @@ sub playChannel(channel as Object)
     m.videoPlayer.maxVideoDecodeResolution = "1920x1080"
     m.videoPlayer.enableTrickPlay = false
     m.videoPlayer.setFocus(true)
+
+    ' Update overlay data
+    updateVideoOverlay()
+end sub
+
+sub updateVideoOverlay()
+    if m.currentChannelIndex < 0 or m.currentChannelIndex >= m.epgData.channels.count() then return
+
+    channel = m.epgData.channels[m.currentChannelIndex]
+    now = CreateObject("roDateTime").AsSeconds()
+
+    overlayData = {
+        channelNumber: m.currentChannelIndex + 1
+        logo: channel.logo
+        title: channel.title
+        nowPlaying: ""
+        programDetails: ""
+    }
+
+    if channel.tvgId <> invalid
+        currentProgram = EPGGetCurrentProgram(m.epgData, channel.tvgId)
+        if currentProgram <> ""
+            overlayData.nowPlaying = currentProgram
+        else
+            overlayData.nowPlaying = channel.title
+        end if
+
+        programs = EPGGetPrograms(m.epgData, channel.tvgId)
+        if programs.count() > 0
+            for each prog in programs
+                if prog.startTime <= now and prog.endTime > now
+                    isSportsProgram = IsSportsProgram(prog.title, m.sportsKeywords)
+
+                    if isSportsProgram and prog.subTitle <> invalid and prog.subTitle <> ""
+                        overlayData.programDetails = prog.subTitle
+                    else if prog.description <> invalid and prog.description <> ""
+                        overlayData.programDetails = prog.description
+                    end if
+                    exit for
+                end if
+            end for
+        end if
+    else
+        overlayData.nowPlaying = channel.title
+    end if
+
+    m.videoInfoOverlay.channelData = overlayData
 end sub
 
 sub onVideoStateChanged()
@@ -721,6 +772,7 @@ sub showChannelMenu()
             channelNumber: i + 1
             nowPlaying: ""
             programDetails: ""
+            isSports: false
         }
         
         if channel.tvgId <> invalid
@@ -737,6 +789,7 @@ sub showChannelMenu()
                 for each prog in programs
                     if prog.startTime <= now and prog.endTime > now
                         isSportsProgram = IsSportsProgram(prog.title, m.sportsKeywords)
+                        channelData.isSports = isSportsProgram
                         
                         if isSportsProgram and prog.subTitle <> invalid and prog.subTitle <> ""
                             channelData.programDetails = prog.subTitle
@@ -783,6 +836,17 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
     
     if press
+        if key = "up" and m.videoPlayer.visible and not m.channelMenu.visible
+            ' Show video info overlay
+            m.upButtonPressTime = currentTimeMs
+            m.videoInfoOverlay.showOverlay = true
+            return true
+        end if
+        if key = "down" and m.videoPlayer.visible and not m.channelMenu.visible
+            ' Close video info overlay
+            m.videoInfoOverlay.showOverlay = false
+            return true
+        end if
         if key = "left" and m.videoPlayer.visible
             m.leftButtonPressTime = currentTimeMs
             m.channelMenu.visible = false
@@ -793,15 +857,13 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             showChannelMenu()
             return true
         end if
-        if (key = "up" or key = "down") and m.videoPlayer.visible
-            return true
-        end if
         if key = "back" and m.videoPlayer.visible
             ' Back button from full screen video - return to guide
             m.isBackgroundPlayback = true
             m.videoPlayer.opacity = 1.0
             m.videoPlayer.visible = true
             m.videoOverlay.visible = true
+            m.videoInfoOverlay.showOverlay = false
             showGuideElements()
             loadPlaylist()
             return true

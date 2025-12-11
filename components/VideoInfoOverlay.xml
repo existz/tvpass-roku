@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="VideoInfoOverlay" extends="Group">
+    <script type="text/brightscript" uri="pkg:/components/VideoInfoOverlay.brs" />
+    <!-- Shared enums -->
+    <script type="text/brightscript" uri="pkg:/source/enums/ColorPalette.brs" />
+
+    <interface>
+        <field id="channelData" type="assocarray" />
+        <field id="showOverlay" type="boolean" alwaysNotify="true" />
+    </interface>
+
+    <children>
+        <!-- Semi-transparent background -->
+        <Rectangle
+            id="background"
+            translation="[0,-270]"
+            width="1920"
+            height="270"
+            color="0x000000CC"
+            opacity="0.95"/>
+
+        <!-- Channel Logo (upper right) -->
+        <Poster
+            id="channelLogo"
+            translation="[1700,-220]"
+            loadWidth="150"
+            loadHeight="100"
+            width="150"
+            height="100"
+            loadDisplayMode="scaleToFit"
+            failedBitmapUri=""/>
+
+        <!-- Now Playing (upper left) -->
+        <Label
+            id="nowPlaying"
+            translation="[60,-230]"
+            width="1400"
+            height="60"
+            horizAlign="left"
+            vertAlign="center"
+            font="font:LargeBoldSystemFont"
+            color="0xFFFFFFFF"
+            wrap="false"/>
+
+        <!-- Program Details (below now playing) -->
+        <Label
+            id="programDetails"
+            translation="[60,-160]"
+            width="1400"
+            height="140"
+            horizAlign="left"
+            vertAlign="top"
+            font="font:MediumSystemFont"
+            color="0xCCCCCCFF"
+            wrap="true"
+            numLines="0"/>
+    </children>
+</component>

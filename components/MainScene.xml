@@ -17,6 +17,11 @@
         height="1080"
         opacity="1.0"/>
 
+    <!-- Video Info Overlay -->
+    <VideoInfoOverlay
+        id="videoInfoOverlay"
+        translation="[0,0]"/>
+
     <!-- Multiview Grid -->
     <MultiviewGrid
         id="multiviewGrid"
