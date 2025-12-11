@@ -224,28 +224,21 @@ sub onMultiviewChannelSwitch()
     
     ' Special case: -999 means it's the original stream channel
     if channelIdx = -999
-        print "MultiviewChannelSwitch: Original stream selected"
         
         ' Only keep using the original player if we haven't switched away yet
         if not m.hasSwitchedFromOriginal and m.wasPlayingBeforeMultiview
-            print "MultiviewChannelSwitch: Keeping original player (never switched away)"
             m.videoPlayer.setFocus(true)
             return
         else
-            print "MultiviewChannelSwitch: Reloading original stream (was switched away)"
             ' We've switched away before, so reload like any other channel
             ' Get the original channel index from multiview grid
             channelIdx = m.multiviewGrid.originalChannelIndex
-            print "MultiviewChannelSwitch: Original channel index is " + Stri(channelIdx)
         end if
     end if
     
     if channelIdx < 0 or channelIdx >= m.epgData.channels.count() then
-        print "MultiviewChannelSwitch: Invalid channel index: " + Stri(channelIdx)
         return
     end if
-
-    print "MultiviewChannelSwitch: Switching to channel " + Stri(channelIdx)
 
     ' Mark that we've switched away from original
     m.hasSwitchedFromOriginal = true
