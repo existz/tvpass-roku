@@ -3,7 +3,6 @@ sub init()
     m.logo = m.top.findNode("logo")
     m.channelNumber = m.top.findNode("channelNumber")
     m.programTitle = m.top.findNode("programTitle")
-    m.programDetails = m.top.findNode("programDetails")
     m.selectionIndicator = m.top.findNode("selectionIndicator")
     m.selectionIndicator.visible = false
     m.uiColors = GetUIColors()
@@ -28,6 +27,8 @@ sub onContentChanged()
     if content <> invalid
         if content.doesExist("channelNumber") and content.channelNumber <> invalid
             m.channelNumber.horizAlign = "center"
+            m.channelNumber.vertAlign = "center"
+            m.channelNumber.font.size = 32
             m.channelNumber.text = str(content.channelNumber)
         else
             m.channelNumber.text = ""
@@ -48,13 +49,6 @@ sub onContentChanged()
             m.programTitle.text = ""
         end if
         
-        if content.doesExist("programDetails") and content.programDetails <> invalid and content.programDetails <> ""
-            m.programDetails.text = content.programDetails
-            m.programDetails.font.size = 28
-        else
-            m.programDetails.text = ""
-        end if
-        
         if content.doesExist("isSelected") and content.isSelected <> invalid
             m.top.isSelected = content.isSelected
             content.observeField("isSelected", "onContentSelectedChanged")
@@ -62,7 +56,6 @@ sub onContentChanged()
     else
         m.channelNumber.text = ""
         m.programTitle.text = ""
-        m.programDetails.text = ""
     end if
     setUnfocusedState()
 end sub
@@ -91,11 +84,9 @@ sub setFocusedState(p as Float)
     
     numColor = interpolateColor(&hCCCCCCFF, &hFFFFFFFF, p)
     titleColor = interpolateColor(&hFFFFFFFF, &hFFFFFFFF, p)
-    detailColor = interpolateColor(&h888888FF, &hCCCCCCFF, p)
     
     m.channelNumber.color = numColor
     m.programTitle.color = titleColor
-    m.programDetails.color = detailColor
 end sub
 
 sub setUnfocusedState()
@@ -104,7 +95,6 @@ sub setUnfocusedState()
     end if
     m.channelNumber.color = m.uiColors.LIGHT_GRAY
     m.programTitle.color = m.uiColors.WHITE
-    m.programDetails.color = m.uiColors.GRAY88
 end sub
 
 function interpolateColor(c1 as Integer, c2 as Integer, t as Float) as String

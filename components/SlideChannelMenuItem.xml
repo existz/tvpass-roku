@@ -16,61 +16,49 @@
             id="background"
             translation="[0,0]"
             width="880"
-            height="120"
+            height="135"
             color="0x2A2A2AFF"/>
 
         <!-- Channel Logo -->
         <Poster
             id="logo"
-            translation="[20,15]"
-            loadWidth="80"
-            loadHeight="70"
-            width="80"
-            height="70"
+            translation="[20,20]"
+            loadWidth="90"
+            loadHeight="79"
+            width="90"
+            height="79"
             loadDisplayMode="scaleToFit"
             failedBitmapUri=""/>
 
         <!-- Channel Number -->
         <Label
             id="channelNumber"
-            translation="[110,30]"
-            width="100"
-            height="40"
+            translation="[120,35]"
+            width="120"
+            height="50"
             horizAlign="right"
             vertAlign="center"
             font="font:MediumBoldSystemFont"
             color="0xCCCCCCFF"/>
 
-        <!-- Program Title (Now Playing) -->
+        <!-- Program Title (Now Playing) - Centered -->
         <Label
             id="programTitle"
-            translation="[240,20]"
+            translation="[260,40]"
             width="600"
-            height="35"
+            height="50"
             horizAlign="left"
             vertAlign="center"
             font="font:MediumBoldSystemFont"
             color="0xFFFFFFFF"
             wrap="false"/>
 
-        <!-- Program Details (Episode/Description) -->
-        <Label
-            id="programDetails"
-            translation="[240,70]"
-            width="600"
-            height="30"
-            horizAlign="left"
-            vertAlign="center"
-            font="font:SmallSystemFont"
-            color="0x888888FF"
-            wrap="false"/>
-
         <!-- Selection Indicator for Multiview -->
         <Rectangle
             id="selectionIndicator"
-            translation="[860,10]"
+            translation="[860,30]"
             width="10"
-            height="100"
+            height="112"
             color="0x00FF00FF"/>
     </children>
 </component>

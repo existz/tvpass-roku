@@ -36,16 +36,16 @@
         <!-- Menu container -->
         <Rectangle
             id="menuBackground"
-            translation="[1040,0]"
-            width="880"
+            translation="[952,0]"
+            width="968"
             height="1080"
             color="0x1A1A1AFF"/>
 
         <!-- Menu header -->
         <Label
             id="menuTitle"
-            translation="[1110,40]"
-            width="780"
+            translation="[1022,40]"
+            width="858"
             height="60"
             text="Channels"
             font="font:LargeBoldSystemFont"
@@ -56,11 +56,11 @@
         <!-- Channel list -->
         <MarkupList
             id="channelList"
-            translation="[1110,120]"
+            translation="[1022,120]"
             itemComponentName="SlideChannelMenuItem"
-            itemSize="[780,120]"
+            itemSize="[858,135]"
             itemSpacing="[0,5]"
-            numRows="8"
+            numRows="7"
             drawFocusFeedback="false"/>
     </children>
 </component>
