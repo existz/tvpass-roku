@@ -603,6 +603,34 @@ sub restoreOriginalVideo()
     end if
 end sub
 
+sub resetMultiviewState()
+    m.channels = []
+    m.thumbnailChannelIndices = []
+    m.selectedThumbnailIndex = 0
+    m.currentMainIndex = 0
+
+    ' Clear thumbnails visually
+    for each thumb in m.thumbnails
+        thumb.background.visible = false
+        thumb.logo.visible = false
+        thumb.team1Background.visible = false
+        thumb.team2Background.visible = false
+        thumb.teamLogo1.visible = false
+        thumb.teamLogo2.visible = false
+        thumb.label.visible = false
+        thumb.borderTop.opacity = 0
+        thumb.borderBottom.opacity = 0
+        thumb.borderLeft.opacity = 0
+        thumb.borderRight.opacity = 0
+    end for
+
+    ' Clear matchup cache
+    m.matchupCache = {}
+
+    ' Reset count
+    m.visibleThumbnailCount = 0
+end sub
+
 function onKeyEvent(key as String, press as Boolean) as Boolean
     if not press then return false
 
@@ -610,6 +638,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         ' Resize the video BEFORE hiding multiview to avoid black screen
         restoreOriginalVideo()
         m.top.shouldRestoreVideo = true
+
+        ' Clear all multiview data so it does not persist
+        resetMultiviewState()
 
         ' Hide multiview after resize
         m.top.visible = false
