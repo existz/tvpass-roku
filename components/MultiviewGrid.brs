@@ -13,6 +13,13 @@ sub init()
     m.usingOriginalPlayer = false
     m.originalVideoPlayer = invalid
     m.wasPlayingBeforeMultiview = false
+    
+    ' Track which channel is actually playing in MainScene
+    m.currentlyPlayingChannelIndex = -1
+    
+    ' Add field for original channel index so MainScene can access it
+    m.top.addField("originalChannelIndex", "integer", false)
+    m.top.originalChannelIndex = -1
 
     ' Pre-compute ALL team logo URLs and colors at startup
     m.teamLogoCache = {}
@@ -397,9 +404,19 @@ sub onChannelsChanged()
         else
             channel.cachedIsOriginal = false
         end if
+        
+        ' Store the channelIndex for tracking
+        if channel.doesExist("channelIndex")
+            channel.cachedChannelIndex = channel.channelIndex
+        else
+            channel.cachedChannelIndex = -1
+        end if
     end for
 
     if m.top.visible
+        ' Reset tracking
+        m.lastMainChannelLabel = ""
+        m.currentlyPlayingChannelIndex = -1
         m.currentMainIndex = 0
         m.selectedThumbnailIndex = 0
         setupMainChannel(0)
@@ -412,31 +429,42 @@ sub setupMainChannel(index as Integer)
     m.currentMainIndex = index
     channel = m.channels[index]
 
-    ' Check if this is the original stream
-    if channel.cachedIsOriginal = true and m.wasPlayingBeforeMultiview = true
-        ' Original stream is already playing and resized - don't do anything
-        m.usingOriginalPlayer = true
-    else
-        ' Tell MainScene to switch to a different channel
-        m.usingOriginalPlayer = false
-        
-        ' Find the actual channel index in the full channel list
-        channelIndex = -1
-        if channel.doesExist("channelIndex")
-            channelIndex = channel.channelIndex
-        end if
-
-        m.top.switchToChannelIndex = channelIndex
-    end if
-
+    ' Always update the label text
     labelText = channel.cachedTitle
     if channel.cachedNowPlaying <> invalid and channel.cachedNowPlaying <> ""
         labelText = channel.cachedNowPlaying
     end if
     
-    if labelText <> m.lastMainChannelLabel
-        m.mainChannelLabel.text = labelText
-        m.lastMainChannelLabel = labelText
+    m.mainChannelLabel.text = labelText
+    m.lastMainChannelLabel = labelText
+
+    ' Determine which channel we're switching to
+    targetChannelIndex = -1
+    if channel.doesExist("channelIndex")
+        targetChannelIndex = channel.channelIndex
+    else if channel.doesExist("cachedChannelIndex")
+        targetChannelIndex = channel.cachedChannelIndex
+    end if
+
+    ' Check if we're already playing this channel
+    if targetChannelIndex = m.currentlyPlayingChannelIndex
+        updateThumbnails()
+        return
+    end if
+
+    ' Check if this is the original stream
+    if channel.cachedIsOriginal = true
+        m.usingOriginalPlayer = true
+        ' Send -999 to indicate original stream, but MainScene will decide
+        ' whether to keep using it or reload based on m.hasSwitchedFromOriginal
+        m.top.switchToChannelIndex = -999
+        ' Store the actual channel index so MainScene can reload if needed
+        m.top.originalChannelIndex = targetChannelIndex
+        m.currentlyPlayingChannelIndex = targetChannelIndex
+    else
+        m.usingOriginalPlayer = false
+        m.top.switchToChannelIndex = targetChannelIndex
+        m.currentlyPlayingChannelIndex = targetChannelIndex
     end if
 
     updateThumbnails()

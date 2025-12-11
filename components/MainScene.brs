@@ -49,6 +49,7 @@ sub init()
     m.lastChannelIndex = 0
     m.isMultiviewMode = false
     m.wasPlayingBeforeMultiview = false
+    m.hasSwitchedFromOriginal = false
     
     ' Long press detection
     m.longPressThreshold = 500
@@ -118,12 +119,10 @@ end sub
 sub onLaunchMultiview()
     selectedChannels = m.channelMenu.launchMultiview
     
-    ' Only launch if the menu is actually being hidden with selections
     if selectedChannels = invalid or selectedChannels.count() = 0 then
         return
     end if
     
-    ' Don't re-launch if already in multiview mode
     if m.isMultiviewMode then
         return
     end if
@@ -146,6 +145,9 @@ sub onLaunchMultiview()
         pipChannels.push(pipChannel)
         m.wasPlayingBeforeMultiview = true
         
+        ' Track that we haven't switched away yet
+        m.hasSwitchedFromOriginal = false
+        
         ' Resize the video player for multiview mode WITHOUT stopping it
         m.videoPlayer.translation = [0, 0]
         m.videoPlayer.width = 1540
@@ -153,12 +155,12 @@ sub onLaunchMultiview()
         m.videoPlayer.visible = true
     else
         m.wasPlayingBeforeMultiview = false
+        m.hasSwitchedFromOriginal = false
     end if
 
     ' Add selected channels
     for each channelIdx in selectedChannels
         if channelIdx >= 0 and channelIdx < m.epgData.channels.count() then
-            ' Skip if it's the current channel (already added)
             if channelIdx = m.currentChannelIndex then continue for
             
             channel = m.epgData.channels[channelIdx]
@@ -183,11 +185,9 @@ sub onLaunchMultiview()
     m.isMultiviewMode = true
     m.multiviewGrid.visible = true
     
-    ' CRITICAL: Set these BEFORE setting channels to ensure proper initialization order
     m.multiviewGrid.originalVideoPlayer = m.videoPlayer
     m.multiviewGrid.wasPlayingBeforeMultiview = m.wasPlayingBeforeMultiview
     
-    ' Set channels LAST so when onChannelsChanged fires, the flags are already set
     m.multiviewGrid.channels = pipChannels
     
     m.multiviewGrid.setFocus(true)
@@ -195,20 +195,13 @@ end sub
 
 sub onPiPVisibleChanged()
     
-    ' Only process if multiview grid visibility changed while in multiview mode
     if not m.multiviewGrid.visible and m.isMultiviewMode then
         m.isMultiviewMode = false
 
-        ' Check if we should restore the original video or load playlist
         if m.multiviewGrid.shouldRestoreVideo then
-            ' Video was already resized by multiview before hiding
-            ' Just set focus
             m.videoPlayer.setFocus(true)
-            
-            ' Reset flag so next back press works
             m.wasPlayingBeforeMultiview = false
         else
-            ' User pressed back again from full screen video, go back to guide
             m.videoPlayer.control = "stop"
             m.videoPlayer.visible = false
             m.videoPlayer.translation = [0, 0]
@@ -217,20 +210,48 @@ sub onPiPVisibleChanged()
             m.wasPlayingBeforeMultiview = false
             loadPlaylist()
         end if
+        
+        ' Reset the switch flag
+        m.hasSwitchedFromOriginal = false
     end if
 end sub
 
 sub onMultiviewChannelSwitch()
     channelIdx = m.multiviewGrid.switchToChannelIndex
+    
+    ' Special case: -999 means it's the original stream channel
+    if channelIdx = -999
+        print "MultiviewChannelSwitch: Original stream selected"
+        
+        ' Only keep using the original player if we haven't switched away yet
+        if not m.hasSwitchedFromOriginal and m.wasPlayingBeforeMultiview
+            print "MultiviewChannelSwitch: Keeping original player (never switched away)"
+            m.videoPlayer.setFocus(true)
+            return
+        else
+            print "MultiviewChannelSwitch: Reloading original stream (was switched away)"
+            ' We've switched away before, so reload like any other channel
+            ' Get the original channel index from multiview grid
+            channelIdx = m.multiviewGrid.originalChannelIndex
+            print "MultiviewChannelSwitch: Original channel index is " + Stri(channelIdx)
+        end if
+    end if
+    
     if channelIdx < 0 or channelIdx >= m.epgData.channels.count() then
+        print "MultiviewChannelSwitch: Invalid channel index: " + Stri(channelIdx)
         return
     end if
+
+    print "MultiviewChannelSwitch: Switching to channel " + Stri(channelIdx)
+
+    ' Mark that we've switched away from original
+    m.hasSwitchedFromOriginal = true
 
     m.retryAttempts = 0
     m.currentChannelIndex = channelIdx
     channel = m.epgData.channels[channelIdx]
     
-    ' Play channel but keep it in multiview size
+    ' Play channel in multiview size
     m.videoPlayer.translation = [0, 0]
     m.videoPlayer.width = 1540
     m.videoPlayer.height = 1080
