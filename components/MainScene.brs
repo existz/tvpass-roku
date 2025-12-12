@@ -393,18 +393,32 @@ end sub
 
 sub createTimeSlotHeaders()
     m.timeSlotHeaders.removeChildrenIndex(m.timeSlotHeaders.getChildCount(), 0)
+    
+    ' Get current time in LOCAL timezone
     now = CreateObject("roDateTime")
+    now.ToLocalTime()
+    
+    ' Get seconds AFTER converting to local time
     currentTime = now.AsSeconds()
-    roundedTime = int(currentTime / 1800) * 1800
+    
+    ' Round down to nearest 30 minutes
+    roundedTime& = int(currentTime / 1800) * 1800
+    
     slotWidth = 517
     
     for i = 0 to 2
-        slotTime = roundedTime + (i * 1800)
+        ' Calculate slot time - explicitly use Long Integer to avoid overflow
+        slotTime& = roundedTime& + (i * 1800)
+        
+        ' Create new DateTime object for this slot
         slotDateTime = CreateObject("roDateTime")
-        slotDateTime.FromSeconds(slotTime)
-        slotDateTime.ToLocalTime()
+        slotDateTime.FromSeconds(slotTime&)
+        ' DON'T call ToLocalTime() here - the seconds are already in local context!
+        
         hours = slotDateTime.GetHours()
         minutes = slotDateTime.GetMinutes()
+        
+        ' Convert to 12-hour format
         displayHour = hours
         ampm = "am"
         if hours >= 12
@@ -414,10 +428,10 @@ sub createTimeSlotHeaders()
             end if
         end if
         if displayHour = 0 then displayHour = 12
-        hourStr = str(displayHour)
-        if left(hourStr, 1) = " " then hourStr = right(hourStr, 1)
-        minuteStr = str(minutes)
-        if left(minuteStr, 1) = " " then minuteStr = right(minuteStr, 1)
+        
+        ' Format time string
+        hourStr = stri(displayHour).Trim()
+        minuteStr = stri(minutes).Trim()
         minuteStr = right("0" + minuteStr, 2)
         timeStr = hourStr + ":" + minuteStr + " " + ampm
         
