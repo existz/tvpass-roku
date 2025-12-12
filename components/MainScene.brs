@@ -803,10 +803,19 @@ sub showChannelMenu()
                         isSportsProgram = IsSportsProgram(prog.title, m.sportsKeywords)
                         channelData.isSports = isSportsProgram
                         
-                        if isSportsProgram and prog.subTitle <> invalid and prog.subTitle <> ""
-                            channelData.programDetails = prog.subTitle
-                        else if prog.description <> invalid and prog.description <> ""
-                            channelData.programDetails = prog.description
+                        if isSportsProgram
+                            ' For sports: nowPlaying = subtitle (matchup), programDetails = description (for overlay)
+                            if prog.subTitle <> invalid and prog.subTitle <> ""
+                                channelData.nowPlaying = prog.subTitle
+                            end if
+                            if prog.description <> invalid and prog.description <> ""
+                                channelData.programDetails = prog.description
+                            end if
+                        else
+                            ' For non-sports: programDetails = description
+                            if prog.description <> invalid and prog.description <> ""
+                                channelData.programDetails = prog.description
+                            end if
                         end if
                         exit for
                     end if
