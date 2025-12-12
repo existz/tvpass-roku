@@ -285,7 +285,12 @@ sub updateClock()
     end if
     if hour = 0 then hour = 12
     
-    timeStr = str(hour) + ":" + right("0" + str(minute), 2) + " " + ampm
+    ' Format hour and minute strings properly
+    hourStr = stri(hour).Trim()
+    minuteStr = stri(minute).Trim()
+    minuteStr = right("0" + minuteStr, 2)  ' Zero-pad minutes to 2 digits
+    
+    timeStr = hourStr + ":" + minuteStr + " " + ampm
     m.currentTimeLabel.text = timeStr
 end sub
 
