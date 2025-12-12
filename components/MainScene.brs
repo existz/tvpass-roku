@@ -1106,24 +1106,68 @@ end function
 
 sub EPGEnrichWithLogosFast(channels as Object, fallbackData as Object, logoUrls as Object, networkPatterns as Object)
     fallbackMap = {}
-    
+    localUrl = logoUrls.TV_LOGOS_LOCAL
+    baseUrl  = logoUrls.TV_LOGOS_BASE
+
+    ' Build fallback map from HD fallback playlist
     if fallbackData <> invalid
         for each ch in fallbackData
-            if ch.tvgId <> invalid and ch.logo <> invalid
+            if ch.tvgId <> invalid and ch.logo <> invalid and ch.logo <> ""
                 fallbackMap[ch.tvgId] = ch.logo
             end if
         end for
     end if
-    
+
     for each channel in channels
-        if channel.logo <> invalid and channel.logo <> "" then continue for
-        
+        title = channel.title
+        lowerTitle = LCase(title)
+
+        ' Force NBC Sports Regional logos
+        if lowerTitle.StartsWith("nbc sports ") or lowerTitle.InStr("nbc sports") > 0
+            regionPart = title.Mid(11).Trim()
+
+            ' Exact matches
+            regionMap = {
+                "boston":        "nbc-sports-boston-us.png",
+                "bay area":      "nbc-sports-bay-area-us.png",
+                "california":    "nbc-sports-california-us.png",
+                "chicago":       "nbc-sports-chicago-us.png",
+                "philadelphia":  "nbc-sports-philadelphia-us.png",
+                "washington":    "nbc-sports-washington-us.png",
+                "northwest":     "nbc-sports-northwest-us.png",
+                "new england":   "nbc-sports-boston-us.png"
+            }
+
+            matched = false
+            for each key in regionMap
+                if Instr(lowerTitle, key) > 0
+                    channel.logo = localUrl + regionMap[key]
+                    matched = true
+                    exit for
+                end if
+            end for
+
+            ' Auto-generate if not in map
+            if not matched
+                clean = regionPart.Replace(" ", "-").Replace("&", "-and-")
+                clean = LCase(clean)
+                clean = clean.RegexReplace("--+", "-")
+                channel.logo = localUrl + "nbc-sports-" + clean + "-us.png"
+            end if
+
+            ' We forced it — skip all other logic
+            continue for
+        end if
+
+        ' Use fallback playlist logo if available
         if channel.tvgId <> invalid and fallbackMap.doesExist(channel.tvgId)
             channel.logo = fallbackMap[channel.tvgId]
             continue for
         end if
-        
-        channel.logo = EPGGenerateLogoUrlFast(channel.title, logoUrls, networkPatterns)
+
+        if channel.logo = invalid or channel.logo = ""
+            channel.logo = EPGGenerateLogoUrlFast(title, logoUrls, networkPatterns)
+        end if
     end for
 end sub
 
