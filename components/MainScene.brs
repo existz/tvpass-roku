@@ -221,6 +221,11 @@ sub onPiPVisibleChanged()
             loadPlaylist()
         end if
 
+        ' Sync guide selection with currently playing channel
+        if m.currentChannelIndex >= 0
+            m.lastChannelIndex = m.currentChannelIndex
+        end if
+
         ' Reset the switch flag
         m.hasSwitchedFromOriginal = false
     end if
@@ -505,10 +510,15 @@ sub showGuide()
 
     m.channelList.content = root
 
-    if m.lastChannelIndex >= 0 and m.lastChannelIndex < m.epgData.channels.count()
-        updateFeaturedProgram(m.lastChannelIndex)
-        m.channelList.jumpToItem = m.lastChannelIndex
-        m.channelList.animateToItem = m.lastChannelIndex
+    restoreIndex = m.currentChannelIndex
+    if restoreIndex < 0 or restoreIndex >= m.epgData.channels.count()
+        restoreIndex = m.lastChannelIndex
+    end if
+
+    if restoreIndex >= 0 and restoreIndex < m.epgData.channels.count()
+        updateFeaturedProgram(restoreIndex)
+        m.channelList.jumpToItem = restoreIndex
+        m.channelList.animateToItem = restoreIndex
     else if m.epgData.channels.count() > 0
         updateFeaturedProgram(0)
     end if
@@ -516,6 +526,7 @@ sub showGuide()
     showGuideElements()
     m.channelList.setFocus(true)
 end sub
+
 
 sub updateFeaturedProgram(index as Integer)
     if index < 0 or index >= m.epgData.channels.count() then return
@@ -962,8 +973,13 @@ sub showChannelMenu()
         channelsWithInfo.push(channelData)
     end for
 
-    m.channelMenu.currentChannelIndex = m.currentChannelIndex
-    m.channelMenu.initialChannelIndex = m.currentChannelIndex
+    restoreIndex = m.currentChannelIndex
+    if restoreIndex < 0 or restoreIndex >= m.epgData.channels.count()
+        restoreIndex = m.lastChannelIndex
+    end if
+
+    m.channelMenu.currentChannelIndex = restoreIndex
+    m.channelMenu.initialChannelIndex = restoreIndex
     m.channelMenu.epgData = m.epgData
     m.channelMenu.channels = channelsWithInfo
     m.channelMenu.visible = true
