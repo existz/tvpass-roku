@@ -6,6 +6,7 @@
   <script type="text/brightscript" uri="pkg:/source/enums/URLs.brs" />
   <script type="text/brightscript" uri="pkg:/source/enums/TeamCodes.brs" />
   <script type="text/brightscript" uri="pkg:/source/enums/Utils.brs" />
+  <script type="text/brightscript" uri="pkg:/source/enums/BitmapCache.brs" />
 
   <children>
     <!-- Video Player (bottom layer) -->
@@ -159,6 +160,12 @@
     <!-- Channel Menu (right side) -->
     <SlideChannelMenu
         id="channelMenu"
+        visible="false"
+        translation="[0,0]"/>
+
+    <!-- Preload Container for BitmapCache -->
+    <Group
+        id="preloadContainer"
         visible="false"
         translation="[0,0]"/>
   </children>

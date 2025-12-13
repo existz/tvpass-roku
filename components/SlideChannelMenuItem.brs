@@ -6,7 +6,7 @@ sub init()
     m.selectionIndicator = m.top.findNode("selectionIndicator")
     m.selectionIndicator.visible = false
     m.uiColors = GetUIColors()
-    
+
     m.top.observeField("isSelected", "onSelectedChanged")
     setUnfocusedState()
 end sub
@@ -33,14 +33,14 @@ sub onContentChanged()
         else
             m.channelNumber.text = ""
         end if
-        
+
         if content.logo <> invalid and content.logo <> ""
             m.logo.uri = content.logo
             m.logo.visible = true
         else
             m.logo.visible = false
         end if
-        
+
         ' For ALL programs (sports and non-sports), show nowPlaying in the menu
         if content.doesExist("nowPlaying") and content.nowPlaying <> invalid and content.nowPlaying <> ""
             m.programTitle.text = content.nowPlaying
@@ -49,7 +49,7 @@ sub onContentChanged()
         else
             m.programTitle.text = ""
         end if
-        
+
         if content.doesExist("isSelected") and content.isSelected <> invalid
             m.top.isSelected = content.isSelected
             content.observeField("isSelected", "onContentSelectedChanged")
@@ -82,10 +82,10 @@ sub setFocusedState(p as Float)
         bg = interpolateColor(&h2A2A2AFF, &h0078D4FF, p)
         m.background.color = bg
     end if
-    
+
     numColor = interpolateColor(&hCCCCCCFF, &hFFFFFFFF, p)
     titleColor = interpolateColor(&hFFFFFFFF, &hFFFFFFFF, p)
-    
+
     m.channelNumber.color = numColor
     m.programTitle.color = titleColor
 end sub

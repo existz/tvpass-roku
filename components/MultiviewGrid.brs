@@ -2,7 +2,7 @@ sub init()
     m.thumbnailContainer = m.top.findNode("thumbnailContainer")
     m.mainChannelLabel = m.top.findNode("mainChannelLabel")
     m.preloadContainer = m.top.findNode("preloadContainer")
-    
+
     m.uiColors = GetUIColors()
     m.thumbnails = []
     m.thumbnailChannelIndices = []
@@ -13,10 +13,10 @@ sub init()
     m.usingOriginalPlayer = false
     m.originalVideoPlayer = invalid
     m.wasPlayingBeforeMultiview = false
-    
+
     ' Track which channel is actually playing in MainScene
     m.currentlyPlayingChannelIndex = -1
-    
+
     ' Add field for original channel index so MainScene can access it
     m.top.addField("originalChannelIndex", "integer", false)
     m.top.originalChannelIndex = -1
@@ -27,30 +27,34 @@ sub init()
     m.leagueMaps = GetLeagueMaps()
     m.colorPalette = GetTeamColorPalette()
     m.logoBaseUrl = GetLogoUrls().TEAM_LOGOS_BASE
-    
+
     ' Pre-compile matchup parsing regex patterns
     m.separatorPatterns = GetSeparatorPatterns()
-    
+
     ' Cache for parsed matchups to avoid re-parsing
     m.matchupCache = {}
-    
+
     ' Sports keywords for detection
     m.sportsKeywords = GetSportsKeywords()
-    
+
     ' Track if we've already preloaded current EPG data
     m.epgDataPreloaded = false
-    
+
+    ' Bitmap cache for image preloading
+    m.bitmapCache = invalid
+
     precomputeTeamData()
-    
+
     m.lastMainChannelLabel = ""
-    
+
     m.top.observeField("channels", "onChannelsChanged")
     m.top.observeField("visible", "onVisibleChanged")
     m.top.observeField("originalVideoPlayer", "onOriginalVideoPlayerChanged")
     m.top.observeField("wasPlayingBeforeMultiview", "onWasPlayingBeforeMultiviewChanged")
     m.top.observeField("epgData", "onEPGDataChanged")
+    m.top.observeField("bitmapCache", "onBitmapCacheChanged")
     m.top.observeField("focusedChild", "onFocusedChildChanged")
-    
+
     ' Fields for communicating with MainScene
     m.top.addField("shouldRestoreVideo", "boolean", false)
     m.top.addField("switchToChannelIndex", "integer", false)
@@ -66,89 +70,83 @@ sub onWasPlayingBeforeMultiviewChanged()
     m.wasPlayingBeforeMultiview = m.top.wasPlayingBeforeMultiview
 end sub
 
+sub onBitmapCacheChanged()
+    m.bitmapCache = m.top.bitmapCache
+end sub
+
 sub onEPGDataChanged()
     ' When EPG data arrives, preload sports logos based on actual matchups in EPG
     epgData = m.top.epgData
     if epgData = invalid or epgData.channels = invalid then return
-    
+
     ' Reset preload flag since we have new EPG data
     m.epgDataPreloaded = false
-    
+
     ' Preload immediately when EPG data arrives
     preloadSportsLogosFromEPG(epgData)
     m.epgDataPreloaded = true
 end sub
 
 sub preloadSportsLogosFromEPG(epgData as Object)
-    ' Collect unique team codes from EPG programs
-    teamsToPreload = {}
-    
+    ' Collect unique team logo URIs from EPG programs
+    teamLogosToPreload = {}
+
     for each channel in epgData.channels
         if channel.tvgId = invalid then continue for
-        
+
         programs = EPGGetPrograms(epgData, channel.tvgId)
         if programs = invalid then continue for
-        
+
         for each program in programs
             if program.title = invalid then continue for
-            
+
             ' Check if it's a sports program
             if not IsSportsProgram(program.title, m.sportsKeywords) then continue for
-            
+
             ' Use subtitle for sports programs if available
             displayText = program.title
             if program.subTitle <> invalid and program.subTitle <> ""
                 displayText = program.subTitle
             end if
-            
+
             ' Parse matchup
             matchup = ParseTeamMatchupFast(displayText, m.separatorPatterns, m.leagueMaps)
             if matchup <> invalid
-                ' Add both teams to preload list
-                key1 = matchup.league + ":" + matchup.team1
-                key2 = matchup.league + ":" + matchup.team2
-                teamsToPreload[key1] = true
-                teamsToPreload[key2] = true
+                ' Collect logo URIs for both teams
+                logoUrl1 = GetTeamLogoUrlFast(matchup.team1, matchup.league, m.logoBaseUrl)
+                logoUrl2 = GetTeamLogoUrlFast(matchup.team2, matchup.league, m.logoBaseUrl)
+
+                if logoUrl1 <> invalid and logoUrl1 <> ""
+                    teamLogosToPreload[logoUrl1] = true
+                end if
+                if logoUrl2 <> invalid and logoUrl2 <> ""
+                    teamLogosToPreload[logoUrl2] = true
+                end if
             end if
         end for
     end for
-    
-    ' Now preload all unique team logos
-    if teamsToPreload.count() > 0
-        for each teamKey in teamsToPreload
-            ' Parse league and team code from key
-            parts = teamKey.Split(":")
-            if parts.count() = 2
-                league = parts[0]
-                teamCode = parts[1]
-                
-                ' Create a hidden poster to trigger download
-                preloadPoster = createObject("roSGNode", "Poster")
-                preloadPoster.uri = GetTeamLogoUrlFast(teamCode, league, m.logoBaseUrl)
-                preloadPoster.loadWidth = 130
-                preloadPoster.loadHeight = 120
-                preloadPoster.visible = false
-                m.preloadContainer.appendChild(preloadPoster)
-            end if
-        end for
+
+    ' Use bitmap cache to preload team logos
+    if m.bitmapCache <> invalid and teamLogosToPreload.count() > 0
+        m.bitmapCache.preload(teamLogosToPreload, m.preloadContainer)
     end if
 end sub
 
 sub precomputeTeamData()
     leagues = ["NFL", "NBA", "MLB", "NHL"]
-    
+
     for each leagueName in leagues
         if not m.leagueMaps.doesExist(leagueName) then goto nextLeague
-        
+
         teams = m.leagueMaps[leagueName]
-        
+
         for each teamName in teams
             teamCode = teams[teamName]
             cacheKey = leagueName + ":" + teamCode
-            
+
             logoUrl = m.logoBaseUrl + leagueName + "/" + teamCode + ".png"
             m.teamLogoCache[cacheKey] = logoUrl
-            
+
             if m.colorPalette.doesExist(leagueName)
                 leagueColors = m.colorPalette[leagueName]
                 if leagueColors.doesExist(teamCode)
@@ -160,7 +158,7 @@ sub precomputeTeamData()
                 m.teamColorCache[cacheKey] = m.uiColors.BLACK26
             end if
         end for
-        
+
         nextLeague:
     end for
 end sub
@@ -189,10 +187,10 @@ end function
 
 function createThumbnail(index as Integer) as Object
     yPos = 10 + (index * 165)
-    
+
     container = createObject("roSGNode", "Group")
     container.translation = [10, yPos]
-    
+
     thumb = {
         index: index
         yPos: yPos
@@ -333,7 +331,7 @@ end function
 sub onFocusedChildChanged()
     ' This fires when focus changes within the multiview component
     focusedChild = m.top.focusedChild
-    
+
     if focusedChild = invalid
         ' Lost focus - try to reclaim it if we're supposed to be visible
         if m.top.visible
@@ -347,20 +345,20 @@ sub onVisibleChanged()
     if m.top.visible
         m.thumbnails = []
         m.thumbnailChannelIndices = []
-        
+
         ' Preload sports logos if EPG data arrived before multiview opened
         if m.top.epgData <> invalid and not m.epgDataPreloaded
             preloadSportsLogosFromEPG(m.top.epgData)
             m.epgDataPreloaded = true
         end if
-        
+
         ' Pre-parse all channel matchups before displaying
         if m.channels.count() > 0
             preParseAllMatchups()
             m.selectedThumbnailIndex = 0
             setupMainChannel(0)
         end if
-        
+
         ' Force focus after everything is set up
         m.top.setFocus(false)  ' Clear any stale focus
         m.top.setFocus(true)   ' Set fresh focus
@@ -373,12 +371,12 @@ end sub
 sub preParseAllMatchups()
     for i = 0 to m.channels.count() - 1
         channel = m.channels[i]
-        
+
         nowPlaying = channel.cachedTitle
         if channel.cachedNowPlaying <> invalid and channel.cachedNowPlaying <> ""
             nowPlaying = channel.cachedNowPlaying
         end if
-        
+
         ' Parse and cache immediately
         if not m.matchupCache.doesExist(nowPlaying)
             matchup = ParseTeamMatchupFast(nowPlaying, m.separatorPatterns, m.leagueMaps)
@@ -394,32 +392,32 @@ sub onChannelsChanged()
     ' Cache channel metadata
     for i = 0 to m.channels.count() - 1
         channel = m.channels[i]
-        
+
         if channel.doesExist("logo") and channel.logo <> invalid
             channel.cachedLogo = channel.logo
         else
             channel.cachedLogo = ""
         end if
-        
+
         if channel.doesExist("nowPlaying") and channel.nowPlaying <> invalid
             channel.cachedNowPlaying = channel.nowPlaying
         else
             channel.cachedNowPlaying = ""
         end if
-        
+
         if channel.doesExist("title") and channel.title <> invalid
             channel.cachedTitle = channel.title
         else
             channel.cachedTitle = ""
         end if
-        
+
         ' Check if this is the original stream
         if channel.doesExist("isOriginalStream")
             channel.cachedIsOriginal = channel.isOriginalStream
         else
             channel.cachedIsOriginal = false
         end if
-        
+
         ' Store the channelIndex for tracking
         if channel.doesExist("channelIndex")
             channel.cachedChannelIndex = channel.channelIndex
@@ -449,7 +447,7 @@ sub setupMainChannel(index as Integer)
     if channel.cachedNowPlaying <> invalid and channel.cachedNowPlaying <> ""
         labelText = channel.cachedNowPlaying
     end if
-    
+
     m.mainChannelLabel.text = labelText
     m.lastMainChannelLabel = labelText
 
@@ -494,7 +492,7 @@ sub updateThumbnails()
             m.thumbnailChannelIndices.push(-1)
         end for
     end if
-    
+
     thumbIndex = 0
 
     for i = 0 to m.channels.count() - 1
@@ -515,11 +513,11 @@ sub updateThumbnails()
                 matchup = ParseTeamMatchupFast(nowPlaying, m.separatorPatterns, m.leagueMaps)
                 m.matchupCache[nowPlaying] = matchup
             end if
-            
+
             isSports = (matchup <> invalid)
             needsUpdate = (thumb.lastIsSports = invalid or thumb.lastIsSports <> isSports)
-            
-            if isSports 
+
+            if isSports
                 team1Url = getCachedTeamLogoUrl(matchup.team1, matchup.league)
                 team2Url = getCachedTeamLogoUrl(matchup.team2, matchup.league)
                 team1Color = getCachedTeamColor(matchup.team1, matchup.league)
@@ -531,7 +529,7 @@ sub updateThumbnails()
                     thumb.team2Background.color = team2Color
                     thumb.teamLogo1.uri = team1Url
                     thumb.teamLogo2.uri = team2Url
-                    
+
                     thumb.lastTeam1Color = team1Color
                     thumb.lastTeam2Color = team2Color
                     thumb.lastTeam1LogoUri = team1Url
@@ -548,7 +546,7 @@ sub updateThumbnails()
                         thumb.logo.uri = ""
                     end if
                     thumb.label.text = nowPlaying
-                    
+
                     thumb.lastLogoUri = logoUrl
                     thumb.lastLabelText = nowPlaying
                     needsUpdate = true
@@ -559,7 +557,7 @@ sub updateThumbnails()
             if needsUpdate or thumb.lastIsSports <> isSports
                 sportsVisible = isSports
                 nonSportsVisible = not isSports
-                
+
                 ' Batch visibility updates
                 thumb.team1Background.visible = sportsVisible
                 thumb.team2Background.visible = sportsVisible
@@ -568,7 +566,7 @@ sub updateThumbnails()
                 thumb.background.visible = nonSportsVisible
                 thumb.logo.visible = nonSportsVisible
                 thumb.label.visible = nonSportsVisible
-                
+
                 thumb.lastIsSports = isSports
             end if
 
@@ -627,16 +625,16 @@ sub swapToThumbnail(thumbIndex as Integer)
     ' Save the current main and selected channels
     oldMainChannel = m.channels[m.currentMainIndex]
     newMainChannel = m.channels[newMainChannelIndex]
-    
+
     ' Build new channel order:
     ' 1. New main channel goes first
     ' 2. Old main channel goes where the new main was
     ' 3. Everything else stays in order
     newChannelOrder = []
-    
+
     ' Add new main channel first
     newChannelOrder.push(newMainChannel)
-    
+
     ' Add all other channels, replacing the old position with old main
     for i = 0 to m.channels.count() - 1
         if i = m.currentMainIndex then
@@ -650,24 +648,24 @@ sub swapToThumbnail(thumbIndex as Integer)
             newChannelOrder.push(m.channels[i])
         end if
     end for
-    
+
     ' Update the channels array
     m.channels = newChannelOrder
-    
+
     ' Clear the selection highlight on the old thumbnail position
     oldThumb = m.thumbnails[m.selectedThumbnailIndex]
     oldThumb.borderTop.opacity = 0
     oldThumb.borderBottom.opacity = 0
     oldThumb.borderLeft.opacity = 0
     oldThumb.borderRight.opacity = 0
-    
+
     ' Keep the selector at the same thumbnail position
     ' (which now shows the old main channel after the swap)
     ' Don't change m.selectedThumbnailIndex - it stays at thumbIndex
-    
+
     ' The new main is now always at index 0
     setupMainChannel(0)
-    
+
     ' Re-apply the border to the same thumbnail position
     ' (updateThumbnails is called by setupMainChannel, which will set borders)
 end sub
@@ -723,12 +721,12 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 
         ' Hide multiview after resize
         m.top.visible = false
-        
+
         ' IMPORTANT: Signal MainScene to reset isMultiviewMode immediately
         ' Using a new field so MainScene can reset the flag right away
         m.top.addField("exitMultiview", "boolean", true)
         m.top.exitMultiview = true
-        
+
         return true
     else if key = "up"
         if m.selectedThumbnailIndex > 0

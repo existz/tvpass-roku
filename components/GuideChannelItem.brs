@@ -4,10 +4,10 @@ sub init()
     m.channelLogo = m.top.findNode("channelLogo")
     m.programSlots = m.top.findNode("programSlots")
     m.uiColors = GetUIColors()
-    
+
     ' Pre-compile sports keywords for faster matching - use shared function
     m.sportsKeywords = GetSportsKeywords()
-    
+
     setUnfocusedState()
 end sub
 
@@ -18,7 +18,7 @@ sub onContentChanged()
             m.channelNumber.text = str(content.channelNumber)
             m.channelNumber.horizAlign = "center"
         end if
-        
+
         if content.logo <> invalid and content.logo <> ""
             m.channelLogo.uri = content.logo
             m.channelLogo.visible = true
@@ -26,7 +26,7 @@ sub onContentChanged()
             m.channelLogo.uri = ""
             m.channelLogo.visible = false
         end if
-        
+
         isLongName = false
         if content.doesExist("isLongChannelName")
             isLongName = content.isLongChannelName
@@ -38,23 +38,23 @@ end sub
 
 sub createProgramSlots(content as Object, isLongName as Boolean)
     m.programSlots.removeChildrenIndex(m.programSlots.getChildCount(), 0)
-    
+
     now = CreateObject("roDateTime")
     currentTime = now.AsSeconds()
-    
+
     windowStartTime = int(currentTime / 1800) * 1800
     windowEndTime = windowStartTime + 5400  ' 1.5 hours
     slotWidth = 517
     totalWidth = slotWidth * 3
-    
+
     ' Pre-calculate time scale factor
     timeScale = totalWidth / 5400.0
-    
+
     programs = []
     if content.programs <> invalid
         programs = content.programs
     end if
-    
+
     if programs.count() = 0 and content.nowPlaying <> invalid and content.nowPlaying <> ""
         syntheticProgram = {
             title: content.nowPlaying,
@@ -63,37 +63,37 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
         }
         programs.push(syntheticProgram)
     end if
-    
+
     for each program in programs
         if program <> invalid and program.title <> invalid
             progStart = program.startTime
             progEnd = program.endTime
-            
+
             if progStart = invalid or progEnd = invalid then goto nextProgram
-            
+
             if progStart < windowEndTime and progEnd > windowStartTime
                 displayStart = progStart
                 displayEnd = progEnd
                 if displayStart < windowStartTime then displayStart = windowStartTime
                 if displayEnd > windowEndTime then displayEnd = windowEndTime
-                
+
                 ' Use pre-calculated time scale
                 offset = (displayStart - windowStartTime) * timeScale
                 width = (displayEnd - displayStart) * timeScale
-                
+
                 slot = createObject("roSGNode", "Rectangle")
                 slot.translation = [offset, 0]
                 slot.width = width
                 slot.height = 75
                 slot.color = m.uiColors.BLACK26
-                
+
                 displayText = program.title
                 isSportsProgram = IsSportsProgram(program.title, m.sportsKeywords)
-                
+
                 if isSportsProgram and program.subTitle <> invalid and program.subTitle <> ""
                     displayText = program.subTitle
                 end if
-                
+
                 label = createObject("roSGNode", "Label")
                 slotHeight = 75
                 labelHeight = 30
@@ -109,17 +109,17 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 label.horizAlign = "left"
                 label.vertAlign = "center"
                 label.wrap = false
-                
+
                 maxChars = int((width / 517.0) * 35)
                 if maxChars < 10 then maxChars = 10
                 if len(displayText) > maxChars
                     label.text = left(displayText, maxChars - 3) + "..."
                 end if
-                
+
                 slot.appendChild(label)
                 m.programSlots.appendChild(slot)
             end if
-            
+
             nextProgram:
         end if
     end for

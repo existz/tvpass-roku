@@ -6,6 +6,7 @@
     <script type="text/brightscript" uri="pkg:/source/enums/URLs.brs" />
     <script type="text/brightscript" uri="pkg:/source/enums/TeamCodes.brs" />
     <script type="text/brightscript" uri="pkg:/source/enums/Utils.brs" />
+    <script type="text/brightscript" uri="pkg:/source/enums/BitmapCache.brs" />
 
     <interface>
         <field id="channels" type="array" />
@@ -14,6 +15,7 @@
         <field id="shouldRestoreVideo" type="boolean" />
         <field id="switchToChannelIndex" type="integer" alwaysNotify="true" />
         <field id="epgData" type="assocarray" />
+        <field id="bitmapCache" type="assocarray" onChange="onBitmapCacheChanged" />
     </interface>
 
     <children>
@@ -32,7 +34,7 @@
             color="0x000000CC"
             opacity="0.8"
             visible="true"/>
-        
+
         <Label
             id="mainChannelLabel"
             translation="[20,10]"
@@ -53,8 +55,8 @@
             color="0x000000CC"
             opacity="0.95"
             visible="true"/>
-        
-        <Group 
+
+        <Group
             id="thumbnailContainer"
             translation="[1540,60]"
             visible="true"/>
@@ -65,7 +67,7 @@
             width="380"
             height="60"
             color="0x0078D4FF"/>
-        
+
         <Label
             translation="[1550,10]"
             width="360"
@@ -75,13 +77,13 @@
             color="0xFFFFFFFF"
             horizAlign="center"
             vertAlign="center"/>
-        
+
         <Rectangle
             translation="[1540,1000]"
             width="380"
             height="80"
             color="0x000000CC"/>
-        
+
         <Label
             translation="[1550,1010]"
             width="360"

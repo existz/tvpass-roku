@@ -20,9 +20,13 @@ sub init()
     m.timeSlotHeaders = m.top.findNode("timeSlotHeaders")
     m.multiviewGrid = m.top.findNode("multiviewGrid")
     m.videoInfoOverlay = m.top.findNode("videoInfoOverlay")
+    m.preloadContainer = m.top.findNode("preloadContainer")
 
     ' Initialize UI colors
     m.uiColors = GetUIColors()
+
+    ' Initialize bitmap cache for image preloading
+    m.bitmapCache = CreateBitmapCache()
 
     ' Pre-load all URL configs once
     m.apiUrls = GetTVPassUrls()
@@ -397,8 +401,17 @@ sub checkPlaylistsComplete()
         m.epgData.isLoading = false
         m.epgData.lastUpdate = CreateObject("roDateTime").AsSeconds()
 
+        ' Preload channel logos into bitmap cache
+        if m.epgData.channels.count() > 0
+            logoUris = m.bitmapCache.collectUrisFromChannels(m.epgData.channels)
+            if logoUris.count() > 0
+                m.bitmapCache.preload(logoUris, m.preloadContainer)
+            end if
+        end if
+
         ' Update multiview's EPG data reference for logo preloading
         m.multiviewGrid.epgData = m.epgData
+        m.multiviewGrid.bitmapCache = m.bitmapCache
 
         if m.epgData.channels.count() > 0
             showGuide()

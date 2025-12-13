@@ -20,7 +20,7 @@ function runTask() as Void
     http.addHeader("Pragma", "no-cache")
     http.addHeader("Expires", "0")
     http.initClientCertificates()
-    
+
     ' Disable any internal caching
     http.EnableFreshConnection(true)
 
