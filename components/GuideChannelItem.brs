@@ -164,7 +164,9 @@ function interpolateColor(c1 as Integer, c2 as Integer, t as Float) as String
     g = g1 + (g2 - g1) * t
     b = b1 + (b2 - b1) * t
 
-    return "0x" + byteToHex(a) + byteToHex(r) + byteToHex(g) + byteToHex(b)
+    ' Use array join instead of concatenation
+    colorParts = ["0x", byteToHex(a), byteToHex(r), byteToHex(g), byteToHex(b)]
+    return colorParts.Join("")
 end function
 
 function byteToHex(b as Integer) as String

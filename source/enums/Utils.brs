@@ -105,7 +105,9 @@ function GetTeamCodeFast(teamName as String, league as String, leagueMaps as Obj
 end function
 
 function GetTeamLogoUrlFast(teamCode as String, league as String, logoBaseUrl as String) as String
-    return logoBaseUrl + league + "/" + teamCode + ".png"
+    ' Use array join for URL construction
+    urlParts = [logoBaseUrl, league, "/", teamCode, ".png"]
+    return urlParts.Join("")
 end function
 
 function EPGGetPrograms(epg as Object, tvgId as String) as Object

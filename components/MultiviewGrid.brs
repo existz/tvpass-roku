@@ -49,6 +49,7 @@ sub init()
     m.top.observeField("originalVideoPlayer", "onOriginalVideoPlayerChanged")
     m.top.observeField("wasPlayingBeforeMultiview", "onWasPlayingBeforeMultiviewChanged")
     m.top.observeField("epgData", "onEPGDataChanged")
+    m.top.observeField("focusedChild", "onFocusedChildChanged")
     
     ' Fields for communicating with MainScene
     m.top.addField("shouldRestoreVideo", "boolean", false)
@@ -114,8 +115,6 @@ sub preloadSportsLogosFromEPG(epgData as Object)
     
     ' Now preload all unique team logos
     if teamsToPreload.count() > 0
-        print "MultiviewGrid: Preloading " + Stri(teamsToPreload.count()) + " sports team logos"
-        
         for each teamKey in teamsToPreload
             ' Parse league and team code from key
             parts = teamKey.Split(":")
@@ -331,6 +330,19 @@ function createThumbnail(index as Integer) as Object
     return thumb
 end function
 
+sub onFocusedChildChanged()
+    ' This fires when focus changes within the multiview component
+    focusedChild = m.top.focusedChild
+    
+    if focusedChild = invalid
+        ' Lost focus - try to reclaim it if we're supposed to be visible
+        if m.top.visible
+            m.top.setFocus(true)
+        end if
+    else
+    end if
+end sub
+
 sub onVisibleChanged()
     if m.top.visible
         m.thumbnails = []
@@ -348,7 +360,10 @@ sub onVisibleChanged()
             m.selectedThumbnailIndex = 0
             setupMainChannel(0)
         end if
-        m.top.setFocus(true)
+        
+        ' Force focus after everything is set up
+        m.top.setFocus(false)  ' Clear any stale focus
+        m.top.setFocus(true)   ' Set fresh focus
     else
         ' Clean up when hiding - make sure label is cleared
         m.mainChannelLabel.text = ""
@@ -659,13 +674,11 @@ end sub
 
 sub restoreOriginalVideo()
     if m.originalVideoPlayer <> invalid
-        print "MultiviewGrid: Resizing video to full screen"
         ' Restore original video player to full screen
         ' Don't touch visibility - it should already be visible
         m.originalVideoPlayer.translation = [0, 0]
         m.originalVideoPlayer.width = 1920
         m.originalVideoPlayer.height = 1080
-        print "MultiviewGrid: Video resized to 1920x1080"
     end if
 end sub
 

@@ -20,30 +20,30 @@ sub init()
     m.timeSlotHeaders = m.top.findNode("timeSlotHeaders")
     m.multiviewGrid = m.top.findNode("multiviewGrid")
     m.videoInfoOverlay = m.top.findNode("videoInfoOverlay")
-    
+
     ' Initialize UI colors
     m.uiColors = GetUIColors()
-    
+
     ' Pre-load all URL configs once
     m.apiUrls = GetTVPassUrls()
     m.logoUrls = GetLogoUrls()
-    
+
     ' Pre-compute network logo mappings
     m.networkLogoPatterns = {
         abc: "abc-7-"
         cbs: "cbs-2-"
     }
-    
+
     ' Pre-compile sports keywords for faster matching - use shared function
     m.sportsKeywords = GetSportsKeywords()
-    
+
     ' Initialize EPG data with forced refresh on startup
     m.epgData = CreateEPGData()
     m.epgData.lastUpdate = 0
-    
+
     ' Pass EPG data reference to multiview for logo preloading
     m.multiviewGrid.epgData = m.epgData
-    
+
     ' Track state
     m.isBackgroundPlayback = false
     m.currentChannelIndex = -1
@@ -51,29 +51,36 @@ sub init()
     m.isMultiviewMode = false
     m.wasPlayingBeforeMultiview = false
     m.hasSwitchedFromOriginal = false
-    
+    m.isRetrying = false
+
     ' Long press detection
     m.longPressThreshold = 500
     m.leftButtonPressTime = 0
     m.rightButtonPressTime = 0
     m.upButtonPressTime = 0
-    
+
     ' Retry logic
     m.retryAttempts = 0
     m.maxRetryAttempts = 10
     m.retryDelay = 2
     m.lastPosition = 0
 
-    ' Pre-create all timers in init() — CRITICAL: Prevents runtime crashes from createChild("Timer")
+    ' Pre-create all timers in init() — Prevents runtime crashes
     m.clockTimer = createObject("roSGNode", "Timer")
     m.clockTimer.repeat = true
     m.clockTimer.duration = 60
     m.clockTimer.observeField("fire", "updateClock")
 
+    ' Create dedicated timers - NEVER reuse timers with different observers
     m.retryTimer = createObject("roSGNode", "Timer")
     m.retryTimer.repeat = false
     m.retryTimer.observeField("fire", "onRetryTimer")
-    
+
+    m.returnToGuideTimer = createObject("roSGNode", "Timer")
+    m.returnToGuideTimer.repeat = false
+    m.returnToGuideTimer.duration = 3
+    m.returnToGuideTimer.observeField("fire", "returnToGuide")
+
     m.bufferingTimer = createObject("roSGNode", "Timer")
     m.bufferingTimer.repeat = false
     m.bufferingTimer.duration = 10
@@ -96,7 +103,7 @@ sub init()
 
     ' App lifecycle observer to clear cache on exit
     m.top.observeField("focusedChild", "onFocusChanged")
-    
+
     m.clockTimer.control = "start"
     updateClock()
     loadPlaylist()
@@ -120,11 +127,11 @@ end sub
 
 sub onLaunchMultiview()
     selectedChannels = m.channelMenu.launchMultiview
-    
+
     if selectedChannels = invalid or selectedChannels.count() = 0 then
         return
     end if
-    
+
     if m.isMultiviewMode then
         return
     end if
@@ -146,10 +153,10 @@ sub onLaunchMultiview()
         }
         pipChannels.push(pipChannel)
         m.wasPlayingBeforeMultiview = true
-        
+
         ' Track that we haven't switched away yet
         m.hasSwitchedFromOriginal = false
-        
+
         ' Resize the video player for multiview mode WITHOUT stopping it
         m.videoPlayer.translation = [0, 0]
         m.videoPlayer.width = 1540
@@ -164,7 +171,7 @@ sub onLaunchMultiview()
     for each channelIdx in selectedChannels
         if channelIdx >= 0 and channelIdx < m.epgData.channels.count() then
             if channelIdx = m.currentChannelIndex then continue for
-            
+
             channel = m.epgData.channels[channelIdx]
             pipChannel = {
                 title: channel.title,
@@ -187,17 +194,17 @@ sub onLaunchMultiview()
 
     m.isMultiviewMode = true
     m.multiviewGrid.visible = true
-    
+
     m.multiviewGrid.originalVideoPlayer = m.videoPlayer
     m.multiviewGrid.wasPlayingBeforeMultiview = m.wasPlayingBeforeMultiview
-    
+
     m.multiviewGrid.channels = pipChannels
-    
+
     m.multiviewGrid.setFocus(true)
 end sub
 
 sub onPiPVisibleChanged()
-    
+
     if not m.multiviewGrid.visible and m.isMultiviewMode then
         m.isMultiviewMode = false
 
@@ -213,7 +220,7 @@ sub onPiPVisibleChanged()
             m.wasPlayingBeforeMultiview = false
             loadPlaylist()
         end if
-        
+
         ' Reset the switch flag
         m.hasSwitchedFromOriginal = false
     end if
@@ -221,10 +228,10 @@ end sub
 
 sub onMultiviewChannelSwitch()
     channelIdx = m.multiviewGrid.switchToChannelIndex
-    
+
     ' Special case: -999 means it's the original stream channel
     if channelIdx = -999
-        
+
         ' Only keep using the original player if we haven't switched away yet
         if not m.hasSwitchedFromOriginal and m.wasPlayingBeforeMultiview
             m.videoPlayer.setFocus(true)
@@ -235,7 +242,7 @@ sub onMultiviewChannelSwitch()
             channelIdx = m.multiviewGrid.originalChannelIndex
         end if
     end if
-    
+
     if channelIdx < 0 or channelIdx >= m.epgData.channels.count() then
         return
     end if
@@ -246,13 +253,13 @@ sub onMultiviewChannelSwitch()
     m.retryAttempts = 0
     m.currentChannelIndex = channelIdx
     channel = m.epgData.channels[channelIdx]
-    
+
     ' Play channel in multiview size
     m.videoPlayer.translation = [0, 0]
     m.videoPlayer.width = 1540
     m.videoPlayer.height = 1080
     m.videoPlayer.visible = true
-    
+
     content = createObject("roSGNode", "ContentNode")
     content.url = channel.url
     content.streamFormat = "hls"
@@ -267,7 +274,7 @@ sub onMultiviewChannelSwitch()
     m.videoPlayer.control = "play"
     m.videoPlayer.maxVideoDecodeResolution = "1920x1080"
     m.videoPlayer.enableTrickPlay = false
-    
+
     ' Update that we're no longer using the original stream
     m.wasPlayingBeforeMultiview = false
 end sub
@@ -278,18 +285,18 @@ sub updateClock()
     hour = now.GetHours()
     minute = now.GetMinutes()
     ampm = "am"
-    
+
     if hour >= 12 then
         ampm = "pm"
         if hour > 12 then hour = hour - 12
     end if
     if hour = 0 then hour = 12
-    
+
     ' Format hour and minute strings properly
     hourStr = stri(hour).Trim()
     minuteStr = stri(minute).Trim()
     minuteStr = right("0" + minuteStr, 2)  ' Zero-pad minutes to 2 digits
-    
+
     timeStr = hourStr + ":" + minuteStr + " " + ampm
     m.currentTimeLabel.text = timeStr
 end sub
@@ -299,33 +306,33 @@ sub loadPlaylist()
         showGuide()
         return
     end if
-    
+
     m.loadingLabel.text = "Loading TV Guide..."
     m.loadingLabel.visible = true
     hideGuideElements()
-    
+
     m.epgData.isLoading = true
     m.epgData.pendingTasks = 3
     m.epgData.playlistData = invalid
     m.epgData.epgData = invalid
     m.epgData.logoFallbackData = invalid
-    
+
     timestamp = CreateObject("roDateTime").AsSeconds().ToStr()
-    
+
     ' Load main playlist
     m.epgData.playlistTask = createObject("roSGNode", "LoadPlaylistTask")
     m.epgData.playlistTask.url = m.apiUrls.TVPASS_PLAYLIST + "?t=" + timestamp
     m.epgData.playlistTask.observeField("response", "onTvpassPlaylistResponse")
     m.epgData.playlistTask.observeField("error", "onPlaylistError")
     m.epgData.playlistTask.control = "RUN"
-    
+
     ' Load EPG XML
     m.epgData.epgTask = createObject("roSGNode", "LoadScheduleTask")
     m.epgData.epgTask.url = m.apiUrls.TVPASS_EPG + "?t=" + timestamp
     m.epgData.epgTask.observeField("response", "onScheduleResponse")
     m.epgData.epgTask.observeField("error", "onScheduleError")
     m.epgData.epgTask.control = "RUN"
-    
+
     ' Load logo fallback
     m.epgData.logoTask = createObject("roSGNode", "LoadPlaylistTask")
     m.epgData.logoTask.url = m.apiUrls.TVPASS_HD_FALLBACK + "?t=" + timestamp
@@ -384,10 +391,10 @@ sub checkPlaylistsComplete()
         m.epgData.channels = m.epgData.playlistData
         m.epgData.isLoading = false
         m.epgData.lastUpdate = CreateObject("roDateTime").AsSeconds()
-        
+
         ' Update multiview's EPG data reference for logo preloading
         m.multiviewGrid.epgData = m.epgData
-        
+
         if m.epgData.channels.count() > 0
             showGuide()
         else
@@ -398,31 +405,31 @@ end sub
 
 sub createTimeSlotHeaders()
     m.timeSlotHeaders.removeChildrenIndex(m.timeSlotHeaders.getChildCount(), 0)
-    
+
     ' Get current time in LOCAL timezone
     now = CreateObject("roDateTime")
     now.ToLocalTime()
-    
+
     ' Get seconds AFTER converting to local time
     currentTime = now.AsSeconds()
-    
+
     ' Round down to nearest 30 minutes
     roundedTime& = int(currentTime / 1800) * 1800
-    
+
     slotWidth = 517
-    
+
     for i = 0 to 2
         ' Calculate slot time - explicitly use Long Integer to avoid overflow
         slotTime& = roundedTime& + (i * 1800)
-        
+
         ' Create new DateTime object for this slot
         slotDateTime = CreateObject("roDateTime")
         slotDateTime.FromSeconds(slotTime&)
         ' DON'T call ToLocalTime() here - the seconds are already in local context!
-        
+
         hours = slotDateTime.GetHours()
         minutes = slotDateTime.GetMinutes()
-        
+
         ' Convert to 12-hour format
         displayHour = hours
         ampm = "am"
@@ -433,13 +440,13 @@ sub createTimeSlotHeaders()
             end if
         end if
         if displayHour = 0 then displayHour = 12
-        
+
         ' Format time string
         hourStr = stri(displayHour).Trim()
         minuteStr = stri(minutes).Trim()
         minuteStr = right("0" + minuteStr, 2)
         timeStr = hourStr + ":" + minuteStr + " " + ampm
-        
+
         timeLabel = createObject("roSGNode", "Label")
         timeLabel.width = slotWidth
         timeLabel.height = 40
@@ -455,7 +462,7 @@ end sub
 sub showGuide()
     m.loadingLabel.visible = false
     createTimeSlotHeaders()
-    
+
     root = createObject("roSGNode", "ContentNode")
     for i = 0 to m.epgData.channels.count() - 1
         channel = m.epgData.channels[i]
@@ -463,7 +470,7 @@ sub showGuide()
         item.addField("channelNumber", "integer", false)
         item.channelNumber = i + 1
         item.addField("isLongChannelName", "boolean", false)
-        
+
         if len(channel.title) > 30
             item.title = "Ch " + Stri(i + 1)
             item.addField("nowPlaying", "string", false)
@@ -479,15 +486,15 @@ sub showGuide()
                 item.nowPlaying = ""
             end if
         end if
-        
+
         item.addField("streamUrl", "string", false)
         item.streamUrl = channel.url
-        
+
         if channel.logo <> invalid and channel.logo <> ""
             item.addField("logo", "string", false)
             item.logo = channel.logo
         end if
-        
+
         item.addField("programs", "array", false)
         if channel.tvgId <> invalid
             item.programs = EPGGetPrograms(m.epgData, channel.tvgId)
@@ -495,9 +502,9 @@ sub showGuide()
             item.programs = []
         end if
     end for
-    
+
     m.channelList.content = root
-    
+
     if m.lastChannelIndex >= 0 and m.lastChannelIndex < m.epgData.channels.count()
         updateFeaturedProgram(m.lastChannelIndex)
         m.channelList.jumpToItem = m.lastChannelIndex
@@ -505,7 +512,7 @@ sub showGuide()
     else if m.epgData.channels.count() > 0
         updateFeaturedProgram(0)
     end if
-    
+
     showGuideElements()
     m.channelList.setFocus(true)
 end sub
@@ -513,13 +520,13 @@ end sub
 sub updateFeaturedProgram(index as Integer)
     if index < 0 or index >= m.epgData.channels.count() then return
     channel = m.epgData.channels[index]
-    
+
     if channel.logo <> invalid and channel.logo <> ""
         m.featuredLogo.uri = channel.logo
     end if
-    
+
     m.featuredTitle.text = channel.title
-    
+
     if channel.tvgId <> invalid
         currentProgram = EPGGetCurrentProgram(m.epgData, channel.tvgId)
         if currentProgram <> ""
@@ -584,11 +591,23 @@ sub onMenuChannelSelected()
 end sub
 
 sub playChannel(channel as Object)
+    print "Playing channel: " + channel.title + " URL: " + channel.url
+
+    ' Stop all timers before starting new playback
+    m.bufferingTimer.control = "stop"
+    m.positionCheckTimer.control = "stop"
+    m.retryTimer.control = "stop"
+    m.returnToGuideTimer.control = "stop"
+
+    ' Reset position tracking
+    m.lastPosition = 0
+
     m.videoPlayer.opacity = 1.0
     m.videoPlayer.visible = true
     m.videoOverlay.visible = false
     m.videoInfoOverlay.showOverlay = false
     hideGuideElements()
+
     content = createObject("roSGNode", "ContentNode")
     content.url = channel.url
     content.streamFormat = "hls"
@@ -596,8 +615,6 @@ sub playChannel(channel as Object)
     content.preferredBitrate = 0
     content.addField("maxBandwidth", "integer", false)
     content.maxBandwidth = 0
-
-    print "Playing channel: " + content.url
 
     m.videoPlayer.content = content
     m.videoPlayer.control = "play"
@@ -657,94 +674,202 @@ sub onVideoStateChanged()
     state = m.videoPlayer.state
     errorCode = m.videoPlayer.errorCode
     hasError = (errorCode <> invalid and errorCode <> 0)
-    
+
+    if state = "error" or hasError or state = "finished" or state = "stopped"
+        msgParts = ["Video state changed: ", state, " errorCode: ", str(errorCode)]
+        print msgParts.Join("")
+    end if
+
     if state = "error" or hasError
+        msgParts = ["Video error detected (code: ", str(errorCode), "). Retry attempt ", str(m.retryAttempts + 1), "/", str(m.maxRetryAttempts)]
+        print msgParts.Join("")
+
+        m.bufferingTimer.control = "stop"
+        m.positionCheckTimer.control = "stop"
+        m.retryTimer.control = "stop"
+        m.returnToGuideTimer.control = "stop"
+
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
             m.retryAttempts = m.retryAttempts + 1
-            m.loadingLabel.text = "Server full, retrying... (" + Stri(m.retryAttempts) + "/" + Stri(m.maxRetryAttempts) + ")"
-            m.loadingLabel.visible = true
-            m.videoPlayer.control = "stop"
+            m.isRetrying = true  ' SET RETRY FLAG
+
+            msgParts = ["Server full, retrying... (", Stri(m.retryAttempts), "/", Stri(m.maxRetryAttempts), ")"]
+            m.loadingLabel.text = msgParts.Join("")
+
+            if not m.isMultiviewMode
+                m.loadingLabel.visible = true
+                m.videoPlayer.control = "stop"
+                m.videoPlayer.visible = false
+            else
+                m.loadingLabel.visible = false
+                m.videoPlayer.control = "stop"
+            end if
+
             m.retryTimer.duration = m.retryDelay
             m.retryTimer.control = "start"
         else
+            msgParts = ["Max retries reached or no channel selected"]
+            print msgParts.Join("")
             m.loadingLabel.text = "Unable to connect - Server full"
-            m.loadingLabel.visible = true
-            m.videoPlayer.control = "stop"
-            m.videoPlayer.visible = false
-            ' Reuse timer
-            m.retryTimer.duration = 3
-            m.retryTimer.unobserveFieldScoped("fire")
-            m.retryTimer.observeFieldScoped("fire", "returnToGuide")
-            m.retryTimer.control = "start"
+
+            if not m.isMultiviewMode
+                m.loadingLabel.visible = true
+                m.videoPlayer.control = "stop"
+                m.videoPlayer.visible = false
+            else
+                m.loadingLabel.visible = false
+                m.videoPlayer.control = "stop"
+            end if
+
+            m.returnToGuideTimer.control = "start"
         end if
         return
     end if
-    
+
     if state = "finished" or state = "stopped"
+        ' Check retry flag first
+        if m.isRetrying
+            return
+        end if
+
+        ' Don't exit multiview on video stop
+        if m.isMultiviewMode
+            return
+        end if
+
+        m.bufferingTimer.control = "stop"
+        m.positionCheckTimer.control = "stop"
+        m.retryTimer.control = "stop"
+        m.returnToGuideTimer.control = "stop"
+
         m.videoPlayer.control = "stop"
         m.videoPlayer.visible = false
         loadPlaylist()
+        return
     end if
-    
+
     if state = "playing"
         m.retryAttempts = 0
+        m.isRetrying = false  ' CLEAR RETRY FLAG on successful playback
+
         m.loadingLabel.visible = false
-        if m.bufferingTimer <> invalid
-            m.bufferingTimer.control = "stop"
-        end if
-        if m.positionCheckTimer = invalid
-            m.lastPosition = m.videoPlayer.position
-            m.positionCheckTimer.control = "start"
+
+        m.bufferingTimer.control = "stop"
+        m.retryTimer.control = "stop"
+        m.returnToGuideTimer.control = "stop"
+
+        m.lastPosition = m.videoPlayer.position
+        m.positionCheckTimer.control = "stop"
+        m.positionCheckTimer.control = "start"
+
+        if m.isMultiviewMode
+            m.multiviewGrid.visible = true
+            m.multiviewGrid.setFocus(false)
+            m.multiviewGrid.setFocus(true)
+            m.videoPlayer.setFocus(false)
         end if
     end if
-    
+
     if state = "buffering"
+        m.bufferingTimer.control = "stop"
         m.bufferingTimer.control = "start"
     end if
 end sub
 
 sub onBufferingTimeout()
+
     if m.videoPlayer.state = "buffering"
-        m.videoPlayer.control = "stop"
-        m.videoPlayer.visible = false
+        msgParts = ["Still buffering after timeout. Retry attempt ", str(m.retryAttempts + 1), "/", str(m.maxRetryAttempts)]
+        print msgParts.Join("")
+
+        m.positionCheckTimer.control = "stop"
+        m.retryTimer.control = "stop"
+        m.returnToGuideTimer.control = "stop"
+
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
             m.retryAttempts = m.retryAttempts + 1
-            m.loadingLabel.text = "Timeout, retrying... (" + Stri(m.retryAttempts) + "/" + Stri(m.maxRetryAttempts) + ")"
-            m.loadingLabel.visible = true
+            m.isRetrying = true  ' SET RETRY FLAG
+
+            msgParts = ["Timeout, retrying... (", Stri(m.retryAttempts), "/", Stri(m.maxRetryAttempts), ")"]
+            m.loadingLabel.text = msgParts.Join("")
+
+            if not m.isMultiviewMode
+                m.loadingLabel.visible = true
+                m.videoPlayer.visible = false
+            else
+                m.loadingLabel.visible = false
+            end if
+
+            m.videoPlayer.control = "stop"
+
             m.retryTimer.duration = m.retryDelay
             m.retryTimer.control = "start"
         else
             m.loadingLabel.text = "Connection timeout"
-            m.loadingLabel.visible = true
-            ' Reuse timer
-            m.retryTimer.duration = 3
-            m.retryTimer.unobserveFieldScoped("fire")
-            m.retryTimer.observeFieldScoped("fire", "returnToGuide")
-            m.retryTimer.control = "start"
+
+            if not m.isMultiviewMode
+                m.loadingLabel.visible = true
+                m.videoPlayer.visible = false
+            else
+                m.loadingLabel.visible = false
+            end if
+
+            m.videoPlayer.control = "stop"
+            m.returnToGuideTimer.control = "start"
         end if
+    else
+        msgParts = ["Buffering timeout fired but state is now: ", m.videoPlayer.state]
+        print msgParts.Join("")
     end if
 end sub
 
 sub onPositionCheck()
     currentPosition = m.videoPlayer.position
+
     if currentPosition = m.lastPosition or currentPosition < 1
-        m.videoPlayer.control = "stop"
-        m.videoPlayer.visible = false
+        msgParts = ["Stream appears stuck at position ", str(currentPosition), ". Retry attempt ", str(m.retryAttempts + 1), "/", str(m.maxRetryAttempts)]
+        print msgParts.Join("")
+
+        m.bufferingTimer.control = "stop"
+        m.retryTimer.control = "stop"
+        m.returnToGuideTimer.control = "stop"
+
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
             m.retryAttempts = m.retryAttempts + 1
-            m.loadingLabel.text = "Server full, retrying... (" + Stri(m.retryAttempts) + "/" + Stri(m.maxRetryAttempts) + ")"
-            m.loadingLabel.visible = true
+            m.isRetrying = true  ' SET RETRY FLAG
+
+            msgParts = ["Server full, retrying... (", Stri(m.retryAttempts), "/", Stri(m.maxRetryAttempts), ")"]
+            m.loadingLabel.text = msgParts.Join("")
+
+            if not m.isMultiviewMode
+                m.loadingLabel.visible = true
+                m.videoPlayer.visible = false
+            else
+                m.loadingLabel.visible = false
+            end if
+
+            m.videoPlayer.control = "stop"
+
             m.retryTimer.duration = m.retryDelay
             m.retryTimer.control = "start"
         else
+            print "Max retries reached"
             m.loadingLabel.text = "Unable to connect"
-            m.loadingLabel.visible = true
-            ' Reuse timer
-            m.retryTimer.duration = 3
-            m.retryTimer.unobserveFieldScoped("fire")
-            m.retryTimer.observeFieldScoped("fire", "returnToGuide")
-            m.retryTimer.control = "start"
+
+            if not m.isMultiviewMode
+                m.loadingLabel.visible = true
+                m.videoPlayer.visible = false
+            else
+                m.loadingLabel.visible = false
+            end if
+
+            m.videoPlayer.control = "stop"
+            m.returnToGuideTimer.control = "start"
         end if
+    else
+        m.lastPosition = currentPosition
+        m.positionCheckTimer.control = "stop"
+        m.positionCheckTimer.control = "start"
     end if
 end sub
 
@@ -752,11 +877,20 @@ sub onRetryTimer()
     if m.currentChannelIndex >= 0 and m.currentChannelIndex < m.epgData.channels.count()
         channel = m.epgData.channels[m.currentChannelIndex]
         playChannel(channel)
+    else
+        returnToGuide()
     end if
 end sub
 
 sub returnToGuide()
+    ' Stop all timers
+    m.bufferingTimer.control = "stop"
+    m.positionCheckTimer.control = "stop"
+    m.retryTimer.control = "stop"
+    m.returnToGuideTimer.control = "stop"
+
     m.loadingLabel.visible = false
+    m.retryAttempts = 0
     loadPlaylist()
 end sub
 
@@ -786,7 +920,7 @@ sub showChannelMenu()
             programDetails: ""
             isSports: false
         }
-        
+
         if channel.tvgId <> invalid
             currentProgram = EPGGetCurrentProgram(m.epgData, channel.tvgId)
             if currentProgram <> ""
@@ -794,7 +928,7 @@ sub showChannelMenu()
             else
                 channelData.nowPlaying = channel.title
             end if
-            
+
             programs = EPGGetPrograms(m.epgData, channel.tvgId)
             if programs.count() > 0
                 now = CreateObject("roDateTime").AsSeconds()
@@ -802,7 +936,7 @@ sub showChannelMenu()
                     if prog.startTime <= now and prog.endTime > now
                         isSportsProgram = IsSportsProgram(prog.title, m.sportsKeywords)
                         channelData.isSports = isSportsProgram
-                        
+
                         if isSportsProgram
                             ' For sports: nowPlaying = subtitle (matchup), programDetails = description (for overlay)
                             if prog.subTitle <> invalid and prog.subTitle <> ""
@@ -824,10 +958,10 @@ sub showChannelMenu()
         else
             channelData.nowPlaying = channel.title
         end if
-        
+
         channelsWithInfo.push(channelData)
     end for
-    
+
     m.channelMenu.currentChannelIndex = m.currentChannelIndex
     m.channelMenu.initialChannelIndex = m.currentChannelIndex
     m.channelMenu.epgData = m.epgData
@@ -841,8 +975,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     currentTime = dt.AsSeconds()
     currentTimeMs = (currentTime * 1000) + dt.GetMilliseconds()
 
-    ' Let multiview handle its own keys
+    ' Let multiview handle its own keys FIRST
     if m.isMultiviewMode
+        ' If in multiview mode, don't let MainScene handle any keys
+        ' MultiviewGrid will handle them all, including back button
         return false
     end if
 
@@ -855,7 +991,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
         return false
     end if
-    
+
     if press
         if key = "up" and m.videoPlayer.visible and not m.channelMenu.visible
             ' Show video info overlay
@@ -971,17 +1107,17 @@ function EPGParsePlaylist(content as String) as Object
     content = content.Replace(chr(13), "").Replace(chr(10)+chr(10), chr(10))
     lines = content.Split(chr(10))
     current = invalid
-    
+
     for each line in lines
         line = line.Trim()
         if line = "" then continue for
-        
+
         if line.StartsWith("#EXTINF:")
             if current <> invalid and current.url <> invalid
                 channels.push(current)
             end if
             current = {}
-            
+
             tvgIdPos = line.Instr("tvg-id=")
             if tvgIdPos > 0
                 tvgIdStart = tvgIdPos + 8
@@ -990,7 +1126,7 @@ function EPGParsePlaylist(content as String) as Object
                     current.tvgId = line.Mid(tvgIdStart, tvgIdEnd - tvgIdStart)
                 end if
             end if
-            
+
             tvgNamePos = line.Instr("tvg-name=")
             if tvgNamePos > 0
                 tvgNameStart = tvgNamePos + 10
@@ -999,14 +1135,14 @@ function EPGParsePlaylist(content as String) as Object
                     current.title = line.Mid(tvgNameStart, tvgNameEnd - tvgNameStart).Trim()
                 end if
             end if
-            
+
             if current.title = invalid or current.title = ""
                 parts = line.Split(",")
                 if parts.count() > 1
                     current.title = parts[parts.count() - 1].Trim()
                 end if
             end if
-            
+
             logoPos = line.Instr("tvg-logo=")
             if logoPos > 0
                 logoStart = logoPos + 10
@@ -1015,7 +1151,7 @@ function EPGParsePlaylist(content as String) as Object
                     current.logo = line.Mid(logoStart, logoEnd - logoStart)
                 end if
             end if
-            
+
         else if not line.StartsWith("#") and current <> invalid
             if line.EndsWith("/sd")
                 current.url = Left(line, Len(line) - 2) + "hd"
@@ -1024,11 +1160,11 @@ function EPGParsePlaylist(content as String) as Object
             end if
         end if
     end for
-    
+
     if current <> invalid and current.url <> invalid
         channels.push(current)
     end if
-    
+
     return channels
 end function
 
@@ -1038,68 +1174,68 @@ function EPGParseXMLOptimized(xmlString as String) as Object
         schedules: {}
         programsByChannel: {}
     }
-    
+
     if xmlString = invalid or xmlString = "" then return result
-    
+
     xml = CreateObject("roXMLElement")
     if not xml.Parse(xmlString) then return result
-    
+
     now = CreateObject("roDateTime")
     currentTime = now.AsSeconds()
     windowStart = currentTime - 7200
     windowEnd = currentTime + 7200
-    
+
     programmes = xml.GetNamedElements("programme")
     if programmes.count() = 0 then return result
-    
+
     for each programme in programmes
         ' Quick time check first before parsing
         startTime = programme@start
         stopTime = programme@stop
-        
+
         if startTime = invalid or stopTime = invalid then continue for
 
         startSec = EPGParseXmltvTime(startTime)
         stopSec = EPGParseXmltvTime(stopTime)
-        
+
         ' Skip if completely outside time window (include programs from 2 hours in the past)
         if startSec > windowEnd or stopSec < windowStart then continue for
-        
+
         ' NOW parse remaining fields
         channel = programme@channel
         if channel = invalid then continue for
-        
+
         normalizedChannel = EPGNormalizeChannelId(channel)
-        
+
         titleNode = programme.GetNamedElements("title")
         if titleNode.Count() = 0 then continue for
-        
+
         programTitle = titleNode[0].GetText()
-        
+
         programDesc = ""
         descNode = programme.GetNamedElements("desc")
         if descNode.Count() > 0
             programDesc = descNode[0].GetText()
         end if
-        
+
         programSubTitle = ""
         subTitleNode = programme.GetNamedElements("sub-title")
         if subTitleNode.Count() > 0
             programSubTitle = subTitleNode[0].GetText()
         end if
-        
+
         if programTitle = "Movie" and programSubTitle <> ""
             programTitle = programSubTitle
         end if
-        
+
         if startSec <= currentTime and stopSec > currentTime
             result.schedules[normalizedChannel] = programTitle
         end if
-        
+
         if not result.programsByChannel.doesExist(normalizedChannel)
             result.programsByChannel[normalizedChannel] = []
         end if
-        
+
         programInfo = {
             title: programTitle
             description: programDesc
@@ -1109,7 +1245,7 @@ function EPGParseXMLOptimized(xmlString as String) as Object
         }
         result.programsByChannel[normalizedChannel].push(programInfo)
     end for
-    
+
     return result
 end function
 
@@ -1200,83 +1336,90 @@ function EPGGetNetworkLogoFast(title as String, logoUrls as Object, networkPatte
             closeParen = title.Instr(")")
             if openParen > 0 and closeParen > openParen
                 callLetters = LCase(title.Mid(openParen + 1, closeParen - openParen - 1))
-                return logoUrls.TV_LOGOS_LOCAL + networkPatterns[key] + callLetters + "-us.png"
+                ' Use array join for URL construction
+                urlParts = [logoUrls.TV_LOGOS_LOCAL, networkPatterns[key], callLetters, "-us.png"]
+                return urlParts.Join("")
             end if
         end if
     end for
-    
+
     ' Chain multiple replacements
     networkName = networkName.Replace(" New York", "").Replace(" Los Angeles", "").Replace(" Chicago", "").Replace(", LA", "").Replace(", NY", "").Replace(", CA", "").Trim()
-    
+
     if networkName = "" then return ""
 
     normalized = networkName.Replace("&", "-and-").Replace(" ", "-").Replace("'", "").Replace(",", "")
     normalized = LCase(normalized)
-    
-    ' Clean up double dashes
-    keepCleaning = true
-    while keepCleaning
-        if normalized.Instr("--") > 0
-            normalized = normalized.Replace("--", "-")
-        else
-            keepCleaning = false
-        end if
+
+    ' Clean up double dashes - more efficient with single pass
+    while normalized.Instr("--") >= 0
+        normalized = normalized.Replace("--", "-")
     end while
-    
-    ' Trim leading numbers/dashes
-    keepTrimming = true
-    while keepTrimming and normalized.Len() > 0
+
+    ' Trim leading numbers/dashes - optimized
+    while normalized.Len() > 0
         firstChar = normalized.Left(1)
         if firstChar = "-" or (firstChar >= "0" and firstChar <= "9")
             normalized = normalized.Mid(1)
         else
-            keepTrimming = false
+            exit while
         end if
     end while
-    
-    ' Trim trailing dashes
-    keepTrimming = true
-    while keepTrimming and normalized.Len() > 0
-        if normalized.Right(1) = "-"
-            normalized = normalized.Left(normalized.Len() - 1)
-        else
-            keepTrimming = false
-        end if
+
+    ' Trim trailing dashes - optimized
+    while normalized.Len() > 0 and normalized.Right(1) = "-"
+        normalized = normalized.Left(normalized.Len() - 1)
     end while
-    
+
     if normalized = "" then return ""
-    
-    return baseUrl + normalized + "-us.png"
+
+    ' Use array join for final URL
+    urlParts = [baseUrl, normalized, "-us.png"]
+    return urlParts.Join("")
 end function
 
 function EPGParseXmltvTime(xmltvTime as String) as LongInteger
     if xmltvTime.Len() < 14 then return 0
-    
+
     year = val(xmltvTime.Mid(0, 4))
     month = val(xmltvTime.Mid(4, 2))
     day = val(xmltvTime.Mid(6, 2))
     hour = val(xmltvTime.Mid(8, 2))
     minute = val(xmltvTime.Mid(10, 2))
     second = val(xmltvTime.Mid(12, 2))
-    
+
     tzStr = "Z"
     if xmltvTime.Len() >= 19
         tzPart = xmltvTime.Mid(14)
         firstChar = tzPart.Left(1)
         if firstChar = "+" or firstChar = "-"
             if tzPart.Len() >= 5
-                tzStr = tzPart.Mid(0, 3) + ":" + tzPart.Mid(3, 2)
+                ' Pre-allocate array for join
+                tzParts = [tzPart.Mid(0, 3), ":", tzPart.Mid(3, 2)]
+                tzStr = tzParts.Join("")
             end if
         end if
     end if
-    
-    iso8601 = stri(year).Trim() + "-"
-    iso8601 = iso8601 + right("0" + stri(month).Trim(), 2) + "-"
-    iso8601 = iso8601 + right("0" + stri(day).Trim(), 2) + "T"
-    iso8601 = iso8601 + right("0" + stri(hour).Trim(), 2) + ":"
-    iso8601 = iso8601 + right("0" + stri(minute).Trim(), 2) + ":"
-    iso8601 = iso8601 + right("0" + stri(second).Trim(), 2) + tzStr
-    
+
+    ' Use array join instead of string concatenation
+    yearStr = stri(year).Trim()
+    monthStr = right("0" + stri(month).Trim(), 2)
+    dayStr = right("0" + stri(day).Trim(), 2)
+    hourStr = right("0" + stri(hour).Trim(), 2)
+    minuteStr = right("0" + stri(minute).Trim(), 2)
+    secondStr = right("0" + stri(second).Trim(), 2)
+
+    iso8601Parts = [
+        yearStr, "-",
+        monthStr, "-",
+        dayStr, "T",
+        hourStr, ":",
+        minuteStr, ":",
+        secondStr,
+        tzStr
+    ]
+    iso8601 = iso8601Parts.Join("")
+
     dt = CreateObject("roDateTime")
     dt.FromISO8601String(iso8601)
     return dt.AsSeconds()
@@ -1284,13 +1427,13 @@ end function
 
 function EPGGetCurrentProgram(epg as Object, tvgId as String) as String
     if tvgId = invalid then return ""
-    
+
     normalizedId = EPGNormalizeChannelId(tvgId)
-    
+
     if epg.schedules.doesExist(normalizedId)
         return epg.schedules[normalizedId]
     end if
-    
+
     return ""
 end function
 
