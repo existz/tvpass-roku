@@ -60,17 +60,17 @@
     <Poster
         id="featuredLogo"
         visible="false"
-        translation="[60,40]"
-        loadWidth="300"
-        loadHeight="150"
-        width="300"
-        height="150"
+        translation="[60,50]"
+        loadWidth="200"
+        loadHeight="100"
+        width="200"
+        height="100"
         loadDisplayMode="scaleToFit"/>
 
     <Label
         id="featuredTitle"
         visible="false"
-        translation="[400,60]"
+        translation="[340,55]"
         width="800"
         height="50"
         font="font:LargeBoldSystemFont"
@@ -79,7 +79,7 @@
     <Label
         id="featuredTime"
         visible="false"
-        translation="[400,120]"
+        translation="[340,115]"
         width="400"
         height="35"
         font="font:MediumSystemFont"
@@ -88,7 +88,7 @@
     <Label
         id="featuredDescription"
         visible="false"
-        translation="[400,160]"
+        translation="[340,155]"
         width="1000"
         height="30"
         font="font:SmallSystemFont"
