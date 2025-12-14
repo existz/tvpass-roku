@@ -310,6 +310,34 @@ sub updateClock()
     m.currentTimeLabel.text = timeStr
 end sub
 
+' Helper: Sort channels alphabetically by title
+function SortChannelsAlphabetically(channels as Object) as Object
+    n = channels.Count()
+    for i = 0 to n-2
+        for j = i+1 to n-1
+            if LCase(channels[i].title) > LCase(channels[j].title)
+                temp = channels[i]
+                channels[i] = channels[j]
+                channels[j] = temp
+            end if
+        end for
+    end for
+    return channels
+end function
+
+' Helper: Read additional playlist safely in SceneGraph
+function LoadAdditionalPlaylist() as Object
+    fileContent = invalid
+    bytes = CreateObject("roByteArray")
+
+    if bytes.ReadFile("pkg:/source/custom_playlist.m3u") then
+        fileContent = bytes.ToAsciiString() ' SceneGraph-safe conversion
+    end if
+
+    return fileContent
+end function
+
+' Main: load playlists and other async tasks
 sub loadPlaylist()
     if not EPGNeedsUpdate(m.epgData)
         showGuide()
@@ -328,12 +356,20 @@ sub loadPlaylist()
 
     timestamp = CreateObject("roDateTime").AsSeconds().ToStr()
 
-    ' Load main playlist
+    ' Load main TVPass playlist
     m.epgData.playlistTask = createObject("roSGNode", "LoadPlaylistTask")
     m.epgData.playlistTask.url = m.apiUrls.TVPASS_PLAYLIST + "?t=" + timestamp
     m.epgData.playlistTask.observeField("response", "onTvpassPlaylistResponse")
     m.epgData.playlistTask.observeField("error", "onPlaylistError")
     m.epgData.playlistTask.control = "RUN"
+
+    ' Load additional local playlist
+    playlistData = LoadAdditionalPlaylist()
+    if playlistData <> invalid
+        m.epgData.additionalChannels = EPGParsePlaylist(playlistData)
+    else
+        m.epgData.additionalChannels = []
+    end if
 
     ' Load EPG XML
     m.epgData.epgTask = createObject("roSGNode", "LoadScheduleTask")
@@ -350,10 +386,54 @@ sub loadPlaylist()
     m.epgData.logoTask.control = "RUN"
 end sub
 
+' Response: handle main playlist, merge additional channels, and sort
 sub onTvpassPlaylistResponse()
-    m.epgData.playlistData = EPGParsePlaylist(m.epgData.playlistTask.response)
-    m.epgData.playlistTask = invalid
-    checkPlaylistsComplete()
+    ' Parse main playlist - keep original order
+    mainChannels = EPGParsePlaylist(m.epgData.playlistTask.response)
+
+    ' Merge custom channels alphabetically into main list
+    if m.epgData.additionalChannels <> invalid
+        for each ch in m.epgData.additionalChannels
+            duplicate = false
+            for each mainCh in mainChannels
+                if ch.url = mainCh.url or (ch.tvgId <> "" and ch.tvgId = mainCh.tvgId)
+                    duplicate = true
+                    exit for
+                end if
+            end for
+            if not duplicate then
+                ' Find the position to insert this custom channel alphabetically
+                insertPos = mainChannels.count()
+                for i = 0 to mainChannels.count() - 1
+                    if LCase(ch.title) < LCase(mainChannels[i].title)
+                        insertPos = i
+                        exit for
+                    end if
+                end for
+
+                ' Insert at the found position
+                newList = []
+                for i = 0 to insertPos - 1
+                    newList.push(mainChannels[i])
+                end for
+                newList.push(ch)
+                for i = insertPos to mainChannels.count() - 1
+                    newList.push(mainChannels[i])
+                end for
+                mainChannels = newList
+            end if
+        end for
+    end if
+
+    ' Assign merged channels
+    m.epgData.channels = mainChannels
+    m.epgData.playlistData = mainChannels
+
+    ' Continue normal async flow
+    m.epgData.pendingTasks = m.epgData.pendingTasks - 1
+    if m.epgData.pendingTasks = 0
+        showGuide()
+    end if
 end sub
 
 sub onLogoPlaylistResponse()
@@ -489,7 +569,10 @@ sub showGuide()
         item.channelNumber = i + 1
         item.addField("isLongChannelName", "boolean", false)
 
-        if len(channel.title) > 30
+        ' Determine if channel name is long
+        isLongName = len(channel.title) > 30
+
+        if isLongName
             item.title = "Ch " + Stri(i + 1)
             item.addField("nowPlaying", "string", false)
             item.nowPlaying = channel.title
@@ -498,10 +581,19 @@ sub showGuide()
             item.title = channel.title
             item.addField("nowPlaying", "string", false)
             item.isLongChannelName = false
-            if channel.tvgId <> invalid
-                item.nowPlaying = EPGGetCurrentProgram(m.epgData, channel.tvgId)
+
+            ' Check if channel has EPG data (tvgId exists and is not empty)
+            if channel.tvgId <> invalid and channel.tvgId <> ""
+                ' Has EPG data - get current program
+                currentProgram = EPGGetCurrentProgram(m.epgData, channel.tvgId)
+                if currentProgram <> ""
+                    item.nowPlaying = currentProgram
+                else
+                    item.nowPlaying = channel.title
+                end if
             else
-                item.nowPlaying = ""
+                ' No EPG data (custom playlist) - use tvg-name (title) as nowPlaying
+                item.nowPlaying = channel.title
             end if
         end if
 
@@ -514,7 +606,7 @@ sub showGuide()
         end if
 
         item.addField("programs", "array", false)
-        if channel.tvgId <> invalid
+        if channel.tvgId <> invalid and channel.tvgId <> ""
             item.programs = EPGGetPrograms(m.epgData, channel.tvgId)
         else
             item.programs = []
@@ -551,7 +643,7 @@ sub updateFeaturedProgram(index as Integer)
 
     m.featuredTitle.text = channel.title
 
-    if channel.tvgId <> invalid
+    if channel.tvgId <> invalid and channel.tvgId <> ""
         currentProgram = EPGGetCurrentProgram(m.epgData, channel.tvgId)
         if currentProgram <> ""
             m.featuredTime.text = "Now Playing"
@@ -561,8 +653,9 @@ sub updateFeaturedProgram(index as Integer)
             m.featuredDescription.text = "No program information available"
         end if
     else
-        m.featuredTime.text = ""
-        m.featuredDescription.text = "No program information available"
+        ' For custom playlist channels, show tvg-name
+        m.featuredTime.text = "Now Playing"
+        m.featuredDescription.text = channel.title
     end if
 end sub
 
@@ -664,7 +757,7 @@ sub updateVideoOverlay()
         programDetails: ""
     }
 
-    if channel.tvgId <> invalid
+    if channel.tvgId <> invalid and channel.tvgId <> ""
         currentProgram = EPGGetCurrentProgram(m.epgData, channel.tvgId)
         if currentProgram <> ""
             overlayData.nowPlaying = currentProgram
@@ -688,6 +781,7 @@ sub updateVideoOverlay()
             end for
         end if
     else
+        ' For custom playlist channels, show tvg-name
         overlayData.nowPlaying = channel.title
     end if
 
@@ -945,7 +1039,7 @@ sub showChannelMenu()
             isSports: false
         }
 
-        if channel.tvgId <> invalid
+        if channel.tvgId <> invalid and channel.tvgId <> ""
             currentProgram = EPGGetCurrentProgram(m.epgData, channel.tvgId)
             if currentProgram <> ""
                 channelData.nowPlaying = currentProgram
@@ -980,6 +1074,7 @@ sub showChannelMenu()
                 end for
             end if
         else
+            ' For custom playlist channels, show tvg-name
             channelData.nowPlaying = channel.title
         end if
 
@@ -1467,7 +1562,7 @@ function EPGGetCurrentProgram(epg as Object, tvgId as String) as String
 end function
 
 function GetNowPlayingForChannel(channel as Object, now as Integer) as String
-    if channel.tvgId = invalid then return channel.title
+    if channel.tvgId = invalid or channel.tvgId = "" then return channel.title
 
     programs = EPGGetPrograms(m.epgData, channel.tvgId)
     if programs = invalid or programs.count() = 0 then return channel.title
