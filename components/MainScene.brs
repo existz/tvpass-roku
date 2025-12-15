@@ -1352,8 +1352,23 @@ function EPGParseXMLOptimized(xmlString as String) as Object
             programTitle = programSubTitle
         end if
 
+        ' For current programs, store the appropriate display text
         if startSec <= currentTime and stopSec > currentTime
-            result.schedules[normalizedChannel] = programTitle
+            ' Check if this is a sports program
+            isSports = false
+            for each keyword in ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
+                if programTitle.Instr(keyword) >= 0
+                    isSports = true
+                    exit for
+                end if
+            end for
+
+            ' For sports, use subtitle if available; otherwise use title
+            if isSports and programSubTitle <> ""
+                result.schedules[normalizedChannel] = programSubTitle
+            else
+                result.schedules[normalizedChannel] = programTitle
+            end if
         end if
 
         if not result.programsByChannel.doesExist(normalizedChannel)
