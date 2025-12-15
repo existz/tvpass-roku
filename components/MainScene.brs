@@ -104,6 +104,7 @@ sub init()
     m.channelMenu.observeField("menuClosed", "onMenuClosed")
     m.multiviewGrid.observeField("visible", "onPiPVisibleChanged")
     m.multiviewGrid.observeField("switchToChannelIndex", "onMultiviewChannelSwitch")
+    m.multiviewGrid.observeField("exitMultiview", "onMultiviewExit")
 
     ' App lifecycle observer to clear cache on exit
     m.top.observeField("focusedChild", "onFocusChanged")
@@ -232,6 +233,14 @@ sub onPiPVisibleChanged()
 
         ' Reset the switch flag
         m.hasSwitchedFromOriginal = false
+    end if
+end sub
+
+sub onMultiviewExit()
+    ' Immediately reset multiview mode when exit signal is received
+    ' This prevents race conditions with the visible field observer
+    if m.multiviewGrid.exitMultiview = true then
+        m.isMultiviewMode = false
     end if
 end sub
 
@@ -1139,7 +1148,11 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             return true
         end if
         if key = "back" and m.videoPlayer.visible
-            ' Back button from full screen video - return to guide
+            ' Ensure multiview state is cleared
+            if m.isMultiviewMode then
+                m.isMultiviewMode = false
+            end if
+
             m.isBackgroundPlayback = true
             m.videoPlayer.opacity = 1.0
             m.videoPlayer.visible = true
