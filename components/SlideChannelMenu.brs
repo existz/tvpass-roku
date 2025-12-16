@@ -40,8 +40,8 @@ sub onVisibleChanged()
         m.selectedChannels = []
         m.isLongPress = false
 
-        ' Preload sports logos if EPG data arrived before menu opened
-        if m.top.epgData <> invalid and not m.epgDataPreloaded
+        ' Don't preload again if already done
+        if m.top.epgData <> invalid and not m.epgDataPreloaded then
             preloadSportsLogosFromEPG(m.top.epgData)
             m.epgDataPreloaded = true
         end if
@@ -76,12 +76,11 @@ sub onEPGDataChanged()
     epgData = m.top.epgData
     if epgData = invalid or epgData.channels = invalid then return
 
-    ' Reset preload flag since we have new EPG data
-    m.epgDataPreloaded = false
-
-    ' Preload immediately when EPG data arrives
-    preloadSportsLogosFromEPG(epgData)
-    m.epgDataPreloaded = true
+    ' Only preload if we haven't done it yet for this EPG data
+    if not m.epgDataPreloaded then
+        preloadSportsLogosFromEPG(epgData)
+        m.epgDataPreloaded = true
+    end if
 end sub
 
 sub preloadSportsLogosFromEPG(epgData as Object)
@@ -123,10 +122,22 @@ sub preloadSportsLogosFromEPG(epgData as Object)
         end for
     end for
 
-    ' Use bitmap cache to preload team logos (check both existence and method)
+    ' Only preload if we have new logos and bitmap cache is available
     if m.bitmapCache <> invalid and teamLogosToPreload.count() > 0
         if type(m.bitmapCache) = "roAssociativeArray" and m.bitmapCache.doesExist("preload")
-            m.bitmapCache.preload(teamLogosToPreload, m.preloadContainer)
+            ' Filter out already cached logos
+            newLogos = {}
+            for each uri in teamLogosToPreload
+                if not m.bitmapCache.isCached(uri) then
+                    newLogos[uri] = true
+                end if
+            end for
+
+            if newLogos.count() > 0 then
+                m.bitmapCache.preload(newLogos, m.preloadContainer)
+            else
+                print "SlideChannelMenu: All team logos already cached"
+            end if
         end if
     end if
 end sub

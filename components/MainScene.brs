@@ -503,11 +503,31 @@ sub checkPlaylistsComplete()
         m.epgData.isLoading = false
         m.epgData.lastUpdate = CreateObject("roDateTime").AsSeconds()
 
-        ' Preload channel logos into bitmap cache
+        ' Only preload channel logos if cache is empty or has few items
         if m.epgData.channels.count() > 0
-            logoUris = m.bitmapCache.collectUrisFromChannels(m.epgData.channels)
-            if logoUris.count() > 0
-                m.bitmapCache.preload(logoUris, m.preloadContainer)
+            currentCacheSize = m.bitmapCache.getCacheSize()
+
+            if currentCacheSize = 0 then
+                ' First time - preload everything
+                logoUris = m.bitmapCache.collectUrisFromChannels(m.epgData.channels)
+                if logoUris.count() > 0
+                    m.bitmapCache.preload(logoUris, m.preloadContainer)
+                end if
+            else
+                ' Already have cache - only preload new logos
+                logoUris = m.bitmapCache.collectUrisFromChannels(m.epgData.channels)
+                newLogos = 0
+                for each uri in logoUris
+                    if not m.bitmapCache.isCached(uri) then
+                        newLogos++
+                    end if
+                end for
+
+                if newLogos > 0 then
+                    m.bitmapCache.preload(logoUris, m.preloadContainer)
+                else
+                    print "BitmapCache: All channel logos already cached"
+                end if
             end if
         end if
 
