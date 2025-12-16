@@ -248,6 +248,8 @@ function createThumbnail(index as Integer) as Object
     logo.translation = [90, 10]
     logo.width = 180
     logo.height = 80
+    logo.loadWidth = 180
+    logo.loadHeight = 80
     logo.loadDisplayMode = "scaleToFit"
     logo.visible = false
     container.appendChild(logo)
