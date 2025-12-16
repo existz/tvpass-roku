@@ -1062,16 +1062,22 @@ sub showChannelMenu()
             nowPlaying: ""
             programDetails: ""
             isSports: false
+            timeSlots: invalid
         }
 
         if channel.tvgId <> invalid and channel.tvgId <> ""
-            currentProgram = EPGGetCurrentProgram(m.epgData, channel.tvgId)
-            if currentProgram <> ""
-                channelData.nowPlaying = currentProgram
+            ' Get programs for all 3 time slots
+            timeSlots = EPGGetProgramsForTimeSlots(m.epgData, channel.tvgId)
+            channelData.timeSlots = timeSlots
+
+            ' Set nowPlaying to current slot (slot1)
+            if timeSlots.slot1 <> ""
+                channelData.nowPlaying = timeSlots.slot1
             else
                 channelData.nowPlaying = channel.title
             end if
 
+            ' Get description for current program
             programs = EPGGetPrograms(m.epgData, channel.tvgId)
             if programs.count() > 0
                 now = CreateObject("roDateTime").AsSeconds()
@@ -1080,19 +1086,8 @@ sub showChannelMenu()
                         isSportsProgram = IsSportsProgram(prog.title, m.sportsKeywords)
                         channelData.isSports = isSportsProgram
 
-                        if isSportsProgram
-                            ' For sports: nowPlaying = subtitle (matchup), programDetails = description (for overlay)
-                            if prog.subTitle <> invalid and prog.subTitle <> ""
-                                channelData.nowPlaying = prog.subTitle
-                            end if
-                            if prog.description <> invalid and prog.description <> ""
-                                channelData.programDetails = prog.description
-                            end if
-                        else
-                            ' For non-sports: programDetails = description
-                            if prog.description <> invalid and prog.description <> ""
-                                channelData.programDetails = prog.description
-                            end if
+                        if prog.description <> invalid and prog.description <> ""
+                            channelData.programDetails = prog.description
                         end if
                         exit for
                     end if

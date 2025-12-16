@@ -374,3 +374,75 @@ function EPGGetCurrentProgram(epg as Object, tvgId as String) as String
 
     return ""
 end function
+
+function EPGGetProgramsForTimeSlots(epg as Object, tvgId as String) as Object
+    ''' Returns programs organized by 30-minute time slots
+    ''' Returns: { slot1: programTitle, slot2: programTitle, slot3: programTitle }
+    '''
+    if tvgId = invalid then return { slot1: "", slot2: "", slot3: "" }
+
+    normalizedId = EPGNormalizeChannelId(tvgId)
+
+    ' Get current time and calculate 30-minute slots
+    now = CreateObject("roDateTime")
+    currentTime = now.AsSeconds()
+
+    ' Round down to nearest 30 minutes
+    slot1Start& = int(currentTime / 1800) * 1800
+    slot1End& = slot1Start& + 1800
+    slot2Start& = slot1End&
+    slot2End& = slot2Start& + 1800
+    slot3Start& = slot2End&
+    slot3End& = slot3Start& + 1800
+
+    result = {
+        slot1: ""
+        slot2: ""
+        slot3: ""
+    }
+
+    ' Get all programs for this channel
+    if not epg.programsByChannel.doesExist(normalizedId) then return result
+
+    programs = epg.programsByChannel[normalizedId]
+    if programs = invalid or programs.count() = 0 then return result
+
+    ' Find programs for each slot
+    for each program in programs
+        if program = invalid or program.title = invalid then continue for
+
+        progStart = program.startTime
+        progEnd = program.endTime
+
+        if progStart = invalid or progEnd = invalid then continue for
+
+        ' Determine display text (handle sports programs)
+        displayText = program.title
+        isSports = IsSportsProgram(program.title, GetSportsKeywords())
+        if isSports and program.subTitle <> invalid and program.subTitle <> ""
+            displayText = program.subTitle
+        end if
+
+        ' Check if program overlaps with slot 1 (current slot)
+        if progStart < slot1End& and progEnd > slot1Start& and result.slot1 = ""
+            result.slot1 = displayText
+        end if
+
+        ' Check if program overlaps with slot 2
+        if progStart < slot2End& and progEnd > slot2Start& and result.slot2 = ""
+            result.slot2 = displayText
+        end if
+
+        ' Check if program overlaps with slot 3
+        if progStart < slot3End& and progEnd > slot3Start& and result.slot3 = ""
+            result.slot3 = displayText
+        end if
+
+        ' Early exit if all slots filled
+        if result.slot1 <> "" and result.slot2 <> "" and result.slot3 <> ""
+            exit for
+        end if
+    end for
+
+    return result
+end function
