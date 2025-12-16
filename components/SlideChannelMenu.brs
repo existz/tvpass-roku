@@ -85,8 +85,8 @@ sub onEPGDataChanged()
 end sub
 
 sub preloadSportsLogosFromEPG(epgData as Object)
-    ' Collect unique team codes from EPG programs
-    teamsToPreload = {}
+    ' Collect unique team logo URIs from EPG programs
+    teamLogosToPreload = {}
 
     for each channel in epgData.channels
         if channel.tvgId = invalid then continue for
@@ -109,35 +109,25 @@ sub preloadSportsLogosFromEPG(epgData as Object)
             ' Parse matchup
             matchup = ParseTeamMatchupFast(displayText, m.separatorPatterns, m.leagueMaps)
             if matchup <> invalid
-                ' Add both teams to preload list
-                key1 = matchup.league + ":" + matchup.team1
-                key2 = matchup.league + ":" + matchup.team2
-                teamsToPreload[key1] = true
-                teamsToPreload[key2] = true
+                ' Collect logo URIs for both teams
+                logoUrl1 = GetTeamLogoUrlFast(matchup.team1, matchup.league, m.logoBaseUrl)
+                logoUrl2 = GetTeamLogoUrlFast(matchup.team2, matchup.league, m.logoBaseUrl)
+
+                if logoUrl1 <> invalid and logoUrl1 <> ""
+                    teamLogosToPreload[logoUrl1] = true
+                end if
+                if logoUrl2 <> invalid and logoUrl2 <> ""
+                    teamLogosToPreload[logoUrl2] = true
+                end if
             end if
         end for
     end for
 
-    ' Now preload all unique team logos
-    if teamsToPreload.count() > 0
-        print "SlideChannelMenu: Preloading " + Stri(teamsToPreload.count()) + " sports team logos"
-
-        for each teamKey in teamsToPreload
-            ' Parse league and team code from key
-            parts = teamKey.Split(":")
-            if parts.count() = 2
-                league = parts[0]
-                teamCode = parts[1]
-
-                ' Create a hidden poster to trigger download
-                preloadPoster = createObject("roSGNode", "Poster")
-                preloadPoster.uri = GetTeamLogoUrlFast(teamCode, league, m.logoBaseUrl)
-                preloadPoster.loadWidth = 130
-                preloadPoster.loadHeight = 120
-                preloadPoster.visible = false
-                m.preloadContainer.appendChild(preloadPoster)
-            end if
-        end for
+    ' Use bitmap cache to preload team logos (check both existence and method)
+    if m.bitmapCache <> invalid and teamLogosToPreload.count() > 0
+        if type(m.bitmapCache) = "roAssociativeArray" and m.bitmapCache.doesExist("preload")
+            m.bitmapCache.preload(teamLogosToPreload, m.preloadContainer)
+        end if
     end if
 end sub
 

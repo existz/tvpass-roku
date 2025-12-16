@@ -57,6 +57,10 @@ sub init()
     m.hasSwitchedFromOriginal = false
     m.isRetrying = false
 
+    ' Race condition prevention flags
+    m.isMenuTransitioning = false
+    m.isReturningToGuide = false
+
     ' Long press detection
     m.longPressThreshold = 500
     m.leftButtonPressTime = 0
@@ -123,9 +127,12 @@ sub onFocusChanged()
 end sub
 
 sub onMenuClosed()
+    ' Add a small delay to ensure menu is fully closed before restoring focus
     if m.isMultiviewMode
         m.multiviewGrid.setFocus(true)
     else if m.videoPlayer.visible
+        ' Use a flag to prevent race conditions
+        m.isMenuTransitioning = false
         m.videoPlayer.setFocus(true)
     end if
 end sub
@@ -212,6 +219,10 @@ sub onPiPVisibleChanged()
 
     if not m.multiviewGrid.visible and m.isMultiviewMode then
         m.isMultiviewMode = false
+
+        ' Ensure loading state is reset when exiting multiview
+        m.loadingLabel.visible = false
+        m.loadingLabel.text = ""
 
         if m.multiviewGrid.shouldRestoreVideo then
             m.videoPlayer.setFocus(true)
@@ -349,6 +360,8 @@ end function
 ' Main: load playlists and other async tasks
 sub loadPlaylist()
     if not EPGNeedsUpdate(m.epgData)
+        m.loadingLabel.visible = false
+        m.loadingLabel.text = ""
         showGuide()
         return
     end if
@@ -638,9 +651,12 @@ sub showGuide()
     end if
 
     showGuideElements()
+
+    ' Clear the returning to guide flag now that we're fully loaded
+    m.isReturningToGuide = false
+
     m.channelList.setFocus(true)
 end sub
-
 
 sub updateFeaturedProgram(index as Integer)
     if index < 0 or index >= m.epgData.channels.count() then return
@@ -1117,9 +1133,13 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 
     if m.channelMenu.visible
         if (key = "back" or key = "left") and press
+            ' Set transitioning flag to prevent race conditions
+            m.isMenuTransitioning = true
             m.channelMenu.visible = false
             ' Give focus back to video player
             m.videoPlayer.setFocus(true)
+            ' Clear flag after a brief delay
+            m.isMenuTransitioning = false
             return true
         end if
         return false
@@ -1143,23 +1163,37 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             return true
         end if
         if key = "right" and m.videoPlayer.visible
+            ' Don't allow menu to open if we're transitioning
+            if m.isMenuTransitioning then return true
             m.rightButtonPressTime = currentTimeMs
             showChannelMenu()
             return true
         end if
         if key = "back" and m.videoPlayer.visible
+            ' Prevent multiple rapid back presses from causing race conditions
+            if m.isMenuTransitioning or m.isReturningToGuide then return true
+
+            ' Set flag to prevent duplicate back button handling
+            m.isReturningToGuide = true
+
             ' Ensure multiview state is cleared
             if m.isMultiviewMode then
                 m.isMultiviewMode = false
             end if
 
+            ' Close any open overlays
+            m.videoInfoOverlay.showOverlay = false
+            m.channelMenu.visible = false
+
             m.isBackgroundPlayback = true
             m.videoPlayer.opacity = 1.0
             m.videoPlayer.visible = true
             m.videoOverlay.visible = true
-            m.videoInfoOverlay.showOverlay = false
             showGuideElements()
             loadPlaylist()
+
+            ' Clear the flag after a delay to allow the transition to complete
+            ' This will be reset when the guide is fully loaded
             return true
         end if
         if key = "options" or key = "*"
@@ -1177,6 +1211,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
                 seekBackward()
                 return true
             else if m.videoPlayer.visible
+                ' Don't allow menu to open if we're transitioning
+                if m.isMenuTransitioning then return true
                 showChannelMenu()
                 return true
             end if
@@ -1188,6 +1224,8 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
                 seekForward()
                 return true
             else if m.videoPlayer.visible
+                ' Don't allow menu to open if we're transitioning
+                if m.isMenuTransitioning then return true
                 showChannelMenu()
                 return true
             end if

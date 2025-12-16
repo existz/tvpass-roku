@@ -126,9 +126,11 @@ sub preloadSportsLogosFromEPG(epgData as Object)
         end for
     end for
 
-    ' Use bitmap cache to preload team logos
+    ' Use bitmap cache to preload team logos (check both existence and method)
     if m.bitmapCache <> invalid and teamLogosToPreload.count() > 0
-        m.bitmapCache.preload(teamLogosToPreload, m.preloadContainer)
+        if type(m.bitmapCache) = "roAssociativeArray" and m.bitmapCache.doesExist("preload")
+            m.bitmapCache.preload(teamLogosToPreload, m.preloadContainer)
+        end if
     end if
 end sub
 
