@@ -9,7 +9,31 @@ function CreateBitmapCache() as Object
     cache.preload = function(uris as Object, parentNode as Object) as Void
         if uris = invalid or uris.count() = 0 then return
 
-        m.DebugLog("BitmapCache: Preloading " + stri(uris.count()) + " URIs")
+        ' Count how many are actually new
+        newUris = 0
+        alreadyCached = 0
+
+        for each uri in uris
+            if uri = invalid or uri = "" then continue for
+
+            if m.cachedUris.doesExist(uri) then
+                alreadyCached++
+                continue for
+            end if
+
+            if m.failedUris.doesExist(uri) then
+                continue for
+            end if
+
+            newUris++
+        end for
+
+        if newUris = 0 then
+            m.DebugLog("BitmapCache: All " + stri(uris.count()) + " URIs already cached, skipping preload")
+            return
+        end if
+
+        m.DebugLog("BitmapCache: Preloading " + stri(newUris) + " new URIs (" + stri(alreadyCached) + " already cached)")
 
         loaded = 0
 
@@ -17,6 +41,12 @@ function CreateBitmapCache() as Object
             if uri = invalid or uri = "" then continue for
             if m.cachedUris.doesExist(uri) then continue for
             if m.failedUris.doesExist(uri) then continue for
+
+            ' Check if we've hit the cache size limit
+            if m.preloadedPosters.count() >= m.maxCacheSize then
+                m.DebugLog("BitmapCache: Cache size limit reached (" + stri(m.maxCacheSize) + "), stopping preload")
+                exit for
+            end if
 
             m.cachedUris[uri] = true
             loaded++
@@ -26,7 +56,7 @@ function CreateBitmapCache() as Object
             end if
         end for
 
-        m.DebugLog("BitmapCache: Added " + stri(loaded) + " URIs to cache")
+        m.DebugLog("BitmapCache: Added " + stri(loaded) + " new URIs to cache (total: " + stri(m.cachedUris.count()) + ")")
     end function
 
     cache.createPreloadPoster = function(uri as String, parentNode as Object) as Void
