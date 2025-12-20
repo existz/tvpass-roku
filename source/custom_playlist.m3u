@@ -9,47 +9,29 @@ https://xumo-xumoent-vc-111-0pd1g.fast.nbcuni.com/live/master.m3u8
 # 2000s TV
 #EXTINF:-1 tvg-id="king-of-queens" group-title="TV" tvg-name="King of Queens" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/king-of-queens-us.png"
 http://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/62f4f414c2ba130007f8b24e/master.m3u8?appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=2c7ac9d7-35fc-11ef-a031-2b5d494037a2&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=4a0db601-9852-43bd-90bd-3b44aed929f7
+#EXTINF:-1 tvg-id="blue-bloods" group-title="TV" tvg-name="Blue Bloods" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/blue-bloods-us.png"
+http://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/61b3b8c645b45d0007a9bb8d/master.m3u8?appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=6c2743c5-30d3-11ef-9cf5-e9ddff8ff496&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=fe7428fc-4fd0-424f-828f-7d5d5e9ad75c
 
-# Local Affilates
-#EXTINF:-1 tvg-id="tubi-wlex" group-title="TV" tvg-name="NBC 18 Lexington KY (WLEX)" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nbc-logo-alt-us.png"
-https://livetv-fa.tubi.video/wlex/playlist.m3u8
-#EXTINF:-1 tvg-id="tubi-wlky" group-title="TV" tvg-name="CBS 32 Louisville KY (WLKY)" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/cbs-logo-white-us.png"
-https://livetv-fa.tubi.video/wlky/playlist.m3u8
+# Other TV
+#EXTINF:-1 tvg-id="samsung-national-lampoon" group-title="TV" tvg-name="National Lampoon" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/national-lampoon-us.png"
+https://jmp2.uk/stvp-US1800015K5
+
+# Local Affiliates
+#EXTINF:-1 tvg-id="WTVQDT1.us@SD" group-title="TV" tvg-name="ABC 36 News WTVQ (Lexington KY)" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/us-local/abc-36-wtvq-us.png"
+https://townnews.g-mana.live/media/14d1fd2c-0548-4803-80ad-6657831a7981/main.m3u8
+#EXTINF:-1 tvg-id="lg-nbc-wlex" group-title="TV" tvg-name="NBC 18 WLEX Lexington, KY" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nbc-18-wlex-us.png"
+https://amg01438-ewscripps-amg01438c21-lg-us-4332.playouts.now.amagi.tv/playlist.m3u8
 
 # Sports
 #EXTINF:-1 tvg-id="pluto-nfl-channel" group-title="TV" tvg-name="NFL Channel" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
 http://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/5ced7d5df64be98e07ed47b6/master.m3u8?appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=6c2a5105-30d3-11ef-9cf5-e9ddff8ff496&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=6477ef85-3680-442c-94d8-27197903b1f6
 #EXTINF:-1 tvg-id="firetv-nba-tv" group-title="TV" tvg-name="NBA TV" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nba-tv-icon-us.png"
 https://amg00556-amg00556c3-firetv-us-6060.playouts.now.amagi.tv/playlist.m3u8
-
-# NFL Sunday Ticket
-#EXTINF:-1 tvg-id="NFLSundayTicket1.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 01" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_1/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket2.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 02" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_2/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket3.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 03" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_3/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket4.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 04" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_4/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket5.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 05" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_5/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket6.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 06" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_6/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket7.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 07" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_7/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket8.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 08" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_8/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket9.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 09" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_9/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket10.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 10" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_10/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket11.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 11" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_11/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket12.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 12" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_12/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket13.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 13" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_13/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket14.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 14" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_14/index.m3u8
-#EXTINF:-1 tvg-id="NFLSundayTicket15.us@HD" group-title="TV" tvg-name="NFL Sunday Ticket 15" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://fl2.moveonjoy.com/NFL_15/index.m3u8
+#EXTINF:-1 tvg-id="plex-sportsgrid" group-title="TV" tvg-name="SportsGrid" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/sports-grid-us.png"
+https://sportsgrid-plex.amagi.tv/playlist.m3u8
+#EXTINF:-1 tvg-id="samsung-mlb-channel" group-title="TV" tvg-name="MLB Channel" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/mlb-channel-us.png"
+https://jmp2.uk/stvp-US1400001WV
+#EXTINF:-1 tvg-id="samsung-nesn-nation" group-title="TV" tvg-name="NESN Nation" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nesn-plus-us.png"
+https://jmp2.uk/stvp-US300062TG
+#EXTINF:-1 tvg-id="samsung-draftkings-network" group-title="TV" tvg-name="DraftKings Network" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/draftkings-network-us.png"
+https://jmp2.uk/stvp-USBD700013BW
