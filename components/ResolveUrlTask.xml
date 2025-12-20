@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ResolveUrlTask" extends="Task">
+    <interface>
+        <field id="url" type="string" />
+        <field id="resolvedUrl" type="string" />
+        <field id="error" type="string" />
+        <field id="inputUrls" type="assocarray" />
+        <field id="resolvedUrls" type="assocarray" alwaysNotify="true" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/ResolveUrlTask.brs" />
+</component>

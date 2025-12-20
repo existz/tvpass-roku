@@ -56,6 +56,11 @@ sub init()
     m.wasPlayingBeforeMultiview = false
     m.hasSwitchedFromOriginal = false
     m.isRetrying = false
+    m.pendingChannel = invalid
+    m.pendingChannelIsMultiview = false
+
+    ' Cache of resolved TVPass URLs: channelIndex -> finalUrl
+    m.resolvedUrlCache = {}
 
     ' Race condition prevention flags
     m.isMenuTransitioning = false
@@ -283,21 +288,72 @@ sub onMultiviewChannelSwitch()
     m.currentChannelIndex = channelIdx
     channel = m.epgData.channels[channelIdx]
 
-    ' Play channel in multiview size
+    ' Set multiview size
     m.videoPlayer.translation = [0, 0]
     m.videoPlayer.width = 1540
     m.videoPlayer.height = 1080
     m.videoPlayer.visible = true
 
+    ' Check if this is a TVPass channel that needs URL resolution
+    if channel.url.Instr("tvpass.org/live/") >= 0
+        cachedUrl = invalid
+
+        if m.resolvedUrlCache <> invalid then
+            key = str(channelIdx)   ' assocarray keys are strings
+            if m.resolvedUrlCache.doesExist(key) then
+                cachedUrl = m.resolvedUrlCache[key]
+            end if
+        end if
+
+        if cachedUrl <> invalid and cachedUrl <> "" then
+            ' Use cached final URL immediately
+            playMultiviewChannel(channel, cachedUrl)
+        else
+            ' Store channel and mode for later playback
+            m.pendingChannel = channel
+            m.pendingChannelIsMultiview = true
+            m.loadingLabel.visible = false
+
+            ' Resolve the URL asynchronously
+            resolveTask = createObject("roSGNode", "ResolveUrlTask")
+            resolveTask.url = channel.url
+            resolveTask.observeField("resolvedUrl", "onUrlResolvedMultiview")
+            resolveTask.control = "RUN"
+        end if
+    else
+        ' Play directly for non-TVPass channels
+        playMultiviewChannel(channel, channel.url)
+    end if
+end sub
+
+sub onUrlResolvedMultiview(event as Object)
+    resolveTask = event.getRoSGNode()
+    resolvedUrl = resolveTask.resolvedUrl
+
+    if resolvedUrl <> invalid and resolvedUrl <> ""
+        ' Cache by current channel index so later multiview tunes are instant
+        if m.currentChannelIndex >= 0 then
+            key = str(m.currentChannelIndex)
+            m.resolvedUrlCache[key] = resolvedUrl
+        end if
+        playMultiviewChannel(m.pendingChannel, resolvedUrl)
+    else
+        ' Fall back to original URL
+        playMultiviewChannel(m.pendingChannel, m.pendingChannel.url)
+    end if
+
+    m.pendingChannel = invalid
+    m.pendingChannelIsMultiview = false
+end sub
+
+sub playMultiviewChannel(channel as Object, url as String)
     content = createObject("roSGNode", "ContentNode")
-    content.url = channel.url
+    content.url = url
     content.streamFormat = "hls"
     content.addField("preferredBitrate", "integer", false)
     content.preferredBitrate = 0
     content.addField("maxBandwidth", "integer", false)
     content.maxBandwidth = 0
-
-    print "Playing channel: " + content.url
 
     m.videoPlayer.content = content
     m.videoPlayer.control = "play"
@@ -535,12 +591,53 @@ sub checkPlaylistsComplete()
         m.multiviewGrid.epgData = m.epgData
         m.multiviewGrid.bitmapCache = m.bitmapCache
 
+        ' Kick off background prefetch of TVPass redirect URLs
+        PrefetchTvpassUrls()
+
         if m.epgData.channels.count() > 0
             showGuide()
         else
             showError("No channels found")
         end if
     end if
+end sub
+
+sub PrefetchTvpassUrls()
+    ' Ensure epgData and channels are valid
+    if m.epgData = invalid or m.epgData.channels = invalid then return
+
+    ' Explicitly create an assocarray
+    tvpassUrls = {}  ' assocarray: key (string) -> url
+
+    ' Iterate channels by index
+    channelCount = m.epgData.channels.count()
+    for i = 0 to channelCount - 1
+        ch = m.epgData.channels[i]
+        if ch <> invalid and ch.url <> invalid and ch.url.Instr("tvpass.org/live/") >= 0 then
+            ' Assocarray keys are strings; convert index to string
+            tvpassUrls[str(i)] = ch.url
+        end if
+    end for
+
+    if tvpassUrls.count() = 0 then return
+
+    m.prefetchTask = createObject("roSGNode", "ResolveUrlTask")
+    m.prefetchTask.inputUrls = tvpassUrls
+    m.prefetchTask.functionName = "runBatch"
+    m.prefetchTask.observeField("resolvedUrls", "OnPrefetchResolved")
+    m.prefetchTask.control = "run"
+end sub
+
+sub OnPrefetchResolved()
+    if m.prefetchTask = invalid then return
+
+    result = m.prefetchTask.resolvedUrls
+    if result = invalid then return
+
+    ' result keys are strings already ("0", "1", ...)
+    for each key in result
+        m.resolvedUrlCache[key] = result[key]
+    end for
 end sub
 
 sub createTimeSlotHeaders()
@@ -753,8 +850,6 @@ sub onMenuChannelSelected()
 end sub
 
 sub playChannel(channel as Object)
-    print "Playing channel: " + channel.title + " URL: " + channel.url
-
     ' Stop all timers before starting new playback
     m.bufferingTimer.control = "stop"
     m.positionCheckTimer.control = "stop"
@@ -770,8 +865,54 @@ sub playChannel(channel as Object)
     m.videoInfoOverlay.showOverlay = false
     hideGuideElements()
 
+    if channel.url.Instr("tvpass.org/live/") >= 0
+        chanIndex = m.currentChannelIndex
+        cachedUrl = invalid
+
+        if m.resolvedUrlCache <> invalid and chanIndex >= 0 then
+            key = str(chanIndex)
+            if m.resolvedUrlCache.doesExist(key) then
+                cachedUrl = m.resolvedUrlCache[key]
+            end if
+        end if
+
+        if cachedUrl <> invalid and cachedUrl <> "" then
+            playChannelWithUrl(channel, cachedUrl)
+        else
+            m.pendingChannel = channel
+
+            resolveTask = createObject("roSGNode", "ResolveUrlTask")
+            resolveTask.url = channel.url
+            resolveTask.observeField("resolvedUrl", "onUrlResolved")
+            resolveTask.control = "RUN"
+        end if
+    else
+        playChannelWithUrl(channel, channel.url)
+    end if
+end sub
+
+sub onUrlResolved(event as Object)
+    resolveTask = event.getRoSGNode()
+    resolvedUrl = resolveTask.resolvedUrl
+
+    if resolvedUrl <> invalid and resolvedUrl <> ""
+        if m.currentChannelIndex >= 0 then
+            key = str(m.currentChannelIndex)
+            m.resolvedUrlCache[key] = resolvedUrl
+        end if
+        playChannelWithUrl(m.pendingChannel, resolvedUrl)
+    else
+        playChannelWithUrl(m.pendingChannel, m.pendingChannel.url)
+    end if
+
+    m.pendingChannel = invalid
+end sub
+
+sub playChannelWithUrl(channel as Object, url as String)
+    m.loadingLabel.visible = false
+
     content = createObject("roSGNode", "ContentNode")
-    content.url = channel.url
+    content.url = url
     content.streamFormat = "hls"
     content.addField("preferredBitrate", "integer", false)
     content.preferredBitrate = 0
@@ -831,6 +972,31 @@ sub updateVideoOverlay()
     end if
 
     m.videoInfoOverlay.channelData = overlayData
+end sub
+
+sub checkStreamQuality()
+    ' Add this inside onVideoStateChanged when state = "playing"
+    if m.videoPlayer.state = "playing"
+        streamInfo = m.videoPlayer.streamInfo
+        if streamInfo <> invalid
+            print "=== Stream Quality Info ==="
+            if streamInfo.doesExist("bitrate") and streamInfo.bitrate <> invalid
+                print "Current bitrate: " + str(streamInfo.bitrate)
+            end if
+            if streamInfo.doesExist("measuredBitrate") and streamInfo.measuredBitrate <> invalid
+                print "Measured bitrate: " + str(streamInfo.measuredBitrate)
+            end if
+            if streamInfo.doesExist("videoWidth") and streamInfo.videoWidth <> invalid
+                print "Video width: " + str(streamInfo.videoWidth)
+            end if
+            if streamInfo.doesExist("videoHeight") and streamInfo.videoHeight <> invalid
+                print "Video height: " + str(streamInfo.videoHeight)
+            end if
+            print "=========================="
+        else
+            print "Stream info not available yet"
+        end if
+    end if
 end sub
 
 sub onVideoStateChanged()
@@ -921,6 +1087,9 @@ sub onVideoStateChanged()
         m.retryTimer.control = "stop"
         m.returnToGuideTimer.control = "stop"
 
+        ' Check stream quality info
+        checkStreamQuality()
+
         m.lastPosition = m.videoPlayer.position
         m.positionCheckTimer.control = "stop"
         m.positionCheckTimer.control = "start"
@@ -940,7 +1109,6 @@ sub onVideoStateChanged()
 end sub
 
 sub onBufferingTimeout()
-
     if m.videoPlayer.state = "buffering"
         msgParts = ["Still buffering after timeout. Retry attempt ", str(m.retryAttempts + 1), "/", str(m.maxRetryAttempts)]
         print msgParts.Join("")
