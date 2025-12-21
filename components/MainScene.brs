@@ -295,18 +295,15 @@ sub onMultiviewChannelSwitch()
     m.videoPlayer.visible = true
 
     ' Check if this is a TVPass channel that needs URL resolution
-    if channel.url.Instr("tvpass.org/live/") >= 0
+    if channel.url.Instr("tvpass.org/live/") >= 0 and channel.id <> invalid
         cachedUrl = invalid
 
-        if m.resolvedUrlCache <> invalid then
-            key = str(channelIdx)   ' assocarray keys are strings
-            if m.resolvedUrlCache.doesExist(key) then
-                cachedUrl = m.resolvedUrlCache[key]
-            end if
+        if m.resolvedUrlCache <> invalid and m.resolvedUrlCache.doesExist(channel.id) then
+            cachedUrl = m.resolvedUrlCache[channel.id]
         end if
 
+        ' Use cached final URL immediately
         if cachedUrl <> invalid and cachedUrl <> "" then
-            ' Use cached final URL immediately
             playMultiviewChannel(channel, cachedUrl)
         else
             ' Store channel and mode for later playback
@@ -330,16 +327,15 @@ sub onUrlResolvedMultiview(event as Object)
     resolveTask = event.getRoSGNode()
     resolvedUrl = resolveTask.resolvedUrl
 
-    if resolvedUrl <> invalid and resolvedUrl <> ""
-        ' Cache by current channel index so later multiview tunes are instant
-        if m.currentChannelIndex >= 0 then
-            key = str(m.currentChannelIndex)
-            m.resolvedUrlCache[key] = resolvedUrl
-        end if
+    if resolvedUrl <> invalid and resolvedUrl <> "" and m.pendingChannel <> invalid and m.pendingChannel.id <> invalid
+        ' Cache by stable channel.id
+        m.resolvedUrlCache[m.pendingChannel.id] = resolvedUrl
         playMultiviewChannel(m.pendingChannel, resolvedUrl)
     else
         ' Fall back to original URL
-        playMultiviewChannel(m.pendingChannel, m.pendingChannel.url)
+        if m.pendingChannel <> invalid then
+            playMultiviewChannel(m.pendingChannel, m.pendingChannel.url)
+        end if
     end if
 
     m.pendingChannel = invalid
@@ -503,6 +499,18 @@ sub onTvpassPlaylistResponse()
         end for
     end if
 
+    ' NEW: Ensure each channel has a stable id for URL caching
+    for each channel in mainChannels
+        if channel.id = invalid then
+            if channel.tvgId <> invalid and channel.tvgId <> ""
+                channel.id = channel.tvgId
+            else
+                ' Fallback: use URL hash or title for uniqueness
+                channel.id = "ch_" + LCase(Left(channel.title, 20)).Replace(" ", "_")
+            end if
+        end if
+    end for
+
     ' Assign merged channels
     m.epgData.channels = mainChannels
     m.epgData.playlistData = mainChannels
@@ -559,6 +567,10 @@ sub checkPlaylistsComplete()
         m.epgData.isLoading = false
         m.epgData.lastUpdate = CreateObject("roDateTime").AsSeconds()
 
+        ' Invalidate URL cache on EPG refresh (TVPass URLs may change)
+        m.resolvedUrlCache = {}
+
+
         ' Only preload channel logos if cache is empty or has few items
         if m.epgData.channels.count() > 0
             currentCacheSize = m.bitmapCache.getCacheSize()
@@ -603,19 +615,17 @@ sub checkPlaylistsComplete()
 end sub
 
 sub PrefetchTvpassUrls()
-    ' Ensure epgData and channels are valid
+     ' Ensure epgData and channels are valid
     if m.epgData = invalid or m.epgData.channels = invalid then return
 
-    ' Explicitly create an assocarray
-    tvpassUrls = {}  ' assocarray: key (string) -> url
+    tvpassUrls = {}   ' channel.id (string) -> url
 
     ' Iterate channels by index
     channelCount = m.epgData.channels.count()
     for i = 0 to channelCount - 1
         ch = m.epgData.channels[i]
-        if ch <> invalid and ch.url <> invalid and ch.url.Instr("tvpass.org/live/") >= 0 then
-            ' Assocarray keys are strings; convert index to string
-            tvpassUrls[str(i)] = ch.url
+        if ch <> invalid and ch.id <> invalid and ch.url <> invalid and ch.url.Instr("tvpass.org/live/") >= 0 then
+            tvpassUrls[ch.id] = ch.url
         end if
     end for
 
@@ -634,9 +644,9 @@ sub OnPrefetchResolved()
     result = m.prefetchTask.resolvedUrls
     if result = invalid then return
 
-    ' result keys are strings already ("0", "1", ...)
-    for each key in result
-        m.resolvedUrlCache[key] = result[key]
+    ' Keys are channel.id strings - store directly
+    for each channelId in result
+        m.resolvedUrlCache[channelId] = result[channelId]
     end for
 end sub
 
@@ -865,20 +875,19 @@ sub playChannel(channel as Object)
     m.videoInfoOverlay.showOverlay = false
     hideGuideElements()
 
-    if channel.url.Instr("tvpass.org/live/") >= 0
-        chanIndex = m.currentChannelIndex
+    ' Check if this is a TVPass channel that needs URL resolution
+    if channel.url.Instr("tvpass.org/live/") >= 0 and channel.id <> invalid
         cachedUrl = invalid
 
-        if m.resolvedUrlCache <> invalid and chanIndex >= 0 then
-            key = str(chanIndex)
-            if m.resolvedUrlCache.doesExist(key) then
-                cachedUrl = m.resolvedUrlCache[key]
-            end if
+        if m.resolvedUrlCache <> invalid and m.resolvedUrlCache.doesExist(channel.id) then
+            cachedUrl = m.resolvedUrlCache[channel.id]
         end if
 
         if cachedUrl <> invalid and cachedUrl <> "" then
+            ' Use cached final URL immediately
             playChannelWithUrl(channel, cachedUrl)
         else
+            ' Not cached: resolve asynchronously
             m.pendingChannel = channel
 
             resolveTask = createObject("roSGNode", "ResolveUrlTask")
@@ -887,6 +896,7 @@ sub playChannel(channel as Object)
             resolveTask.control = "RUN"
         end if
     else
+        ' Play directly for non-TVPass channels
         playChannelWithUrl(channel, channel.url)
     end if
 end sub
@@ -895,14 +905,15 @@ sub onUrlResolved(event as Object)
     resolveTask = event.getRoSGNode()
     resolvedUrl = resolveTask.resolvedUrl
 
-    if resolvedUrl <> invalid and resolvedUrl <> ""
-        if m.currentChannelIndex >= 0 then
-            key = str(m.currentChannelIndex)
-            m.resolvedUrlCache[key] = resolvedUrl
-        end if
+    if resolvedUrl <> invalid and resolvedUrl <> "" and m.pendingChannel <> invalid and m.pendingChannel.id <> invalid
+        ' Cache by stable channel.id
+        m.resolvedUrlCache[m.pendingChannel.id] = resolvedUrl
         playChannelWithUrl(m.pendingChannel, resolvedUrl)
     else
-        playChannelWithUrl(m.pendingChannel, m.pendingChannel.url)
+        ' Fall back to original URL
+        if m.pendingChannel <> invalid then
+            playChannelWithUrl(m.pendingChannel, m.pendingChannel.url)
+        end if
     end if
 
     m.pendingChannel = invalid
