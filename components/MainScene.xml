@@ -19,6 +19,12 @@
         height="1080"
         opacity="1.0"/>
 
+    <!-- Black loading overlay to hide video changes -->
+    <Rectangle id="blackFlashOverlay"
+        width="1920" height="1080"
+        color="0x00000000"
+        visible="false" />
+
     <!-- Video Info Overlay -->
     <VideoInfoOverlay
         id="videoInfoOverlay"

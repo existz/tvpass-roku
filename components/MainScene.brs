@@ -25,6 +25,9 @@ sub init()
     ' Initialize UI colors
     m.uiColors = GetUIColors()
 
+    ' Initialize black loading overlay
+    m.blackFlashOverlay = m.top.findNode("blackFlashOverlay")
+
     ' Initialize bitmap cache for image preloading
     m.bitmapCache = CreateBitmapCache()
 
@@ -281,6 +284,8 @@ sub onMultiviewChannelSwitch()
         return
     end if
 
+    m.blackFlashOverlay.visible = true
+
     ' Mark that we've switched away from original
     m.hasSwitchedFromOriginal = true
 
@@ -355,6 +360,9 @@ sub playMultiviewChannel(channel as Object, url as String)
     m.videoPlayer.control = "play"
     m.videoPlayer.maxVideoDecodeResolution = "1920x1080"
     m.videoPlayer.enableTrickPlay = false
+
+     ' Hide black flash when new content is queued
+    m.blackFlashOverlay.visible = false
 
     ' Update that we're no longer using the original stream
     m.wasPlayingBeforeMultiview = false
@@ -860,6 +868,7 @@ sub onMenuChannelSelected()
 end sub
 
 sub playChannel(channel as Object)
+    m.blackFlashOverlay.visible = true
     ' Stop all timers before starting new playback
     m.bufferingTimer.control = "stop"
     m.positionCheckTimer.control = "stop"
@@ -935,6 +944,9 @@ sub playChannelWithUrl(channel as Object, url as String)
     m.videoPlayer.maxVideoDecodeResolution = "1920x1080"
     m.videoPlayer.enableTrickPlay = false
     m.videoPlayer.setFocus(true)
+
+    ' Hide black flash when new content is queued
+    m.blackFlashOverlay.visible = false
 
     ' Update overlay data
     updateVideoOverlay()
@@ -1016,6 +1028,7 @@ sub onVideoStateChanged()
     hasError = (errorCode <> invalid and errorCode <> 0)
 
     if state = "error" or hasError or state = "finished" or state = "stopped"
+        m.blackFlashOverlay.visible = false
         msgParts = ["Video state changed: ", state, " errorCode: ", str(errorCode)]
         print msgParts.Join("")
     end if
@@ -1089,6 +1102,7 @@ sub onVideoStateChanged()
     end if
 
     if state = "playing"
+        m.blackFlashOverlay.visible = false
         m.retryAttempts = 0
         m.isRetrying = false  ' CLEAR RETRY FLAG on successful playback
 
