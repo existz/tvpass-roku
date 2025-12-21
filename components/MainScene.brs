@@ -271,7 +271,6 @@ sub onMultiviewChannelSwitch()
 
     ' Special case: -999 means it's the original stream channel
     if channelIdx = -999
-
         ' Only keep using the original player if we haven't switched away yet
         if not m.hasSwitchedFromOriginal and m.wasPlayingBeforeMultiview
             m.videoPlayer.setFocus(true)
@@ -304,8 +303,13 @@ sub onMultiviewChannelSwitch()
 
     ' Check if this is a TVPass channel that needs URL resolution
     if channel.url.Instr("tvpass.org/live/") >= 0 and channel.id <> invalid
-        cachedUrl = invalid
+        ' Clear cache + force fresh redirect on retry**
+        if m.isRetrying or m.retryAttempts > 0
+            print "Multiview RETRY: Clearing cache for channel " + channel.id
+            m.resolvedUrlCache[channel.id] = invalid
+        end if
 
+        cachedUrl = invalid
         if m.resolvedUrlCache <> invalid and m.resolvedUrlCache.doesExist(channel.id) then
             cachedUrl = m.resolvedUrlCache[channel.id]
         end if
@@ -321,7 +325,7 @@ sub onMultiviewChannelSwitch()
 
             ' Resolve the URL asynchronously
             resolveTask = createObject("roSGNode", "ResolveUrlTask")
-            resolveTask.url = channel.url
+            resolveTask.url = channel.url  ' Fresh from original TVPass URL
             resolveTask.observeField("resolvedUrl", "onUrlResolvedMultiview")
             resolveTask.control = "RUN"
         end if
@@ -872,6 +876,7 @@ end sub
 
 sub playChannel(channel as Object)
     m.blackFlashOverlay.visible = true
+
     ' Stop all timers before starting new playback
     m.bufferingTimer.control = "stop"
     m.positionCheckTimer.control = "stop"
@@ -889,8 +894,13 @@ sub playChannel(channel as Object)
 
     ' Check if this is a TVPass channel that needs URL resolution
     if channel.url.Instr("tvpass.org/live/") >= 0 and channel.id <> invalid
-        cachedUrl = invalid
+        ' Clear cache + force FRESH redirect on EVERY retry
+        if m.isRetrying or m.retryAttempts > 0
+            print "RETRY: Clearing cache for channel " + channel.id + " and forcing fresh resolve"
+            m.resolvedUrlCache[channel.id] = invalid  ' Remove specific channel cache
+        end if
 
+        cachedUrl = invalid
         if m.resolvedUrlCache <> invalid and m.resolvedUrlCache.doesExist(channel.id) then
             cachedUrl = m.resolvedUrlCache[channel.id]
         end if
@@ -899,11 +909,11 @@ sub playChannel(channel as Object)
             ' Use cached final URL immediately
             playChannelWithUrl(channel, cachedUrl)
         else
-            ' Not cached: resolve asynchronously
+            ' Store channel for later playback after fresh resolution
             m.pendingChannel = channel
 
             resolveTask = createObject("roSGNode", "ResolveUrlTask")
-            resolveTask.url = channel.url
+            resolveTask.url = channel.url  ' Original TVPass URL → fresh redirect
             resolveTask.observeField("resolvedUrl", "onUrlResolved")
             resolveTask.control = "RUN"
         end if
