@@ -58,9 +58,12 @@ sub init()
     m.isMultiviewMode = false
     m.wasPlayingBeforeMultiview = false
     m.hasSwitchedFromOriginal = false
-    m.isRetrying = false
     m.pendingChannel = invalid
     m.pendingChannelIsMultiview = false
+
+    ' Prevent retry spam during rapid state changes
+    m.isRetrying = false
+    m.retryInProgress = false
 
     ' Cache of resolved TVPass URLs: channelIndex -> finalUrl
     m.resolvedUrlCache = {}
@@ -1034,6 +1037,9 @@ sub onVideoStateChanged()
     end if
 
     if state = "error" or hasError
+        ' PREVENT RETRY SPAM: ignore if already retrying
+        if m.retryInProgress then return
+
         msgParts = ["Video error detected (code: ", str(errorCode), "). Retry attempt ", str(m.retryAttempts + 1), "/", str(m.maxRetryAttempts)]
         print msgParts.Join("")
 
@@ -1044,7 +1050,8 @@ sub onVideoStateChanged()
 
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
             m.retryAttempts = m.retryAttempts + 1
-            m.isRetrying = true  ' SET RETRY FLAG
+            m.isRetrying = true
+            m.retryInProgress = true  ' BLOCK FURTHER RETRIES
 
             msgParts = ["Server full, retrying... (", Stri(m.retryAttempts), "/", Stri(m.maxRetryAttempts), ")"]
             m.loadingLabel.text = msgParts.Join("")
@@ -1061,6 +1068,7 @@ sub onVideoStateChanged()
             m.retryTimer.duration = m.retryDelay
             m.retryTimer.control = "start"
         else
+            m.retryInProgress = false  ' Allow return to guide
             msgParts = ["Max retries reached or no channel selected"]
             print msgParts.Join("")
             m.loadingLabel.text = "Unable to connect - Server full"
@@ -1103,8 +1111,11 @@ sub onVideoStateChanged()
 
     if state = "playing"
         m.blackFlashOverlay.visible = false
+        m.retryInProgress = false      ' CLEAR RETRY LOCK
         m.retryAttempts = 0
-        m.isRetrying = false  ' CLEAR RETRY FLAG on successful playback
+        m.isRetrying = false
+
+        m.loadingLabel.visible = false
 
         m.loadingLabel.visible = false
 
@@ -1134,6 +1145,8 @@ sub onVideoStateChanged()
 end sub
 
 sub onBufferingTimeout()
+    if m.retryInProgress then return
+
     if m.videoPlayer.state = "buffering"
         msgParts = ["Still buffering after timeout. Retry attempt ", str(m.retryAttempts + 1), "/", str(m.maxRetryAttempts)]
         print msgParts.Join("")
@@ -1180,6 +1193,8 @@ sub onBufferingTimeout()
 end sub
 
 sub onPositionCheck()
+    if m.retryInProgress then return
+
     currentPosition = m.videoPlayer.position
 
     if currentPosition = m.lastPosition or currentPosition < 1
@@ -1230,6 +1245,9 @@ sub onPositionCheck()
 end sub
 
 sub onRetryTimer()
+    ' Reset retry lock BEFORE attempting new playback
+    m.retryInProgress = false
+
     if m.currentChannelIndex >= 0 and m.currentChannelIndex < m.epgData.channels.count()
         channel = m.epgData.channels[m.currentChannelIndex]
         playChannel(channel)
