@@ -510,6 +510,16 @@ sub onTvpassPlaylistResponse()
                     newList.push(mainChannels[i])
                 end for
                 mainChannels = newList
+            else
+                ' Find and replace the duplicate
+                for i = 0 to mainChannels.count() - 1
+                    mainCh = mainChannels[i]
+                    if (ch.url <> invalid and mainCh.url <> invalid and ch.url = mainCh.url) or (ch.tvgId <> invalid and ch.tvgId <> "" and mainCh.tvgId <> invalid and ch.tvgId = mainCh.tvgId)
+                        ' Replace the main channel with custom channel
+                        mainChannels[i] = ch
+                        exit for
+                    end if
+                end for
             end if
         end for
     end if
