@@ -35,3 +35,6 @@ https://jmp2.uk/stvp-US1400001WV
 https://jmp2.uk/stvp-US300062TG
 #EXTINF:-1 tvg-id="samsung-draftkings-network" group-title="TV" tvg-name="DraftKings Network" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/draftkings-network-us.png"
 https://jmp2.uk/stvp-USBD700013BW
+
+#EXTINF:-1 tvg-id="nfl-network" group-title="TV" tvg-name="NFL Network" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-network-us.png"
+https://fl1.moveonjoy.com/NFL_NETWORK/index.m3u8
