@@ -128,7 +128,7 @@ function GetTeamLogoUrlFast(teamCode as String, league as String, logoBaseUrl as
     espnUrl = GetESPNLogoUrlFast(teamCode, league)
     if espnUrl <> "" then return espnUrl
 
-    ' Fallback to GitHub logos (your existing logic)
+    ' Fallback to GitHub logos
     if logoBaseUrl <> "" and teamCode <> invalid and teamCode <> ""
         urlParts = [logoBaseUrl, league, "/", teamCode, ".png"]
         return urlParts.Join("")

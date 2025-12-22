@@ -311,7 +311,7 @@ sub precomputeTeamData()
                 m.teamLogoCache[cacheKey] = githubLogoUrl
             end if
 
-            ' Team colors (unchanged)
+            ' Team colors are stored per-league
             if m.colorPalette.doesExist(leagueName)
                 leagueColors = m.colorPalette[leagueName]
                 if leagueColors.doesExist(teamCode)
