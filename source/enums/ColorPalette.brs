@@ -266,7 +266,7 @@ function GetTeamColorPalette() as Object
             "ucla": "0x2D68C4FF"
             "umass": "0x881C1CFF"
             "unlv": "0xCF0A2CFF"
-            "usc": "0x990000FF"
+            "usc": "0xFFFFFFFF"
             "utah": "0xCC0000FF"
             "utah-state": "0x0F2439FF"
             "utep": "0xFF6A13FF"
