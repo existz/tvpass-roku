@@ -36,5 +36,22 @@ https://jmp2.uk/stvp-US300062TG
 #EXTINF:-1 tvg-id="samsung-draftkings-network" group-title="TV" tvg-name="DraftKings Network" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/draftkings-network-us.png"
 https://jmp2.uk/stvp-USBD700013BW
 
+# Replace TVPass channels
+#EXTINF:-1 tvg-id="big-ten-network" group-title="TV" tvg-name="Big Ten Network" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/3/39/Big_Ten_Network_Logo.svg/512px-Big_Ten_Network_Logo.svg.png"
+https://fl1.moveonjoy.com/BIG_TEN_NETWORK/index.m3u8
+#EXTINF:-1 tvg-id="cspan" group-title="TV" tvg-name="C-SPAN" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/C-SPAN_Logo_%282019%29.svg/512px-C-SPAN_Logo_%282019%29.svg.png"
+https://fl1.moveonjoy.com/C-SPAN/index.m3u8
+#EXTINF:-1 tvg-id="cbs-sports-network-usa" group-title="TV" tvg-name="CBS Sports Network USA" tvg-logo="https://i.imgur.com/A8CnA8g.png"
+https://fl1.moveonjoy.com/CBS_SPORTS_NETWORK/index.m3u8
+#EXTINF:-1 tvg-id="lifetime-movies-east" group-title="TV" tvg-name="Lifetime Movies East" tvg-logo="https://i.postimg.cc/RZGmYyTt/lifetimemovies.png"
+https://fl1.moveonjoy.com/LIFETIME_MOVIE_NETWORK/index.m3u8
+#EXTINF:-1 tvg-id="mlb-network" group-title="TV" tvg-name="MLB Network" tvg-logo="https://i.imgur.com/sA5V39D.png"
+https://fl1.moveonjoy.com/MLB_NETWORK/index.m3u8
 #EXTINF:-1 tvg-id="nfl-network" group-title="TV" tvg-name="NFL Network" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-network-us.png"
 https://fl1.moveonjoy.com/NFL_NETWORK/index.m3u8
+#EXTINF:-1 tvg-id="sec-network" group-title="TV" tvg-name="SEC Network" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/SEC_Network_logo.svg/512px-SEC_Network_logo.svg.png"
+http://fl1.moveonjoy.com/SEC_NETWORK/index.m3u8
+#EXTINF:-1 tvg-id="tv-one" group-title="TV" tvg-name="TV One" tvg-logo="https://i.imgur.com/tthm8Q5.png"
+https://fl1.moveonjoy.com/TV_ONE/index.m3u8
+#EXTINF:-1 tvg-id="yes-network" group-title="TV" tvg-name="Yes Network" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/YES_Network_logo.svg/330px-YES_Network_logo.svg.png"
+https://fl1.moveonjoy.com/YES_NETWORK/index.m3u8
