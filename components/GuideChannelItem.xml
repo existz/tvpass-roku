@@ -24,10 +24,10 @@
         <Poster
             id="channelLogo"
             translation="[15,28]"
-            loadWidth="120"
-            loadHeight="60"
-            width="120"
-            height="60"
+            loadWidth="76"
+            loadHeight="76"
+            width="76"
+            height="76"
             loadDisplayMode="scaleToFit"
             failedBitmapUri=""
             visible="false"/>
@@ -40,7 +40,7 @@
             height="30"
             horizAlign="center"
             vertAlign="center"
-            font="font:MediumBoldSystemFont"
+            font="font:SmallBoldSystemFont"
             color="0xFFFFFFFF"
             wrap="false"/>
 

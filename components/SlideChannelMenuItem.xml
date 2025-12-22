@@ -22,11 +22,11 @@
         <!-- Channel Logo -->
         <Poster
             id="logo"
-            translation="[20,20]"
-            loadWidth="90"
-            loadHeight="79"
-            width="90"
-            height="79"
+            translation="[27,22]"
+            loadWidth="76"
+            loadHeight="76"
+            width="76"
+            height="76"
             loadDisplayMode="scaleToFit"
             failedBitmapUri=""/>
 
@@ -38,7 +38,7 @@
             height="50"
             horizAlign="right"
             vertAlign="center"
-            font="font:MediumBoldSystemFont"
+            font="font:SmallBoldSystemFont"
             color="0xCCCCCCFF"/>
 
         <!-- Program Title (Now Playing) - Centered -->
