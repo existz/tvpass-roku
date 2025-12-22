@@ -301,21 +301,17 @@ sub precomputeTeamData()
             teamCode = teams[teamName]
             cacheKey = leagueName + ":" + teamCode
 
-            ' Handle NCAAF separately with ESPN URLs
-            if leagueName = "NCAAF"
-                ' Get ESPN numeric ID using local function
-                teamId = GetNCAAFTeamIdLocal(teamCode)
-                if teamId <> invalid and teamId <> ""
-                    logoUrl = "https://a.espncdn.com/i/teamlogos/ncaa/500-dark/" + teamId + ".png"
-                    m.teamLogoCache[cacheKey] = logoUrl
-                    print "NCAAF Logo cached: "; teamCode; " -> "; logoUrl
-                end if
+            ' Use unified ESPN logo function for ALL leagues
+            espnLogoUrl = GetESPNLogoUrlFast(teamName, leagueName)
+            if espnLogoUrl <> ""
+                m.teamLogoCache[cacheKey] = espnLogoUrl
             else
-                ' Other leagues use GitHub repo
-                logoUrl = m.logoBaseUrl + leagueName + "/" + teamCode + ".png"
-                m.teamLogoCache[cacheKey] = logoUrl
+                ' Fallback to GitHub (if ESPN fails)
+                githubLogoUrl = m.logoBaseUrl + LCase(leagueName) + "/" + teamCode + ".png"
+                m.teamLogoCache[cacheKey] = githubLogoUrl
             end if
 
+            ' Team colors (unchanged)
             if m.colorPalette.doesExist(leagueName)
                 leagueColors = m.colorPalette[leagueName]
                 if leagueColors.doesExist(teamCode)

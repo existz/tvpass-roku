@@ -1,330 +1,603 @@
 function GetNFLTeams() as Object
     return {
-        "Cardinals": "cardinals", "Arizona Cardinals": "cardinals"
-        "Falcons": "falcons", "Atlanta Falcons": "falcons"
-        "Ravens": "ravens", "Baltimore Ravens": "ravens"
-        "Bills": "bills", "Buffalo Bills": "bills"
-        "Panthers": "panthers", "Carolina Panthers": "panthers"
-        "Bears": "bears", "Chicago Bears": "bears"
-        "Bengals": "bengals", "Cincinnati Bengals": "bengals"
-        "Browns": "browns", "Cleveland Browns": "browns"
-        "Cowboys": "cowboys", "Dallas Cowboys": "cowboys"
-        "Broncos": "broncos", "Denver Broncos": "broncos"
-        "Lions": "lions", "Detroit Lions": "lions"
-        "Packers": "packers", "Green Bay Packers": "packers"
-        "Texans": "texans", "Houston Texans": "texans"
-        "Colts": "colts", "Indianapolis Colts": "colts"
-        "Jaguars": "jaguars", "Jacksonville Jaguars": "jaguars"
-        "Chiefs": "chiefs", "Kansas City Chiefs": "chiefs"
-        "Raiders": "raiders", "Las Vegas Raiders": "raiders"
-        "Chargers": "chargers", "Los Angeles Chargers": "chargers"
-        "Rams": "rams", "Los Angeles Rams": "rams"
-        "Dolphins": "dolphins", "Miami Dolphins": "dolphins"
-        "Vikings": "vikings", "Minnesota Vikings": "vikings"
-        "Patriots": "patriots", "New England Patriots": "patriots"
-        "Saints": "saints", "New Orleans Saints": "saints"
-        "Giants": "giants", "New York Giants": "giants"
-        "Jets": "jets", "New York Jets": "jets"
-        "Eagles": "eagles", "Philadelphia Eagles": "eagles"
-        "Steelers": "steelers", "Pittsburgh Steelers": "steelers"
-        "49ers": "49ers", "San Francisco 49ers": "49ers"
-        "Seahawks": "seahawks", "Seattle Seahawks": "seahawks"
-        "Buccaneers": "buccaneers", "Tampa Bay Buccaneers": "buccaneers"
-        "Titans": "titans", "Tennessee Titans": "titans"
+        "Cardinals": "cardinals", "Arizona Cardinals": "cardinals",
+        "Falcons": "falcons", "Atlanta Falcons": "falcons",
+        "Ravens": "ravens", "Baltimore Ravens": "ravens",
+        "Bills": "bills", "Buffalo Bills": "bills",
+        "Panthers": "panthers", "Carolina Panthers": "panthers",
+        "Bears": "bears", "Chicago Bears": "bears",
+        "Bengals": "bengals", "Cincinnati Bengals": "bengals",
+        "Browns": "browns", "Cleveland Browns": "browns",
+        "Cowboys": "cowboys", "Dallas Cowboys": "cowboys",
+        "Broncos": "broncos", "Denver Broncos": "broncos",
+        "Lions": "lions", "Detroit Lions": "lions",
+        "Packers": "packers", "Green Bay Packers": "packers",
+        "Texans": "texans", "Houston Texans": "texans",
+        "Colts": "colts", "Indianapolis Colts": "colts",
+        "Jaguars": "jaguars", "Jacksonville Jaguars": "jaguars",
+        "Chiefs": "chiefs", "Kansas City Chiefs": "chiefs",
+        "Raiders": "raiders", "Las Vegas Raiders": "raiders",
+        "Chargers": "chargers", "Los Angeles Chargers": "chargers",
+        "Rams": "rams", "Los Angeles Rams": "rams",
+        "Dolphins": "dolphins", "Miami Dolphins": "dolphins",
+        "Vikings": "vikings", "Minnesota Vikings": "vikings",
+        "Patriots": "patriots", "New England Patriots": "patriots",
+        "Saints": "saints", "New Orleans Saints": "saints",
+        "Giants": "giants", "New York Giants": "giants",
+        "Jets": "jets", "New York Jets": "jets",
+        "Eagles": "eagles", "Philadelphia Eagles": "eagles",
+        "Steelers": "steelers", "Pittsburgh Steelers": "steelers",
+        "49ers": "49ers", "San Francisco 49ers": "49ers",
+        "Seahawks": "seahawks", "Seattle Seahawks": "seahawks",
+        "Buccaneers": "buccaneers", "Tampa Bay Buccaneers": "buccaneers",
+        "Titans": "titans", "Tennessee Titans": "titans",
         "Commanders": "commanders", "Washington Commanders": "commanders"
     }
 end function
 
 function GetNBATeams() as Object
     return {
-        "Hawks": "hawks", "Atlanta Hawks": "hawks"
-        "Celtics": "celtics", "Boston Celtics": "celtics"
-        "Nets": "nets", "Brooklyn Nets": "nets"
-        "Hornets": "hornets", "Charlotte Hornets": "hornets"
-        "Bulls": "bulls", "Chicago Bulls": "bulls"
-        "Cavaliers": "cavaliers", "Cleveland Cavaliers": "cavaliers"
-        "Mavericks": "mavericks", "Dallas Mavericks": "mavericks"
-        "Nuggets": "nuggets", "Denver Nuggets": "nuggets"
-        "Pistons": "pistons", "Detroit Pistons": "pistons"
-        "Warriors": "warriors", "Golden State Warriors": "warriors"
-        "Rockets": "rockets", "Houston Rockets": "rockets"
-        "Pacers": "pacers", "Indiana Pacers": "pacers"
-        "Clippers": "clippers", "LA Clippers": "clippers", "Los Angeles Clippers": "clippers"
-        "Lakers": "lakers", "LA Lakers": "lakers", "Los Angeles Lakers": "lakers"
-        "Grizzlies": "grizzlies", "Memphis Grizzlies": "grizzlies"
-        "Heat": "heat", "Miami Heat": "heat"
-        "Bucks": "bucks", "Milwaukee Bucks": "bucks"
-        "Timberwolves": "timberwolves", "Minnesota Timberwolves": "timberwolves"
-        "Pelicans": "pelicans", "New Orleans Pelicans": "pelicans"
-        "Knicks": "knicks", "New York Knicks": "knicks"
-        "Thunder": "thunder", "Oklahoma City Thunder": "thunder"
-        "Magic": "magic", "Orlando Magic": "magic"
-        "76ers": "76ers", "Philadelphia 76ers": "76ers"
-        "Suns": "suns", "Phoenix Suns": "suns"
-        "Trail Blazers": "trailblazers", "Portland Trail Blazers": "trailblazers"
-        "Kings": "kings", "Sacramento Kings": "kings"
-        "Spurs": "spurs", "San Antonio Spurs": "spurs"
-        "Raptors": "raptors", "Toronto Raptors": "raptors"
-        "Jazz": "jazz", "Utah Jazz": "jazz"
+        "Hawks": "hawks", "Atlanta Hawks": "hawks",
+        "Celtics": "celtics", "Boston Celtics": "celtics",
+        "Nets": "nets", "Brooklyn Nets": "nets",
+        "Hornets": "hornets", "Charlotte Hornets": "hornets",
+        "Bulls": "bulls", "Chicago Bulls": "bulls",
+        "Cavaliers": "cavaliers", "Cleveland Cavaliers": "cavaliers",
+        "Mavericks": "mavericks", "Dallas Mavericks": "mavericks",
+        "Nuggets": "nuggets", "Denver Nuggets": "nuggets",
+        "Pistons": "pistons", "Detroit Pistons": "pistons",
+        "Warriors": "warriors", "Golden State Warriors": "warriors",
+        "Rockets": "rockets", "Houston Rockets": "rockets",
+        "Pacers": "pacers", "Indiana Pacers": "pacers",
+        "Clippers": "clippers", "LA Clippers": "clippers", "Los Angeles Clippers": "clippers",
+        "Lakers": "lakers", "LA Lakers": "lakers", "Los Angeles Lakers": "lakers",
+        "Grizzlies": "grizzlies", "Memphis Grizzlies": "grizzlies",
+        "Heat": "heat", "Miami Heat": "heat",
+        "Bucks": "bucks", "Milwaukee Bucks": "bucks",
+        "Timberwolves": "timberwolves", "Minnesota Timberwolves": "timberwolves",
+        "Pelicans": "pelicans", "New Orleans Pelicans": "pelicans",
+        "Knicks": "knicks", "New York Knicks": "knicks",
+        "Thunder": "thunder", "Oklahoma City Thunder": "thunder",
+        "Magic": "magic", "Orlando Magic": "magic",
+        "76ers": "76ers", "Philadelphia 76ers": "76ers",
+        "Suns": "suns", "Phoenix Suns": "suns",
+        "Trail Blazers": "trailblazers", "Portland Trail Blazers": "trailblazers",
+        "Kings": "kings", "Sacramento Kings": "kings",
+        "Spurs": "spurs", "San Antonio Spurs": "spurs",
+        "Raptors": "raptors", "Toronto Raptors": "raptors",
+        "Jazz": "jazz", "Utah Jazz": "jazz",
         "Wizards": "wizards", "Washington Wizards": "wizards"
     }
 end function
 
 function GetMLBTeams() as Object
     return {
-        "Diamondbacks": "diamondbacks", "Arizona Diamondbacks": "diamondbacks"
-        "Braves": "braves", "Atlanta Braves": "braves"
-        "Orioles": "orioles", "Baltimore Orioles": "orioles"
-        "Red Sox": "red-sox", "Boston Red Sox": "red-sox"
-        "Cubs": "cubs", "Chicago Cubs": "cubs"
-        "White Sox": "white-sox", "Chicago White Sox": "white-sox"
-        "Reds": "reds", "Cincinnati Reds": "reds"
-        "Guardians": "guardians", "Cleveland Guardians": "guardians"
-        "Rockies": "rockies", "Colorado Rockies": "rockies"
-        "Tigers": "tigers", "Detroit Tigers": "tigers"
-        "Astros": "astros", "Houston Astros": "astros"
-        "Royals": "royals", "Kansas City Royals": "royals"
-        "Angels": "angels", "Los Angeles Angels": "angels"
-        "Dodgers": "dodgers", "Los Angeles Dodgers": "dodgers"
-        "Marlins": "marlins", "Miami Marlins": "marlins"
-        "Brewers": "brewers", "Milwaukee Brewers": "brewers"
-        "Twins": "twins", "Minnesota Twins": "twins"
-        "Mets": "mets", "New York Mets": "mets"
-        "Yankees": "yankees", "New York Yankees": "yankees"
-        "Athletics": "athletics", "Oakland Athletics": "athletics"
-        "Phillies": "phillies", "Philadelphia Phillies": "phillies"
-        "Pirates": "pirates", "Pittsburgh Pirates": "pirates"
-        "Padres": "padres", "San Diego Padres": "padres"
-        "Giants": "giants", "San Francisco Giants": "giants"
-        "Mariners": "mariners", "Seattle Mariners": "mariners"
-        "Cardinals": "cardinals", "St. Louis Cardinals": "cardinals"
-        "Rays": "rays", "Tampa Bay Rays": "rays"
-        "Rangers": "rangers", "Texas Rangers": "rangers"
-        "Blue Jays": "blue-jays", "Toronto Blue Jays": "blue-jays"
+        "Diamondbacks": "diamondbacks", "Arizona Diamondbacks": "diamondbacks",
+        "Braves": "braves", "Atlanta Braves": "braves",
+        "Orioles": "orioles", "Baltimore Orioles": "orioles",
+        "Red Sox": "red-sox", "Boston Red Sox": "red-sox",
+        "Cubs": "cubs", "Chicago Cubs": "cubs",
+        "White Sox": "white-sox", "Chicago White Sox": "white-sox",
+        "Reds": "reds", "Cincinnati Reds": "reds",
+        "Guardians": "guardians", "Cleveland Guardians": "guardians",
+        "Rockies": "rockies", "Colorado Rockies": "rockies",
+        "Tigers": "tigers", "Detroit Tigers": "tigers",
+        "Astros": "astros", "Houston Astros": "astros",
+        "Royals": "royals", "Kansas City Royals": "royals",
+        "Angels": "angels", "Los Angeles Angels": "angels",
+        "Dodgers": "dodgers", "Los Angeles Dodgers": "dodgers",
+        "Marlins": "marlins", "Miami Marlins": "marlins",
+        "Brewers": "brewers", "Milwaukee Brewers": "brewers",
+        "Twins": "twins", "Minnesota Twins": "twins",
+        "Mets": "mets", "New York Mets": "mets",
+        "Yankees": "yankees", "New York Yankees": "yankees",
+        "Athletics": "athletics", "Oakland Athletics": "athletics",
+        "Phillies": "phillies", "Philadelphia Phillies": "phillies",
+        "Pirates": "pirates", "Pittsburgh Pirates": "pirates",
+        "Padres": "padres", "San Diego Padres": "padres",
+        "Giants": "giants", "San Francisco Giants": "giants",
+        "Mariners": "mariners", "Seattle Mariners": "mariners",
+        "Cardinals": "cardinals", "St. Louis Cardinals": "cardinals",
+        "Rays": "rays", "Tampa Bay Rays": "rays",
+        "Rangers": "rangers", "Texas Rangers": "rangers",
+        "Blue Jays": "blue-jays", "Toronto Blue Jays": "blue-jays",
         "Nationals": "nationals", "Washington Nationals": "nationals"
     }
 end function
 
 function GetNHLTeams() as Object
     return {
-        "Ducks": "ducks", "Anaheim Ducks": "ducks"
-        "Coyotes": "coyotes", "Arizona Coyotes": "coyotes"
-        "Bruins": "bruins", "Boston Bruins": "bruins"
-        "Sabres": "sabres", "Buffalo Sabres": "sabres"
-        "Flames": "flames", "Calgary Flames": "flames"
-        "Hurricanes": "hurricanes", "Carolina Hurricanes": "hurricanes"
-        "Blackhawks": "blackhawks", "Chicago Blackhawks": "blackhawks"
-        "Avalanche": "avalanche", "Colorado Avalanche": "avalanche"
-        "Blue Jackets": "blue-jackets", "Columbus Blue Jackets": "blue-jackets"
-        "Stars": "stars", "Dallas Stars": "stars"
-        "Red Wings": "red-wings", "Detroit Red Wings": "red-wings"
-        "Oilers": "oilers", "Edmonton Oilers": "oilers"
-        "Panthers": "panthers", "Florida Panthers": "panthers"
-        "Kings": "kings", "Los Angeles Kings": "kings"
-        "Wild": "wild", "Minnesota Wild": "wild"
-        "Canadiens": "canadiens", "Montreal Canadiens": "canadiens"
-        "Predators": "predators", "Nashville Predators": "predators"
-        "Devils": "devils", "New Jersey Devils": "devils"
-        "Islanders": "islanders", "New York Islanders": "islanders"
-        "Rangers": "rangers", "New York Rangers": "rangers"
-        "Senators": "senators", "Ottawa Senators": "senators"
-        "Flyers": "flyers", "Philadelphia Flyers": "flyers"
-        "Penguins": "penguins", "Pittsburgh Penguins": "penguins"
-        "Sharks": "sharks", "San Jose Sharks": "sharks"
-        "Kraken": "kraken", "Seattle Kraken": "kraken"
-        "Blues": "blues", "St. Louis Blues": "blues"
-        "Lightning": "lightning", "Tampa Bay Lightning": "lightning"
-        "Maple Leafs": "maple-leafs", "Toronto Maple Leafs": "maple-leafs"
-        "Canucks": "canucks", "Vancouver Canucks": "canucks"
-        "Golden Knights": "golden-knights", "Vegas Golden Knights": "golden-knights"
-        "Capitals": "capitals", "Washington Capitals": "capitals"
-        "Jets": "jets", "Winnipeg Jets": "jets"
+        "Ducks": "ducks", "Anaheim Ducks": "ducks",
+        "Coyotes": "coyotes", "Arizona Coyotes": "coyotes",
+        "Bruins": "bruins", "Boston Bruins": "bruins",
+        "Sabres": "sabres", "Buffalo Sabres": "sabres",
+        "Flames": "flames", "Calgary Flames": "flames",
+        "Hurricanes": "hurricanes", "Carolina Hurricanes": "hurricanes",
+        "Blackhawks": "blackhawks", "Chicago Blackhawks": "blackhawks",
+        "Avalanche": "avalanche", "Colorado Avalanche": "avalanche",
+        "Blue Jackets": "blue-jackets", "Columbus Blue Jackets": "blue-jackets",
+        "Stars": "stars", "Dallas Stars": "stars",
+        "Red Wings": "red-wings", "Detroit Red Wings": "red-wings",
+        "Oilers": "oilers", "Edmonton Oilers": "oilers",
+        "Panthers": "panthers", "Florida Panthers": "panthers",
+        "Kings": "kings", "Los Angeles Kings": "kings",
+        "Wild": "wild", "Minnesota Wild": "wild",
+        "Canadiens": "canadiens", "Montreal Canadiens": "canadiens",
+        "Predators": "predators", "Nashville Predators": "predators",
+        "Devils": "devils", "New Jersey Devils": "devils",
+        "Islanders": "islanders", "New York Islanders": "islanders",
+        "Rangers": "rangers", "New York Rangers": "rangers",
+        "Senators": "senators", "Ottawa Senators": "senators",
+        "Flyers": "flyers", "Philadelphia Flyers": "flyers",
+        "Penguins": "penguins", "Pittsburgh Penguins": "penguins",
+        "Sharks": "sharks", "San Jose Sharks": "sharks",
+        "Kraken": "kraken", "Seattle Kraken": "kraken",
+        "Blues": "blues", "St. Louis Blues": "blues",
+        "Lightning": "lightning", "Tampa Bay Lightning": "lightning",
+        "Maple Leafs": "maple-leafs", "Toronto Maple Leafs": "maple-leafs",
+        "Canucks": "canucks", "Vancouver Canucks": "canucks",
+        "Golden Knights": "golden-knights", "Vegas Golden Knights": "golden-knights",
+        "Capitals": "capitals", "Washington Capitals": "capitals",
+        "Jets": "jets", "Winnipeg Jets": "jets",
         "Mammoth": "mammoth", "Utah Mammoth": "mammoth"
     }
 end function
 
 function GetNCAAFTeams() as Object
     return {
-        "Air Force": "air-force", "Air Force Falcons": "air-force"
-        "Akron": "akron", "Akron Zips": "akron"
-        "Alabama": "alabama", "Alabama Crimson Tide": "alabama"
-        "Appalachian State": "appalachian-state", "Appalachian State Mountaineers": "appalachian-state"
-        "Arizona": "arizona", "Arizona Wildcats": "arizona"
-        "Arizona State": "arizona-state", "Arizona State Sun Devils": "arizona-state"
-        "Arkansas": "arkansas", "Arkansas Razorbacks": "arkansas"
-        "Arkansas State": "arkansas-state", "Arkansas State Red Wolves": "arkansas-state"
-        "Army": "army", "Army Black Knights": "army"
-        "Auburn": "auburn", "Auburn Tigers": "auburn"
-        "Ball State": "ball-state", "Ball State Cardinals": "ball-state"
-        "Baylor": "baylor", "Baylor Bears": "baylor"
-        "Boise State": "boise-state", "Boise State Broncos": "boise-state"
-        "Boston College": "boston-college", "Boston College Eagles": "boston-college"
-        "Bowling Green": "bowling-green", "Bowling Green Falcons": "bowling-green"
-        "Buffalo": "buffalo", "Buffalo Bulls": "buffalo"
-        "BYU": "byu", "BYU Cougars": "byu"
-        "California": "california", "California Golden Bears": "california"
-        "Central Michigan": "central-michigan", "Central Michigan Chippewas": "central-michigan"
-        "Charlotte": "charlotte", "Charlotte 49ers": "charlotte"
-        "Cincinnati": "cincinnati", "Cincinnati Bearcats": "cincinnati"
-        "Clemson": "clemson", "Clemson Tigers": "clemson"
-        "Coastal Carolina": "coastal-carolina", "Coastal Carolina Chanticleers": "coastal-carolina"
-        "Colorado": "colorado", "Colorado Buffaloes": "colorado"
-        "Colorado State": "colorado-state", "Colorado State Rams": "colorado-state"
-        "Connecticut": "connecticut", "Connecticut Huskies": "connecticut"
-        "Duke": "duke", "Duke Blue Devils": "duke"
-        "East Carolina": "east-carolina", "East Carolina Pirates": "east-carolina"
-        "Eastern Michigan": "eastern-michigan", "Eastern Michigan Eagles": "eastern-michigan"
-        "Florida": "florida", "Florida Gators": "florida"
-        "Florida Atlantic": "florida-atlantic", "Florida Atlantic Owls": "florida-atlantic"
-        "Florida International": "florida-international", "Florida International Panthers": "florida-international"
-        "Florida State": "florida-state", "Florida State Seminoles": "florida-state"
-        "Fresno State": "fresno-state", "Fresno State Bulldogs": "fresno-state"
-        "Georgia": "georgia", "Georgia Bulldogs": "georgia"
-        "Georgia Southern": "georgia-southern", "Georgia Southern Eagles": "georgia-southern"
-        "Georgia State": "georgia-state", "Georgia State Panthers": "georgia-state"
-        "Georgia Tech": "georgia-tech", "Georgia Tech Yellow Jackets": "georgia-tech"
-        "Hawai'i": "hawaii", "Hawai'i Rainbow Warriors": "hawaii"
-        "Houston": "houston", "Houston Cougars": "houston"
-        "Illinois": "illinois", "Illinois Fighting Illini": "illinois"
-        "Indiana": "indiana", "Indiana Hoosiers": "indiana"
-        "Iowa": "iowa", "Iowa Hawkeyes": "iowa"
-        "Iowa State": "iowa-state", "Iowa State Cyclones": "iowa-state"
-        "James Madison": "james-madison", "James Madison Dukes": "james-madison"
-        "Kansas": "kansas", "Kansas Jayhawks": "kansas"
-        "Kansas State": "kansas-state", "Kansas State Wildcats": "kansas-state"
-        "Kent State": "kent-state", "Kent State Golden Flashes": "kent-state"
-        "Kentucky": "kentucky", "Kentucky Wildcats": "kentucky"
-        "Liberty": "liberty", "Liberty Flames": "liberty"
-        "Louisiana": "louisiana", "Louisiana Ragin' Cajuns": "louisiana"
-        "Louisiana Monroe": "louisiana-monroe", "Louisiana Monroe Warhawks": "louisiana-monroe"
-        "Louisiana Tech": "louisiana-tech", "Louisiana Tech Bulldogs": "louisiana-tech"
-        "Louisville": "louisville", "Louisville Cardinals": "louisville"
-        "LSU": "lsu", "LSU Tigers": "lsu"
-        "Marshall": "marshall", "Marshall Thundering Herd": "marshall"
-        "Maryland": "maryland", "Maryland Terrapins": "maryland"
-        "Memphis": "memphis", "Memphis Tigers": "memphis"
-        "Miami": "miami", "Miami Hurricanes": "miami"
-        "Miami (OH)": "miami-oh", "Miami (OH) RedHawks": "miami-oh"
-        "Michigan": "michigan", "Michigan Wolverines": "michigan"
-        "Michigan State": "michigan-state", "Michigan State Spartans": "michigan-state"
-        "Middle Tennessee": "middle-tennessee", "Middle Tennessee Blue Raiders": "middle-tennessee"
-        "Minnesota": "minnesota", "Minnesota Golden Gophers": "minnesota"
-        "Mississippi State": "mississippi-state", "Mississippi State Bulldogs": "mississippi-state"
-        "Missouri": "missouri", "Missouri Tigers": "missouri"
-        "Navy": "navy", "Navy Midshipmen": "navy"
-        "NC State": "nc-state", "NC State Wolfpack": "nc-state"
-        "Nebraska": "nebraska", "Nebraska Cornhuskers": "nebraska"
-        "Nevada": "nevada", "Nevada Wolf Pack": "nevada"
-        "New Mexico": "new-mexico", "New Mexico Lobos": "new-mexico"
-        "New Mexico State": "new-mexico-state", "New Mexico State Aggies": "new-mexico-state"
-        "North Carolina": "north-carolina", "North Carolina Tar Heels": "north-carolina"
-        "North Texas": "north-texas", "North Texas Mean Green": "north-texas"
-        "Northern Illinois": "northern-illinois", "Northern Illinois Huskies": "northern-illinois"
-        "Northwestern": "northwestern", "Northwestern Wildcats": "northwestern"
-        "Notre Dame": "notre-dame", "Notre Dame Fighting Irish": "notre-dame"
-        "Ohio": "ohio", "Ohio Bobcats": "ohio"
-        "Ohio State": "ohio-state", "Ohio State Buckeyes": "ohio-state"
-        "Oklahoma": "oklahoma", "Oklahoma Sooners": "oklahoma"
-        "Oklahoma State": "oklahoma-state", "Oklahoma State Cowboys": "oklahoma-state"
-        "Old Dominion": "old-dominion", "Old Dominion Monarchs": "old-dominion"
-        "Ole Miss": "ole-miss", "Ole Miss Rebels": "ole-miss"
-        "Oregon": "oregon", "Oregon Ducks": "oregon"
-        "Oregon State": "oregon-state", "Oregon State Beavers": "oregon-state"
-        "Penn State": "penn-state", "Penn State Nittany Lions": "penn-state"
-        "Pittsburgh": "pittsburgh", "Pittsburgh Panthers": "pittsburgh"
-        "Purdue": "purdue", "Purdue Boilermakers": "purdue"
-        "Rice": "rice", "Rice Owls": "rice"
-        "Rutgers": "rutgers", "Rutgers Scarlet Knights": "rutgers"
-        "Sam Houston": "sam-houston", "Sam Houston Bearkats": "sam-houston"
-        "San Diego State": "san-diego-state", "San Diego State Aztecs": "san-diego-state"
-        "San Jose State": "san-jose-state", "San Jose State Spartans": "san-jose-state"
-        "SMU": "smu", "SMU Mustangs": "smu"
-        "South Alabama": "south-alabama", "South Alabama Jaguars": "south-alabama"
-        "South Carolina": "south-carolina", "South Carolina Gamecocks": "south-carolina"
-        "South Florida": "south-florida", "South Florida Bulls": "south-florida"
-        "Southern Miss": "southern-miss", "Southern Miss Golden Eagles": "southern-miss"
-        "Stanford": "stanford", "Stanford Cardinal": "stanford"
-        "Syracuse": "syracuse", "Syracuse Orange": "syracuse"
-        "TCU": "tcu", "TCU Horned Frogs": "tcu"
-        "Temple": "temple", "Temple Owls": "temple"
-        "Tennessee": "tennessee", "Tennessee Volunteers": "tennessee"
-        "Texas": "texas", "Texas Longhorns": "texas"
-        "Texas A&M": "texas-am", "Texas A&M Aggies": "texas-am"
-        "Texas State": "texas-state", "Texas State Bobcats": "texas-state"
-        "Texas Tech": "texas-tech", "Texas Tech Red Raiders": "texas-tech"
-        "Toledo": "toledo", "Toledo Rockets": "toledo"
-        "Troy": "troy", "Troy Trojans": "troy"
-        "Tulane": "tulane", "Tulane Green Wave": "tulane"
-        "Tulsa": "tulsa", "Tulsa Golden Hurricane": "tulsa"
-        "UAB": "uab", "UAB Blazers": "uab"
-        "UCF": "ucf", "UCF Knights": "ucf"
-        "UCLA": "ucla", "UCLA Bruins": "ucla"
-        "UMass": "umass", "UMass Minutemen": "umass"
-        "UNLV": "unlv", "UNLV Rebels": "unlv"
-        "USC": "usc", "USC Trojans": "usc"
-        "Utah": "utah", "Utah Utes": "utah"
-        "Utah State": "utah-state", "Utah State Aggies": "utah-state"
-        "UTEP": "utep", "UTEP Miners": "utep"
-        "UTSA": "utsa", "UTSA Roadrunners": "utsa"
-        "Vanderbilt": "vanderbilt", "Vanderbilt Commodores": "vanderbilt"
-        "Virginia": "virginia", "Virginia Cavaliers": "virginia"
-        "Virginia Tech": "virginia-tech", "Virginia Tech Hokies": "virginia-tech"
-        "Wake Forest": "wake-forest", "Wake Forest Demon Deacons": "wake-forest"
-        "Washington": "washington", "Washington Huskies": "washington"
-        "Washington State": "washington-state", "Washington State Cougars": "washington-state"
-        "West Virginia": "west-virginia", "West Virginia Mountaineers": "west-virginia"
-        "Western Kentucky": "western-kentucky", "Western Kentucky Hilltoppers": "western-kentucky"
-        "Western Michigan": "western-michigan", "Western Michigan Broncos": "western-michigan"
-        "Wisconsin": "wisconsin", "Wisconsin Badgers": "wisconsin"
-        "Wyoming": "wyoming", "Wyoming Cowboys": "wyoming"
+        "Tennessee": "tennessee", "Tennessee Volunteers": "tennessee", "TENN": "tennessee", "Vols": "tennessee",
+        "Texas A&M": "texas-am", "Texas A&M Aggies": "texas-am", "TA&M": "texas-am", "Texas AM": "texas-am",
+        "Texas": "texas", "Texas Longhorns": "texas", "TEX": "texas",
+        "Texas State": "texas-state", "Texas State Bobcats": "texas-state", "TXST": "texas-state",
+        "Texas Tech": "texas-tech", "Texas Tech Red Raiders": "texas-tech", "TTU": "texas-tech",
+        "Kansas State": "kansas-state", "Kansas State Wildcats": "kansas-state", "K-State": "kansas-state", "KSU": "kansas-state",
+        "Kansas": "kansas", "Kansas Jayhawks": "kansas", "KU": "kansas",
+        "Miami (OH)": "miami-oh", "Miami (OH) RedHawks": "miami-oh", "Miami OH": "miami-oh",
+        "Miami": "miami", "Miami Hurricanes": "miami",
+        "Florida State": "florida-state", "Florida State Seminoles": "florida-state", "FSU": "florida-state", "Florida St": "florida-state",
+        "Florida Atlantic": "florida-atlantic", "Florida Atlantic Owls": "florida-atlantic", "FAU": "florida-atlantic",
+        "Florida International": "florida-international", "Florida International Panthers": "florida-international", "FIU": "florida-international",
+        "Florida": "florida", "Florida Gators": "florida",
+        "North Carolina": "north-carolina", "North Carolina Tar Heels": "north-carolina", "UNC": "north-carolina", "North Carolina A&T": "north-carolina",
+        "NC State": "nc-state", "NC State Wolfpack": "nc-state", "NC St": "nc-state", "NCST": "nc-state",
+        "Air Force": "air-force", "Air Force Falcons": "air-force",
+        "Akron": "akron", "Akron Zips": "akron",
+        "Alabama": "alabama", "Alabama Crimson Tide": "alabama",
+        "App State": "appalachian-state", "Appalachian State": "appalachian-state", "Appalachian State Mountaineers": "appalachian-state",
+        "Arizona": "arizona", "Arizona Wildcats": "arizona",
+        "Arizona State": "arizona-state", "Arizona State Sun Devils": "arizona-state", "ASU": "arizona-state",
+        "Arkansas": "arkansas", "Arkansas Razorbacks": "arkansas",
+        "Arkansas State": "arkansas-state", "Arkansas State Red Wolves": "arkansas-state",
+        "Army": "army", "Army Black Knights": "army",
+        "Auburn": "auburn", "Auburn Tigers": "auburn",
+        "Ball State": "ball-state", "Ball State Cardinals": "ball-state",
+        "Baylor": "baylor", "Baylor Bears": "baylor",
+        "Boise State": "boise-state", "Boise State Broncos": "boise-state", "Boise St": "boise-state",
+        "Boston College": "boston-college", "Boston College Eagles": "boston-college", "BC": "boston-college",
+        "Bowling Green": "bowling-green", "Bowling Green Falcons": "bowling-green", "BGSU": "bowling-green",
+        "Buffalo": "buffalo", "Buffalo Bulls": "buffalo",
+        "BYU": "byu", "BYU Cougars": "byu",
+        "California": "california", "California Golden Bears": "california", "Cal": "california",
+        "Central Michigan": "central-michigan", "Central Michigan Chippewas": "central-michigan", "CMU": "central-michigan",
+        "Charlotte": "charlotte", "Charlotte 49ers": "charlotte",
+        "Cincinnati": "cincinnati", "Cincinnati Bearcats": "cincinnati", "Cincy": "cincinnati",
+        "Clemson": "clemson", "Clemson Tigers": "clemson",
+        "Coastal Carolina": "coastal-carolina", "Coastal Carolina Chanticleers": "coastal-carolina", "CCU": "coastal-carolina",
+        "Colorado": "colorado", "Colorado Buffaloes": "colorado",
+        "Colorado State": "colorado-state", "Colorado State Rams": "colorado-state", "CSU": "colorado-state",
+        "Connecticut": "connecticut", "Connecticut Huskies": "connecticut", "UConn": "connecticut",
+        "Duke": "duke", "Duke Blue Devils": "duke",
+        "East Carolina": "east-carolina", "East Carolina Pirates": "east-carolina", "ECU": "east-carolina",
+        "Eastern Michigan": "eastern-michigan", "Eastern Michigan Eagles": "eastern-michigan", "EMU": "eastern-michigan",
+        "Fresno State": "fresno-state", "Fresno State Bulldogs": "fresno-state", "Fresno St": "fresno-state",
+        "Georgia": "georgia", "Georgia Bulldogs": "georgia", "UGA": "georgia",
+        "Georgia Southern": "georgia-southern", "Georgia Southern Eagles": "georgia-southern", "Ga Southern": "georgia-southern",
+        "Georgia State": "georgia-state", "Georgia State Panthers": "georgia-state", "Ga State": "georgia-state",
+        "Georgia Tech": "georgia-tech", "Georgia Tech Yellow Jackets": "georgia-tech", "GT": "georgia-tech",
+        "Hawai'i": "hawaii", "Hawai'i Rainbow Warriors": "hawaii", "Hawaii": "hawaii",
+        "Houston": "houston", "Houston Cougars": "houston",
+        "Illinois": "illinois", "Illinois Fighting Illini": "illinois",
+        "Indiana": "indiana", "Indiana Hoosiers": "indiana",
+        "Iowa": "iowa", "Iowa Hawkeyes": "iowa",
+        "Iowa State": "iowa-state", "Iowa State Cyclones": "iowa-state", "ISU": "iowa-state",
+        "James Madison": "james-madison", "James Madison Dukes": "james-madison", "JMU": "james-madison",
+        "Kent State": "kent-state", "Kent State Golden Flashes": "kent-state", "Kent St": "kent-state",
+        "Kentucky": "kentucky", "Kentucky Wildcats": "kentucky", "UK": "kentucky",
+        "Liberty": "liberty", "Liberty Flames": "liberty",
+        "Louisiana": "louisiana", "Louisiana Ragin' Cajuns": "louisiana", "UL": "louisiana",
+        "Louisiana Monroe": "louisiana-monroe", "Louisiana Monroe Warhawks": "louisiana-monroe", "ULM": "louisiana-monroe"
+        "Louisiana Tech": "louisiana-tech", "Louisiana Tech Bulldogs": "louisiana-tech", "LA Tech": "louisiana-tech",
+        "Louisville": "louisville", "Louisville Cardinals": "louisville", "Lou": "louisville",
+        "LSU": "lsu", "LSU Tigers": "lsu",
+        "Marshall": "marshall", "Marshall Thundering Herd": "marshall",
+        "Maryland": "maryland", "Maryland Terrapins": "maryland", "MD": "maryland",
+        "Memphis": "memphis", "Memphis Tigers": "memphis",
+        "Middle Tennessee": "middle-tennessee", "Middle Tennessee Blue Raiders": "middle-tennessee", "MTSU": "middle-tennessee",
+        "Minnesota": "minnesota", "Minnesota Golden Gophers": "minnesota", "Minn": "minnesota",
+        "Mississippi State": "mississippi-state", "Mississippi State Bulldogs": "mississippi-state", "Miss St": "mississippi-state", "MSST": "mississippi-state",
+        "Missouri": "missouri", "Missouri Tigers": "missouri", "Mizzou": "missouri", "MIZZ": "missouri",
+        "Navy": "navy", "Navy Midshipmen": "navy",
+        "Nebraska": "nebraska", "Nebraska Cornhuskers": "nebraska", "Neb": "nebraska",
+        "Nevada": "nevada", "Nevada Wolf Pack": "nevada", "NV": "nevada",
+        "New Mexico": "new-mexico", "New Mexico Lobos": "new-mexico", "UNM": "new-mexico",
+        "New Mexico State": "new-mexico-state", "New Mexico State Aggies": "new-mexico-state", "NM State": "new-mexico-state", "NMST": "new-mexico-state",
+        "North Texas": "north-texas", "North Texas Mean Green": "north-texas", "UNT": "north-texas",
+        "Northern Illinois": "northern-illinois", "Northern Illinois Huskies": "northern-illinois", "NIU": "northern-illinois",
+        "Northwestern": "northwestern", "Northwestern Wildcats": "northwestern", "NW": "northwestern",
+        "Notre Dame": "notre-dame", "Notre Dame Fighting Irish": "notre-dame", "ND": "notre-dame",
+        "Ohio": "ohio", "Ohio Bobcats": "ohio",
+        "Ohio State": "ohio-state", "Ohio State Buckeyes": "ohio-state", "OSU": "ohio-state",
+        "Oklahoma": "oklahoma", "Oklahoma Sooners": "oklahoma", "OU": "oklahoma", "OKLA": "oklahoma",
+        "Oklahoma State": "oklahoma-state", "Oklahoma State Cowboys": "oklahoma-state", "OK State": "oklahoma-state", "OKST": "oklahoma-state",
+        "Old Dominion": "old-dominion", "Old Dominion Monarchs": "old-dominion", "ODU": "old-dominion",
+        "Ole Miss": "ole-miss", "Ole Miss Rebels": "ole-miss", "MISS": "ole-miss",
+        "Oregon": "oregon", "Oregon Ducks": "oregon", "ORE": "oregon",
+        "Oregon State": "oregon-state", "Oregon State Beavers": "oregon-state", "ORST": "oregon-state",
+        "Penn State": "penn-state", "Penn State Nittany Lions": "penn-state", "PSU": "penn-state",
+        "Pittsburgh": "pittsburgh", "Pittsburgh Panthers": "pittsburgh", "Pitt": "pittsburgh", "PITT": "pittsburgh",
+        "Purdue": "purdue", "Purdue Boilermakers": "purdue", "PUR": "purdue",
+        "Rice": "rice", "Rice Owls": "rice",
+        "Rutgers": "rutgers", "Rutgers Scarlet Knights": "rutgers", "RUTG": "rutgers",
+        "Sam Houston": "sam-houston", "Sam Houston Bearkats": "sam-houston", "SAM": "sam-houston",
+        "San Diego State": "san-diego-state", "San Diego State Aztecs": "san-diego-state", "SDSU": "san-diego-state", "SD State": "san-diego-state",
+        "San Jose State": "san-jose-state", "San Jose State Spartans": "san-jose-state", "SJSU": "san-jose-state",
+        "SMU": "smu", "SMU Mustangs": "smu",
+        "South Alabama": "south-alabama", "South Alabama Jaguars": "south-alabama", "USA": "south-alabama",
+        "South Carolina": "south-carolina", "South Carolina Gamecocks": "south-carolina", "SC": "south-carolina",
+        "South Florida": "south-florida", "South Florida Bulls": "south-florida", "USF": "south-florida",
+        "Southern Miss": "southern-miss", "Southern Miss Golden Eagles": "southern-miss", "USM": "southern-miss",
+        "Stanford": "stanford", "Stanford Cardinal": "stanford", "STAN": "stanford",
+        "Syracuse": "syracuse", "Syracuse Orange": "syracuse", "SYR": "syracuse",
+        "TCU": "tcu", "TCU Horned Frogs": "tcu",
+        "Temple": "temple", "Temple Owls": "temple", "TEM": "temple",
+        "Toledo": "toledo", "Toledo Rockets": "toledo", "TOL": "toledo",
+        "Troy": "troy", "Troy Trojans": "troy", "TROY": "troy",
+        "Tulane": "tulane", "Tulane Green Wave": "tulane", "TULANE": "tulane",
+        "Tulsa": "tulsa", "Tulsa Golden Hurricane": "tulsa", "TULSA": "tulsa",
+        "UAB": "uab", "UAB Blazers": "uab",
+        "UCF": "ucf", "UCF Knights": "ucf",
+        "UCLA": "ucla", "UCLA Bruins": "ucla",
+        "UMass": "umass", "UMass Minutemen": "umass", "UMASS": "umass",
+        "UNLV": "unlv", "UNLV Rebels": "unlv",
+        "USC": "usc", "USC Trojans": "usc",
+        "Utah": "utah", "Utah Utes": "utah", "UTAH": "utah",
+        "Utah State": "utah-state", "Utah State Aggies": "utah-state", "USU": "utah-state",
+        "UTEP": "utep", "UTEP Miners": "utep",
+        "UTSA": "utsa", "UTSA Roadrunners": "utsa",
+        "Vanderbilt": "vanderbilt", "Vanderbilt Commodores": "vanderbilt", "VAN": "vanderbilt",
+        "Virginia": "virginia", "Virginia Cavaliers": "virginia", "UVA": "virginia",
+        "Virginia Tech": "virginia-tech", "Virginia Tech Hokies": "virginia-tech", "VT": "virginia-tech",
+        "Wake Forest": "wake-forest", "Wake Forest Demon Deacons": "wake-forest", "WF": "wake-forest",
+        "Washington": "washington", "Washington Huskies": "washington", "WASH": "washington",
+        "Washington State": "washington-state", "Washington State Cougars": "washington-state", "WSU": "washington-state",
+        "West Virginia": "west-virginia", "West Virginia Mountaineers": "west-virginia", "WVU": "west-virginia",
+        "Western Kentucky": "western-kentucky", "Western Kentucky Hilltoppers": "western-kentucky", "WKU": "western-kentucky",
+        "Western Michigan": "western-michigan", "Western Michigan Broncos": "western-michigan", "WMU": "western-michigan",
+        "Wisconsin": "wisconsin", "Wisconsin Badgers": "wisconsin", "WIS": "wisconsin",
+        "Wyoming": "wyoming", "Wyoming Cowboys": "wyoming", "WYO": "wyoming"
     }
 end function
 
-function GetTeamCodeByLeague(teamName as String, league as String) as Dynamic
-    print "GetTeamCodeByLeague: Looking for '"; teamName; "' in league "; league
+function GetNFLAbbrs() as Object
+    return {
+        "Cardinals": "ARI", "Arizona Cardinals": "ARI",
+        "Falcons": "ATL", "Atlanta Falcons": "ATL",
+        "Ravens": "BAL", "Baltimore Ravens": "BAL",
+        "Bills": "BUF", "Buffalo Bills": "BUF",
+        "Panthers": "CAR", "Carolina Panthers": "CAR",
+        "Bears": "CHI", "Chicago Bears": "CHI",
+        "Bengals": "CIN", "Cincinnati Bengals": "CIN",
+        "Browns": "CLE", "Cleveland Browns": "CLE",
+        "Cowboys": "DAL", "Dallas Cowboys": "DAL",
+        "Broncos": "DEN", "Denver Broncos": "DEN",
+        "Lions": "DET", "Detroit Lions": "DET",
+        "Packers": "GB", "Green Bay Packers": "GB",
+        "Texans": "HOU", "Houston Texans": "HOU",
+        "Colts": "IND", "Indianapolis Colts": "IND",
+        "Jaguars": "JAX", "Jacksonville Jaguars": "JAX",
+        "Chiefs": "KC", "Kansas City Chiefs": "KC",
+        "Raiders": "LV", "Las Vegas Raiders": "LV",
+        "Chargers": "LAC", "Los Angeles Chargers": "LAC",
+        "Rams": "LAR", "Los Angeles Rams": "LAR",
+        "Dolphins": "MIA", "Miami Dolphins": "MIA",
+        "Vikings": "MIN", "Minnesota Vikings": "MIN",
+        "Patriots": "NE", "New England Patriots": "NE",
+        "Saints": "NO", "New Orleans Saints": "NO",
+        "Giants": "NYG", "New York Giants": "NYG",
+        "Jets": "NYJ", "New York Jets": "NYJ",
+        "Eagles": "PHI", "Philadelphia Eagles": "PHI",
+        "Steelers": "PIT", "Pittsburgh Steelers": "PIT",
+        "49ers": "SF", "San Francisco 49ers": "SF",
+        "Seahawks": "SEA", "Seattle Seahawks": "SEA",
+        "Buccaneers": "TB", "Tampa Bay Buccaneers": "TB",
+        "Titans": "TEN", "Tennessee Titans": "TEN",
+        "Commanders": "WAS", "Washington Commanders": "WAS"
+    }
+end function
 
-    if league = "NFL"
-        teams = GetNFLTeams()
-        for each key in teams
-            if teamName.Instr(key) >= 0
-                print "GetTeamCodeByLeague: Found match for '"; key; "' -> "; teams[key]
-                return teams[key]
-            end if
-        end for
-    else if league = "NBA"
-        teams = GetNBATeams()
-        for each key in teams
-            if teamName.Instr(key) >= 0
-                print "GetTeamCodeByLeague: Found match for '"; key; "' -> "; teams[key]
-                return teams[key]
-            end if
-        end for
-    else if league = "MLB"
-        teams = GetMLBTeams()
-        for each key in teams
-            if teamName.Instr(key) >= 0
-                print "GetTeamCodeByLeague: Found match for '"; key; "' -> "; teams[key]
-                return teams[key]
-            end if
-        end for
-    else if league = "NHL"
-        teams = GetNHLTeams()
-        for each key in teams
-            if teamName.Instr(key) >= 0
-                print "GetTeamCodeByLeague: Found match for '"; key; "' -> "; teams[key]
-                return teams[key]
-            end if
-        end for
-    else if league = "NCAAF"
-        teams = GetNCAAFTeams()
-        for each key in teams
-            if teamName.Instr(key) >= 0
-                print "GetTeamCodeByLeague: Found match for '"; key; "' -> "; teams[key]
-                return teams[key]
-            end if
-        end for
+function GetNBAAbbrs() as Object
+    return {
+        "Hawks": "ATL", "Atlanta Hawks": "ATL",
+        "Celtics": "BOS", "Boston Celtics": "BOS",
+        "Nets": "BKN", "Brooklyn Nets": "BKN",
+        "Hornets": "CHA", "Charlotte Hornets": "CHA",
+        "Bulls": "CHI", "Chicago Bulls": "CHI",
+        "Cavaliers": "CLE", "Cleveland Cavaliers": "CLE",
+        "Mavericks": "DAL", "Dallas Mavericks": "DAL",
+        "Nuggets": "DEN", "Denver Nuggets": "DEN",
+        "Pistons": "DET", "Detroit Pistons": "DET",
+        "Warriors": "GSW", "Golden State Warriors": "GSW",
+        "Rockets": "HOU", "Houston Rockets": "HOU",
+        "Pacers": "IND", "Indiana Pacers": "IND",
+        "Clippers": "LAC", "LA Clippers": "LAC", "Los Angeles Clippers": "LAC",
+        "Lakers": "LAL", "LA Lakers": "LAL", "Los Angeles Lakers": "LAL",
+        "Grizzlies": "MEM", "Memphis Grizzlies": "MEM",
+        "Heat": "MIA", "Miami Heat": "MIA",
+        "Bucks": "MIL", "Milwaukee Bucks": "MIL",
+        "Timberwolves": "MIN", "Minnesota Timberwolves": "MIN",
+        "Pelicans": "NOP", "New Orleans Pelicans": "NOP",
+        "Knicks": "NYK", "New York Knicks": "NYK",
+        "Thunder": "OKC", "Oklahoma City Thunder": "OKC",
+        "Magic": "ORL", "Orlando Magic": "ORL",
+        "76ers": "PHI", "Philadelphia 76ers": "PHI",
+        "Suns": "PHX", "Phoenix Suns": "PHX",
+        "Trail Blazers": "POR", "Portland Trail Blazers": "POR",
+        "Kings": "SAC", "Sacramento Kings": "SAC",
+        "Spurs": "SAS", "San Antonio Spurs": "SAS",
+        "Raptors": "TOR", "Toronto Raptors": "TOR",
+        "Jazz": "UTA", "Utah Jazz": "UTA",
+        "Wizards": "WAS", "Washington Wizards": "WAS"
+    }
+end function
+
+function GetMLBAbbrs() as Object
+    return {
+        "Diamondbacks": "AZ", "Arizona Diamondbacks": "AZ",
+        "Braves": "ATL", "Atlanta Braves": "ATL",
+        "Orioles": "BAL", "Baltimore Orioles": "BAL",
+        "Red Sox": "BOS", "Boston Red Sox": "BOS",
+        "Cubs": "CHC", "Chicago Cubs": "CHC",
+        "White Sox": "CWS", "Chicago White Sox": "CWS",
+        "Reds": "CIN", "Cincinnati Reds": "CIN",
+        "Guardians": "CLE", "Cleveland Guardians": "CLE",
+        "Rockies": "COL", "Colorado Rockies": "COL",
+        "Tigers": "DET", "Detroit Tigers": "DET",
+        "Astros": "HOU", "Houston Astros": "HOU",
+        "Royals": "KC", "Kansas City Royals": "KC",
+        "Angels": "LAA", "Los Angeles Angels": "LAA",
+        "Dodgers": "LAD", "Los Angeles Dodgers": "LAD",
+        "Marlins": "MIA", "Miami Marlins": "MIA",
+        "Brewers": "MIL", "Milwaukee Brewers": "MIL",
+        "Twins": "MIN", "Minnesota Twins": "MIN",
+        "Mets": "NYM", "New York Mets": "NYM",
+        "Yankees": "NYY", "New York Yankees": "NYY",
+        "Athletics": "OAK", "Oakland Athletics": "OAK",
+        "Phillies": "PHI", "Philadelphia Phillies": "PHI",
+        "Pirates": "PIT", "Pittsburgh Pirates": "PIT",
+        "Padres": "SD", "San Diego Padres": "SD",
+        "Giants": "SF", "San Francisco Giants": "SF",
+        "Mariners": "SEA", "Seattle Mariners": "SEA",
+        "Cardinals": "STL", "St. Louis Cardinals": "STL",
+        "Rays": "TB", "Tampa Bay Rays": "TB",
+        "Rangers": "TEX", "Texas Rangers": "TEX",
+        "Blue Jays": "TOR", "Toronto Blue Jays": "TOR",
+        "Nationals": "WSH", "Washington Nationals": "WSH"
+    }
+end function
+
+function GetNHLAbbrs() as Object
+    return {
+        "Ducks": "ANA", "Anaheim Ducks": "ANA",
+        "Coyotes": "ARI", "Arizona Coyotes": "ARI",
+        "Bruins": "BOS", "Boston Bruins": "BOS",
+        "Sabres": "BUF", "Buffalo Sabres": "BUF",
+        "Flames": "CGY", "Calgary Flames": "CGY",
+        "Hurricanes": "CAR", "Carolina Hurricanes": "CAR",
+        "Blackhawks": "CHI", "Chicago Blackhawks": "CHI",
+        "Avalanche": "COL", "Colorado Avalanche": "COL",
+        "Blue Jackets": "CBJ", "Columbus Blue Jackets": "CBJ",
+        "Stars": "DAL", "Dallas Stars": "DAL",
+        "Red Wings": "DET", "Detroit Red Wings": "DET",
+        "Oilers": "EDM", "Edmonton Oilers": "EDM",
+        "Panthers": "FLA", "Florida Panthers": "FLA",
+        "Kings": "LAK", "Los Angeles Kings": "LAK",
+        "Wild": "MIN", "Minnesota Wild": "MIN",
+        "Canadiens": "MTL", "Montreal Canadiens": "MTL",
+        "Predators": "NSH", "Nashville Predators": "NSH",
+        "Devils": "NJD", "New Jersey Devils": "NJD",
+        "Islanders": "NYI", "New York Islanders": "NYI",
+        "Rangers": "NYR", "New York Rangers": "NYR",
+        "Senators": "OTT", "Ottawa Senators": "OTT",
+        "Flyers": "PHI", "Philadelphia Flyers": "PHI",
+        "Penguins": "PIT", "Pittsburgh Penguins": "PIT",
+        "Sharks": "SJS", "San Jose Sharks": "SJS",
+        "Kraken": "SEA", "Seattle Kraken": "SEA",
+        "Blues": "STL", "St. Louis Blues": "STL",
+        "Lightning": "TBL", "Tampa Bay Lightning": "TBL",
+        "Maple Leafs": "TOR", "Toronto Maple Leafs": "TOR",
+        "Canucks": "VAN", "Vancouver Canucks": "VAN",
+        "Golden Knights": "VGK", "Vegas Golden Knights": "VGK",
+        "Capitals": "WSH", "Washington Capitals": "WSH",
+        "Jets": "WPG", "Winnipeg Jets": "WPG"
+    }
+end function
+
+function GetNCAAFTeamId(teamCode as String) as String
+    ' Map team codes to ESPN numeric IDs from the gist
+    idMap = {
+        "air-force": "2005",
+        "akron": "2006",
+        "alabama": "333",
+        "appalachian-state": "2026",
+        "arizona": "12",
+        "arizona-state": "9",
+        "arkansas": "8",
+        "arkansas-state": "2032",
+        "army": "349",
+        "auburn": "2",
+        "ball-state": "2050",
+        "baylor": "239",
+        "boise-state": "68",
+        "boston-college": "103",
+        "bowling-green": "189",
+        "buffalo": "2084",
+        "byu": "252",
+        "california": "25",
+        "central-michigan": "2117",
+        "charlotte": "2429",
+        "cincinnati": "2132",
+        "clemson": "228",
+        "coastal-carolina": "324",
+        "colorado": "38",
+        "colorado-state": "36",
+        "connecticut": "41",
+        "duke": "150",
+        "east-carolina": "151",
+        "eastern-michigan": "2199",
+        "florida": "57",
+        "florida-atlantic": "2226",
+        "florida-international": "2229",
+        "florida-state": "52",
+        "fresno-state": "278",
+        "georgia": "61",
+        "georgia-southern": "290",
+        "georgia-state": "2247",
+        "georgia-tech": "59",
+        "hawaii": "62",
+        "houston": "248",
+        "illinois": "356",
+        "indiana": "84",
+        "iowa": "2294",
+        "iowa-state": "66",
+        "james-madison": "256",
+        "kansas": "2305",
+        "kansas-state": "2306",
+        "kent-state": "2309",
+        "kentucky": "96",
+        "liberty": "2335",
+        "louisiana": "309",
+        "louisiana-monroe": "2433",
+        "louisiana-tech": "2348",
+        "louisville": "97",
+        "lsu": "99",
+        "marshall": "276",
+        "maryland": "120",
+        "memphis": "235",
+        "miami": "2390",
+        "miami-oh": "193",
+        "michigan": "130",
+        "michigan-state": "127",
+        "middle-tennessee": "2393",
+        "minnesota": "135",
+        "mississippi-state": "344",
+        "missouri": "142",
+        "navy": "2426",
+        "nc-state": "152",
+        "nebraska": "158",
+        "nevada": "2440",
+        "new-mexico": "167",
+        "new-mexico-state": "166",
+        "north-carolina": "153",
+        "north-texas": "249",
+        "northern-illinois": "2459",
+        "northwestern": "77",
+        "notre-dame": "87",
+        "ohio": "195",
+        "ohio-state": "194",
+        "oklahoma": "201",
+        "oklahoma-state": "197",
+        "old-dominion": "295",
+        "ole-miss": "145",
+        "oregon": "2483",
+        "oregon-state": "204",
+        "penn-state": "213",
+        "pittsburgh": "221",
+        "purdue": "2509",
+        "rice": "242",
+        "rutgers": "164",
+        "sam-houston": "2534",
+        "san-diego-state": "21",
+        "san-jose-state": "23",
+        "smu": "2567",
+        "south-alabama": "6",
+        "south-carolina": "2579",
+        "south-florida": "58",
+        "southern-miss": "2582",
+        "stanford": "24",
+        "syracuse": "183",
+        "tcu": "2628",
+        "temple": "218",
+        "tennessee": "2633",
+        "texas": "251",
+        "texas-am": "245",
+        "texas-state": "326",
+        "texas-tech": "2641",
+        "toledo": "2649",
+        "troy": "2653",
+        "tulane": "2655",
+        "tulsa": "202",
+        "uab": "5",
+        "ucf": "2116",
+        "ucla": "26",
+        "umass": "113",
+        "unlv": "2439",
+        "usc": "30",
+        "utah": "254",
+        "utah-state": "328",
+        "utep": "2638",
+        "utsa": "2636",
+        "vanderbilt": "238",
+        "virginia": "258",
+        "virginia-tech": "259",
+        "wake-forest": "154",
+        "washington": "264",
+        "washington-state": "265",
+        "west-virginia": "277",
+        "western-kentucky": "98",
+        "western-michigan": "2711",
+        "wisconsin": "275",
+        "wyoming": "2750"
+    }
+
+    if idMap.doesExist(teamCode)
+        return idMap[teamCode]
     end if
 
-    print "GetTeamCodeByLeague: No match found for '"; teamName; "'"
+    return ""
+end function
+
+function GetTeamCodeByLeague(teamName as String, league as String) as Dynamic
+    ' Force specific matches for ambiguous names
+    if LCase(teamName).Instr("texas a") >= 0 or LCase(teamName).Instr("texas am") >= 0 then return "texas-am"
+    if LCase(teamName) = "texas" and league = "NCAAF" then return "texas"
+
+    teams = invalid
+    if league = "NFL" then teams = GetNFLTeams()
+    if league = "NBA" then teams = GetNBATeams()
+    if league = "MLB" then teams = GetMLBTeams()
+    if league = "NHL" then teams = GetNHLTeams()
+    if league = "NCAAF" then teams = GetNCAAFTeams()
+
+    if teams = invalid then return invalid
+
+    for each key in teams
+        if LCase(teamName).Instr(LCase(key)) >= 0 then return teams[key]
+    end for
+
+    return invalid
+end function
+
+function GetESPNAbbrByLeague(teamName as String, league as String) as Dynamic
+    teams = invalid
+    if league = "NFL" then teams = GetNFLAbbrs()
+    if league = "NBA" then teams = GetNBAAbbrs()
+    if league = "MLB" then teams = GetMLBAbbrs()
+    if league = "NHL" then teams = GetNHLAbbrs()
+
+    if teams = invalid then return invalid
+
+    for each key in teams
+        if teamName.Instr(key) >= 0 then return teams[key]
+    end for
     return invalid
 end function

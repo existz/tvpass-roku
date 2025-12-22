@@ -29,11 +29,8 @@ function CreateBitmapCache() as Object
         end for
 
         if newUris = 0 then
-            m.DebugLog("BitmapCache: All " + stri(uris.count()) + " URIs already cached, skipping preload")
             return
         end if
-
-        m.DebugLog("BitmapCache: Preloading " + stri(newUris) + " new URIs (" + stri(alreadyCached) + " already cached)")
 
         loaded = 0
 
@@ -55,8 +52,6 @@ function CreateBitmapCache() as Object
                 m.createPreloadPoster(uri, parentNode)
             end if
         end for
-
-        m.DebugLog("BitmapCache: Added " + stri(loaded) + " new URIs to cache (total: " + stri(m.cachedUris.count()) + ")")
     end function
 
     cache.createPreloadPoster = function(uri as String, parentNode as Object) as Void
@@ -124,7 +119,6 @@ function CreateBitmapCache() as Object
         end for
 
         m.preloadedPosters.clear()
-        m.DebugLog("BitmapCache: Cleared all cached bitmaps")
     end function
 
     cache.getCacheSize = function() as Integer
