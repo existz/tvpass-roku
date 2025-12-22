@@ -23,10 +23,10 @@
         <!-- Channel Logo -->
         <Poster
             id="channelLogo"
-            translation="[10,8]"
-            loadWidth="100"
+            translation="[15,8]"
+            loadWidth="120"
             loadHeight="60"
-            width="100"
+            width="120"
             height="60"
             loadDisplayMode="scaleToFit"
             failedBitmapUri=""
@@ -35,8 +35,8 @@
         <!-- Channel Number -->
         <Label
             id="channelNumber"
-            translation="[120,27]"
-            width="100"
+            translation="[150,27]"
+            width="130"
             height="30"
             horizAlign="center"
             vertAlign="center"
@@ -47,6 +47,6 @@
         <!-- Program Slots Container -->
         <Group
             id="programSlots"
-            translation="[250,0]"/>
+            translation="[340,0]"/>
     </children>
 </component>

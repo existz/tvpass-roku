@@ -90,7 +90,7 @@
         translation="[340,115]"
         width="400"
         height="35"
-        font="font:MediumSystemFont"
+        font="font:SmallBoldSystemFont"
         color="0xCCCCCCFF"/>
 
     <Label
@@ -99,7 +99,7 @@
         translation="[340,155]"
         width="1000"
         height="30"
-        font="font:SmallSystemFont"
+        font="font:SmallBoldSystemFont"
         color="0x888888FF"/>
 
     <!-- Current Time Display -->
@@ -121,26 +121,34 @@
         width="150"
         height="40"
         text="Guide"
+        vertAlign="center"
         font="font:MediumBoldSystemFont"
         color="0xFFFFFFFF"/>
 
     <Label
         id="allChannelsLabel"
         visible="false"
-        translation="[60,260]"
+        translation="[60,265]"
         width="200"
         height="30"
         text="All Channels"
+        vertAlign="center"
         font="font:SmallSystemFont"
         color="0x777777FF"/>
 
-    <!-- Time Slot Headers -->
-    <LayoutGroup
-        id="timeSlotHeaders"
+    <!-- Time Slot Headers Container -->
+    <Group
+        id="timeSlotHeadersContainer"
         visible="false"
-        translation="[310,230]"
-        layoutDirection="horiz"
-        itemSpacings="[0]"/>
+        translation="[400,230]">
+
+        <!-- Time Slot Headers -->
+        <LayoutGroup
+            id="timeSlotHeaders"
+            translation="[2,0]"
+            layoutDirection="horiz"
+            itemSpacings="[0]"/>
+    </Group>
 
     <!-- Channel Grid -->
     <MarkupList

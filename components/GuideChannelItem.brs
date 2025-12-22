@@ -43,8 +43,8 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
     currentTime = now.AsSeconds()
 
     windowStartTime = int(currentTime / 1800) * 1800
-    windowEndTime = windowStartTime + 5400  ' 1.5 hours
-    slotWidth = 517
+    windowEndTime = windowStartTime + 5400
+    slotWidth = 487
     totalWidth = slotWidth * 3
 
     ' Pre-calculate time scale factor
@@ -110,7 +110,7 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 label.vertAlign = "center"
                 label.wrap = false
 
-                maxChars = int((width / 517.0) * 35)
+                maxChars = int((width / 487.0) * 33)
                 if maxChars < 10 then maxChars = 10
                 if len(displayText) > maxChars
                     label.text = left(displayText, maxChars - 3) + "..."
@@ -127,7 +127,7 @@ end sub
 
 sub onFocusPercentChanged()
     fp = m.top.focusPercent
-    if fp > 0
+    if fp > 0 then
         setFocusedState(fp)
     else
         setUnfocusedState()

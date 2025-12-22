@@ -17,6 +17,7 @@ sub init()
     m.currentTimeLabel = m.top.findNode("currentTimeLabel")
     m.guideHeaderLabel = m.top.findNode("guideHeaderLabel")
     m.allChannelsLabel = m.top.findNode("allChannelsLabel")
+    m.timeSlotHeadersContainer = m.top.findNode("timeSlotHeadersContainer")
     m.timeSlotHeaders = m.top.findNode("timeSlotHeaders")
     m.multiviewGrid = m.top.findNode("multiviewGrid")
     m.videoInfoOverlay = m.top.findNode("videoInfoOverlay")
@@ -688,9 +689,16 @@ sub createTimeSlotHeaders()
     ' Round down to nearest 30 minutes
     roundedTime& = int(currentTime / 1800) * 1800
 
-    slotWidth = 517
+    slotWidth = 487
 
     for i = 0 to 2
+        ' Add left border for this time block
+        leftBorder = createObject("roSGNode", "Rectangle")
+        leftBorder.width = 2
+        leftBorder.height = 40
+        leftBorder.color = m.uiColors.BLACK42
+        m.timeSlotHeaders.appendChild(leftBorder)
+
         ' Calculate slot time - explicitly use Long Integer to avoid overflow
         slotTime& = roundedTime& + (i * 1800)
 
@@ -729,6 +737,13 @@ sub createTimeSlotHeaders()
         timeLabel.text = timeStr
         m.timeSlotHeaders.appendChild(timeLabel)
     end for
+
+    ' Add right border after the last time block
+    rightBorder = createObject("roSGNode", "Rectangle")
+    rightBorder.width = 2
+    rightBorder.height = 40
+    rightBorder.color = m.uiColors.BLACK42
+    m.timeSlotHeaders.appendChild(rightBorder)
 end sub
 
 sub showGuide()
@@ -823,7 +838,7 @@ sub updateFeaturedProgram(index as Integer)
     if channel.tvgId <> invalid and channel.tvgId <> ""
         currentProgram = EPGGetCurrentProgram(m.epgData, channel.tvgId)
         if currentProgram <> ""
-            m.featuredTime.text = "Now Playing"
+            m.featuredTime.text = "Now Playing:"
             m.featuredDescription.text = currentProgram
         else
             m.featuredTime.text = ""
@@ -831,20 +846,21 @@ sub updateFeaturedProgram(index as Integer)
         end if
     else
         ' For custom playlist channels, show tvg-name
-        m.featuredTime.text = "Now Playing"
+        m.featuredTime.text = "Now Playing:"
         m.featuredDescription.text = channel.title
     end if
 end sub
 
+
 sub showGuideElements()
-    elements = [m.guideBackground, m.headerBackground, m.featuredLogo, m.featuredTitle, m.featuredTime, m.featuredDescription, m.currentTimeLabel, m.guideHeaderLabel, m.allChannelsLabel, m.timeSlotHeaders, m.channelList]
+    elements = [m.guideBackground, m.headerBackground, m.featuredLogo, m.featuredTitle, m.featuredTime, m.featuredDescription, m.currentTimeLabel, m.guideHeaderLabel, m.allChannelsLabel, m.timeSlotHeadersContainer, m.channelList]
     for each element in elements
         element.visible = true
     end for
 end sub
 
 sub hideGuideElements()
-    elements = [m.guideBackground, m.headerBackground, m.featuredLogo, m.featuredTitle, m.featuredTime, m.featuredDescription, m.currentTimeLabel, m.guideHeaderLabel, m.allChannelsLabel, m.timeSlotHeaders, m.channelList]
+    elements = [m.guideBackground, m.headerBackground, m.featuredLogo, m.featuredTitle, m.featuredTime, m.featuredDescription, m.currentTimeLabel, m.guideHeaderLabel, m.allChannelsLabel, m.timeSlotHeadersContainer, m.channelList]
     for each element in elements
         element.visible = false
     end for
