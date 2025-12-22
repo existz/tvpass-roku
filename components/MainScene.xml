@@ -133,7 +133,7 @@
         height="30"
         text="All Channels"
         vertAlign="center"
-        font="font:SmallSystemFont"
+        font="font:SmallBoldSystemFont"
         color="0x777777FF"/>
 
     <!-- Time Slot Headers Container -->
@@ -156,8 +156,8 @@
         visible="false"
         translation="[60,310]"
         itemComponentName="GuideChannelItem"
-        itemSize="[1800,80]"
-        itemSpacing="[0,2]"
+        itemSize="[1800,120]"
+        itemSpacing="[0,4]"
         drawFocusFeedback="false"/>
 
     <!-- Loading / Error Label -->

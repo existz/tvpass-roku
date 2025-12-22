@@ -84,7 +84,7 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 slot = createObject("roSGNode", "Rectangle")
                 slot.translation = [offset, 0]
                 slot.width = width
-                slot.height = 75
+                slot.height = 115
                 slot.color = m.uiColors.BLACK26
 
                 displayText = program.title
@@ -95,7 +95,7 @@ sub createProgramSlots(content as Object, isLongName as Boolean)
                 end if
 
                 label = createObject("roSGNode", "Label")
-                slotHeight = 75
+                slotHeight = 115
                 labelHeight = 30
                 verticalPadding = (slotHeight - labelHeight) / 2
                 label.translation = [5, verticalPadding]

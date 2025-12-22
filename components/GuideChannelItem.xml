@@ -17,13 +17,13 @@
             id="background"
             translation="[0,0]"
             width="1800"
-            height="75"
+            height="115"
             color="0x1A1A1AFF"/>
 
         <!-- Channel Logo -->
         <Poster
             id="channelLogo"
-            translation="[15,8]"
+            translation="[15,28]"
             loadWidth="120"
             loadHeight="60"
             width="120"
@@ -35,7 +35,7 @@
         <!-- Channel Number -->
         <Label
             id="channelNumber"
-            translation="[150,27]"
+            translation="[150,43]"
             width="130"
             height="30"
             horizAlign="center"
