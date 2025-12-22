@@ -804,6 +804,15 @@ sub showGuide()
 
     m.channelList.content = root
 
+    ' Force Roku page size
+    visibleHeight = 1080 - 310
+    rowHeight = 119
+    visibleRows = int(visibleHeight / rowHeight)
+
+    if visibleRows < 1 then visibleRows = 1
+
+    m.channelList.numRows = visibleRows
+
     restoreIndex = m.currentChannelIndex
     if restoreIndex < 0 or restoreIndex >= m.epgData.channels.count()
         restoreIndex = m.lastChannelIndex
