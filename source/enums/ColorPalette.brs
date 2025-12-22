@@ -152,7 +152,7 @@ function GetTeamColorPalette() as Object
         NCAAF: {
             "air-force": "0x003087FF"
             "akron": "0x041E42FF"
-            "alabama": "0x9E1B32FF"
+            "alabama": "0xFFFFFFFF"
             "appalachian-state": "0xFFCC00FF"
             "arizona": "0xCC0033FF"
             "arizona-state": "0x8C1D40FF"
@@ -229,7 +229,7 @@ function GetTeamColorPalette() as Object
             "notre-dame": "0x0C2340FF"
             "ohio": "0x00694EFF"
             "ohio-state": "0xBB0000FF"
-            "oklahoma": "0x841617FF"
+            "oklahoma": "0xFDF9D8FF"
             "oklahoma-state": "0xFF6600FF"
             "old-dominion": "0x003057FF"
             "ole-miss": "0xCE1126FF"
