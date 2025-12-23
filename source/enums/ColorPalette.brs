@@ -149,7 +149,7 @@ function GetTeamColorPalette() as Object
             "jets": "0x002E62FF"
             "mammoth": "0x010101FF"
         },
-        NCAAF: {
+        NCAA: {
             "air-force": "0x003087FF"
             "akron": "0x041E42FF"
             "alabama": "0xFFFFFFFF"
@@ -168,7 +168,7 @@ function GetTeamColorPalette() as Object
             "buffalo": "0x005BBB FF"
             "byu": "0x002E5DFF"
             "california": "0xFDB515FF"
-            "central-michigan": "0x6A0032FF"
+            "central-michigan": "0xFFC82EFF"
             "charlotte": "0x005035FF"
             "cincinnati": "0xE00122FF"
             "clemson": "0x30009BFF"
@@ -222,7 +222,7 @@ function GetTeamColorPalette() as Object
             "nevada": "0x003366FF"
             "new-mexico": "0xBA0C2FFF"
             "new-mexico-state": "0x8B0015FF"
-            "north-carolina": "0x7BAFD4FF"
+            "north-carolina": "0x13294BFF"
             "north-texas": "0x00853EFF"
             "northern-illinois": "0x000000FF"
             "northwestern": "0x4E2A84FF"

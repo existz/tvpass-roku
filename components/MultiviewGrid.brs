@@ -146,7 +146,7 @@ sub preloadSportsLogosFromEPG(epgData as Object)
 end sub
 
 sub precomputeTeamData()
-    leagues = ["NCAAF", "NFL", "NBA", "MLB", "NHL"]
+    leagues = ["NCAA", "NFL", "NBA", "MLB", "NHL"]
 
     for each leagueName in leagues
         if not m.leagueMaps.doesExist(leagueName) then goto nextLeague

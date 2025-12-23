@@ -143,7 +143,7 @@ function GetNHLTeams() as Object
     }
 end function
 
-function GetNCAAFTeams() as Object
+function GetNCAATeams() as Object
     return {
         "Tennessee": "tennessee", "Tennessee Volunteers": "tennessee", "TENN": "tennessee", "Vols": "tennessee",
         "Texas A&M": "texas-am", "Texas A&M Aggies": "texas-am", "TA&M": "texas-am", "Texas AM": "texas-am",
@@ -422,7 +422,7 @@ function GetNHLAbbrs() as Object
     }
 end function
 
-function GetNCAAFTeamId(teamCode as String) as String
+function GetNCAATeamId(teamCode as String) as String
     ' Map team codes to ESPN numeric IDs from the gist
     idMap = {
         "air-force": "2005",
@@ -569,14 +569,14 @@ end function
 function GetTeamCodeByLeague(teamName as String, league as String) as Dynamic
     ' Force specific matches for ambiguous names
     if LCase(teamName).Instr("texas a") >= 0 or LCase(teamName).Instr("texas am") >= 0 then return "texas-am"
-    if LCase(teamName) = "texas" and league = "NCAAF" then return "texas"
+    if LCase(teamName) = "texas" and league = "NCAA" then return "texas"
 
     teams = invalid
     if league = "NFL" then teams = GetNFLTeams()
     if league = "NBA" then teams = GetNBATeams()
     if league = "MLB" then teams = GetMLBTeams()
     if league = "NHL" then teams = GetNHLTeams()
-    if league = "NCAAF" then teams = GetNCAAFTeams()
+    if league = "NCAA" then teams = GetNCAATeams()
 
     if teams = invalid then return invalid
 

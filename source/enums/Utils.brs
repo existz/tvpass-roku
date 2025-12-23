@@ -6,7 +6,7 @@ function GetLeagueMaps() as Object
         NBA: GetNBATeams()
         MLB: GetMLBTeams()
         NHL: GetNHLTeams()
-        NCAAF: GetNCAAFTeams()
+        NCAA: GetNCAATeams()
     }
 end function
 
@@ -71,9 +71,9 @@ function ParseTeamMatchupFast(programTitle as String, separatorPatterns as Objec
 end function
 
 function DetectLeagueFromTeamsFast(team1 as String, team2 as String, leagueMaps as Object) as Dynamic
-    ' PRIORITIZE pro leagues over college (NFL > NBA > MLB > NHL > NCAAF)
+    ' PRIORITIZE pro leagues over college (NFL > NBA > MLB > NHL > NCAA)
     proLeagues = ["NFL", "NBA", "MLB", "NHL"]
-    collegeLeagues = ["NCAAF"]
+    collegeLeagues = ["NCAA"]
 
     ' Check pro leagues first
     for each leagueName in proLeagues
@@ -91,7 +91,7 @@ function DetectLeagueFromTeamsFast(team1 as String, team2 as String, leagueMaps 
         nextProLeague:
     end for
 
-    ' Only check NCAAF if no pro league match
+    ' Only check NCAA if no pro league match
     for each leagueName in collegeLeagues
         if not leagueMaps.doesExist(leagueName) then goto nextCollegeLeague
         teams = leagueMaps[leagueName]
@@ -138,11 +138,11 @@ function GetTeamLogoUrlFast(teamCode as String, league as String, logoBaseUrl as
 end function
 
 function GetESPNLogoUrlFast(teamName as String, league as String) as String
-    ' NCAAF: Use existing numeric ID logic
-    if league = "NCAAF"
+    ' NCAA: Use existing numeric ID logic
+    if league = "NCAA"
         teamCode = GetTeamCodeByLeague(teamName, league)
         if teamCode <> invalid and teamCode <> ""
-            teamId = GetNCAAFTeamId(teamCode)
+            teamId = GetNCAATeamId(teamCode)
             if teamId <> "" then
                 return "https://a.espncdn.com/i/teamlogos/ncaa/500/" + teamId + ".png"
             end if
