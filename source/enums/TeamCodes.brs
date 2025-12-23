@@ -410,7 +410,7 @@ function GetNHLAbbrs() as Object
         "Senators": "ott", "Ottawa Senators": "ott",
         "Flyers": "phi", "Philadelphia Flyers": "phi",
         "Penguins": "pit", "Pittsburgh Penguins": "pit",
-        "Sharks": "sjs", "San Jose Sharks": "sjs",
+        "Sharks": "sj", "San Jose Sharks": "sj",
         "Kraken": "sea", "Seattle Kraken": "sea",
         "Blues": "stl", "St. Louis Blues": "stl",
         "Lightning": "tb", "Tampa Bay Lightning": "tb",
@@ -418,7 +418,8 @@ function GetNHLAbbrs() as Object
         "Canucks": "van", "Vancouver Canucks": "van",
         "Golden Knights": "vgk", "Vegas Golden Knights": "vgk",
         "Capitals": "wsh", "Washington Capitals": "wsh",
-        "Jets": "wpg", "Winnipeg Jets": "wpg"
+        "Jets": "wpg", "Winnipeg Jets": "wpg",
+        "Mammoth": "utah", "Utah Mammoth": "utah"
     }
 end function
 
