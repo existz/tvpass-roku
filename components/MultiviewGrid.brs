@@ -351,7 +351,7 @@ function getCachedTeamColor(teamCode as String, league as String) as String
 end function
 
 function createThumbnail(index as Integer) as Object
-    yPos = 10 + (index * 165)
+    yPos = 70 + (index * 165)
 
     container = createObject("roSGNode", "Group")
     container.translation = [10, yPos]
