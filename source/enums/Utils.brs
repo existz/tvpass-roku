@@ -138,13 +138,16 @@ function GetTeamLogoUrlFast(teamCode as String, league as String, logoBaseUrl as
 end function
 
 function GetESPNLogoUrlFast(teamName as String, league as String) as String
+    logoUrls = GetLogoUrls()
+    espnCdnBase = logoUrls.ESPNCDN_LOGOS_BASE
+
     ' NCAA: Use existing numeric ID logic
     if league = "NCAA"
         teamCode = GetTeamCodeByLeague(teamName, league)
         if teamCode <> invalid and teamCode <> ""
             teamId = GetNCAATeamId(teamCode)
             if teamId <> "" then
-                return "https://a.espncdn.com/i/teamlogos/ncaa/500/" + teamId + ".png"
+                return espnCdnBase + "ncaa/500/" + teamId + ".png"
             end if
         end if
         return ""
@@ -160,7 +163,7 @@ function GetESPNLogoUrlFast(teamName as String, league as String) as String
             NHL: "nhl"
         }
         if leaguePaths.DoesExist(league)
-            return "https://a.espncdn.com/i/teamlogos/" + leaguePaths[league] + "/500/" + espnAbbr + ".png"
+            return espnCdnBase + leaguePaths[league] + "/500/" + espnAbbr + ".png"
         end if
     end if
 

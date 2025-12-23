@@ -9,7 +9,7 @@ end function
 function GetLogoUrls() as Object
     return {
         TEAM_LOGOS_BASE: "https://raw.githubusercontent.com/existz/team-logos/master/"
-        NCAA_LOGOS_BASE: "https://a.espncdn.com/i/teamlogos/ncaa/500/"
+        ESPNCDN_LOGOS_BASE: "https://a.espncdn.com/i/teamlogos/"
         TV_LOGOS_BASE: "https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/"
         TV_LOGOS_LOCAL: "https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/us-local/"
     }
