@@ -205,7 +205,7 @@ function GetNCAATeams() as Object
         "Kentucky": "kentucky", "Kentucky Wildcats": "kentucky", "UK": "kentucky",
         "Liberty": "liberty", "Liberty Flames": "liberty",
         "Louisiana": "louisiana", "Louisiana Ragin' Cajuns": "louisiana", "UL": "louisiana",
-        "Louisiana Monroe": "louisiana-monroe", "Louisiana Monroe Warhawks": "louisiana-monroe", "ULM": "louisiana-monroe"
+        "Louisiana Monroe": "louisiana-monroe", "Louisiana Monroe Warhawks": "louisiana-monroe", "ULM": "louisiana-monroe",
         "Louisiana Tech": "louisiana-tech", "Louisiana Tech Bulldogs": "louisiana-tech", "LA Tech": "louisiana-tech",
         "Louisville": "louisville", "Louisville Cardinals": "louisville", "Lou": "louisville",
         "LSU": "lsu", "LSU Tigers": "lsu",
