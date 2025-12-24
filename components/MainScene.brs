@@ -66,6 +66,11 @@ sub init()
     m.isRetrying = false
     m.retryInProgress = false
 
+    ' Fanart artwork cache
+    m.artworkCache = {}
+    m.currentArtworkTask = invalid
+    m.overlayArtworkTask = invalid  ' NEW: Add this line
+
     ' Cache of resolved TVPass URLs: channelIndex -> finalUrl
     m.resolvedUrlCache = {}
 
@@ -838,6 +843,7 @@ sub updateFeaturedProgram(index as Integer)
     if index < 0 or index >= m.epgData.channels.count() then return
     channel = m.epgData.channels[index]
 
+    ' Set default channel logo first
     if channel.logo <> invalid and channel.logo <> ""
         m.featuredLogo.uri = channel.logo
     end if
@@ -849,6 +855,16 @@ sub updateFeaturedProgram(index as Integer)
         if currentProgram <> ""
             m.featuredTime.text = "Now Playing:"
             m.featuredDescription.text = currentProgram
+
+            ' Check if this is a sports program
+            isSports = IsSportsProgram(currentProgram, m.sportsKeywords)
+
+            ' Only fetch artwork for non-sports programs
+            if not isSports
+                ' Get program duration to determine if movie or TV show
+                programDuration = GetProgramDuration(m.epgData, channel.tvgId)
+                fetchShowArtwork(currentProgram, programDuration)
+            end if
         else
             m.featuredTime.text = ""
             m.featuredDescription.text = "No program information available"
@@ -860,6 +876,79 @@ sub updateFeaturedProgram(index as Integer)
     end if
 end sub
 
+function GetProgramDuration(epgData as Object, tvgId as String) as Integer
+    ' Get the duration in seconds of the current program
+    if tvgId = invalid then return 0
+
+    normalizedId = EPGNormalizeChannelId(tvgId)
+
+    if not epgData.programsByChannel.doesExist(normalizedId) then return 0
+
+    programs = epgData.programsByChannel[normalizedId]
+    if programs = invalid or programs.count() = 0 then return 0
+
+    now = CreateObject("roDateTime").AsSeconds()
+
+    for each program in programs
+        if program.startTime <= now and program.endTime > now
+            return program.endTime - program.startTime
+        end if
+    end for
+
+    return 0
+end function
+
+sub fetchShowArtwork(showName as String, durationSeconds as Integer)
+    if showName = invalid or showName = "" then return
+
+    ' Check cache first
+    if m.artworkCache.doesExist(showName)
+        cachedUrl = m.artworkCache[showName]
+        if cachedUrl <> invalid and cachedUrl <> ""
+            m.featuredLogo.uri = cachedUrl
+        end if
+        return
+    end if
+
+    ' Cancel any existing task
+    if m.currentArtworkTask <> invalid
+        m.currentArtworkTask.control = "stop"
+        m.currentArtworkTask.unobserveField("artworkUrl")
+        m.currentArtworkTask = invalid
+    end if
+
+    ' Determine if this is a movie (over 1 hour = 3600 seconds)
+    isMovie = (durationSeconds >= 3600)
+
+    ' Create new artwork fetch task
+    m.currentArtworkTask = createObject("roSGNode", "FanartArtworkTask")
+    m.currentArtworkTask.showName = showName
+    m.currentArtworkTask.isMovie = isMovie
+    m.currentArtworkTask.observeField("artworkUrl", "onArtworkReceived")
+    m.currentArtworkTask.control = "RUN"
+end sub
+
+sub onArtworkReceived(event as Object)
+    task = event.getRoSGNode()
+    artworkUrl = task.artworkUrl
+    showName = task.showName
+
+    if artworkUrl <> invalid and artworkUrl <> ""
+        ' Cache the artwork URL
+        m.artworkCache[showName] = artworkUrl
+
+        ' Update the featured logo if this is still the current show
+        if m.featuredDescription.text = showName or m.featuredDescription.text.Instr(showName) >= 0
+            m.featuredLogo.uri = artworkUrl
+        end if
+    else
+        ' Cache empty result to avoid repeated failed requests
+        m.artworkCache[showName] = ""
+    end if
+
+    ' Clean up task
+    m.currentArtworkTask = invalid
+end sub
 
 sub showGuideElements()
     elements = [m.guideBackground, m.headerBackground, m.featuredLogo, m.featuredTitle, m.featuredTime, m.featuredDescription, m.currentTimeLabel, m.guideHeaderLabel, m.allChannelsLabel, m.timeSlotHeadersContainer, m.channelList]
@@ -1008,16 +1097,21 @@ sub updateVideoOverlay()
 
     overlayData = {
         channelNumber: m.currentChannelIndex + 1
-        logo: channel.logo
+        logo: channel.logo  ' Start with channel logo
         title: channel.title
         nowPlaying: ""
         programDetails: ""
     }
 
+    ' NEW: Track current show name for artwork fetching
+    currentShowName = ""
+    programDuration = 0
+
     if channel.tvgId <> invalid and channel.tvgId <> ""
         currentProgram = EPGGetCurrentProgram(m.epgData, channel.tvgId)
         if currentProgram <> ""
             overlayData.nowPlaying = currentProgram
+            currentShowName = currentProgram  ' NEW: Store for artwork fetch
         else
             overlayData.nowPlaying = channel.title
         end if
@@ -1026,6 +1120,9 @@ sub updateVideoOverlay()
         if programs.count() > 0
             for each prog in programs
                 if prog.startTime <= now and prog.endTime > now
+                    ' NEW: Get program duration for movie detection
+                    programDuration = prog.endTime - prog.startTime
+
                     isSportsProgram = IsSportsProgram(prog.title, m.sportsKeywords)
 
                     if isSportsProgram and prog.subTitle <> invalid and prog.subTitle <> ""
@@ -1042,7 +1139,75 @@ sub updateVideoOverlay()
         overlayData.nowPlaying = channel.title
     end if
 
+    ' Set overlay data first (with channel logo)
     m.videoInfoOverlay.channelData = overlayData
+
+    ' NEW: Fetch artwork for the current show (if not sports)
+    if currentShowName <> ""
+        isSports = IsSportsProgram(currentShowName, m.sportsKeywords)
+        if not isSports
+            fetchVideoOverlayArtwork(currentShowName, programDuration)
+        end if
+    end if
+end sub
+
+sub fetchVideoOverlayArtwork(showName as String, durationSeconds as Integer)
+    if showName = invalid or showName = "" then return
+
+    ' Check cache first
+    if m.artworkCache.doesExist(showName)
+        cachedUrl = m.artworkCache[showName]
+        if cachedUrl <> invalid and cachedUrl <> ""
+            updateVideoOverlayWithArtwork(cachedUrl)
+        end if
+        return
+    end if
+
+    ' Cancel any existing overlay artwork task
+    if m.overlayArtworkTask <> invalid
+        m.overlayArtworkTask.control = "stop"
+        m.overlayArtworkTask.unobserveField("artworkUrl")
+        m.overlayArtworkTask = invalid
+    end if
+
+    ' Determine if this is a movie (over 1 hour = 3600 seconds)
+    isMovie = (durationSeconds >= 3600)
+
+    ' Create new artwork fetch task
+    m.overlayArtworkTask = createObject("roSGNode", "FanartArtworkTask")
+    m.overlayArtworkTask.showName = showName
+    m.overlayArtworkTask.isMovie = isMovie
+    m.overlayArtworkTask.observeField("artworkUrl", "onVideoOverlayArtworkReceived")
+    m.overlayArtworkTask.control = "RUN"
+end sub
+
+sub onVideoOverlayArtworkReceived(event as Object)
+    task = event.getRoSGNode()
+    artworkUrl = task.artworkUrl
+    showName = task.showName
+
+    if artworkUrl <> invalid and artworkUrl <> ""
+        ' Cache the artwork URL
+        m.artworkCache[showName] = artworkUrl
+
+        ' Update the video overlay with the artwork
+        updateVideoOverlayWithArtwork(artworkUrl)
+    else
+        ' Cache empty result to avoid repeated failed requests
+        m.artworkCache[showName] = ""
+    end if
+
+    ' Clean up task
+    m.overlayArtworkTask = invalid
+end sub
+
+sub updateVideoOverlayWithArtwork(artworkUrl as String)
+    ' Update the overlay's channelData with the new artwork
+    if m.videoInfoOverlay <> invalid and m.videoInfoOverlay.channelData <> invalid
+        overlayData = m.videoInfoOverlay.channelData
+        overlayData.logo = artworkUrl
+        m.videoInfoOverlay.channelData = overlayData
+    end if
 end sub
 
 sub checkStreamQuality()

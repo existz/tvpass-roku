@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="FanartArtworkTask" extends="Task">
+    <interface>
+        <field id="showName" type="string" />
+        <field id="isMovie" type="boolean" />
+        <field id="artworkUrl" type="string" />
+        <field id="error" type="string" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/FanartArtworkTask.brs" />
+</component>

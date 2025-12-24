@@ -24,9 +24,9 @@
             id="channelLogo"
             translation="[1700,-220]"
             loadWidth="150"
-            loadHeight="100"
+            loadHeight="150"
             width="150"
-            height="100"
+            height="150"
             loadDisplayMode="scaleToFit"
             failedBitmapUri=""/>
 
@@ -38,7 +38,7 @@
             height="60"
             horizAlign="left"
             vertAlign="center"
-            font="font:LargeBoldSystemFont"
+            font="font:MediumBoldSystemFont"
             color="0xFFFFFFFF"
             wrap="false"/>
 
@@ -50,7 +50,7 @@
             height="140"
             horizAlign="left"
             vertAlign="top"
-            font="font:MediumSystemFont"
+            font="font:SmallSystemFont"
             color="0xFFFFFFFF"
             wrap="true"
             numLines="0"/>

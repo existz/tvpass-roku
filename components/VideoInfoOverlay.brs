@@ -31,10 +31,35 @@ sub onChannelDataChanged()
     data = m.top.channelData
     if data <> invalid
 
-        ' Set channel logo
+        ' Set channel logo/artwork
         if data.logo <> invalid and data.logo <> ""
+            print "VideoInfoOverlay: Setting logo to: " + data.logo
+
+            ' Detect if this is poster artwork (from fanart.tv) vs channel logo
+            isPosterArt = (data.logo.Instr("fanart.tv") >= 0 or data.logo.Instr("tmdb.org") >= 0 or data.logo.Instr("tvmaze.com") >= 0)
+
+            if isPosterArt
+                ' Larger size for poster artwork
+                m.channelLogo.width = 200
+                m.channelLogo.height = 200
+                m.channelLogo.loadWidth = 200
+                m.channelLogo.loadHeight = 200
+            else
+                ' Original size for channel logos
+                m.channelLogo.width = 150
+                m.channelLogo.height = 150
+                m.channelLogo.loadWidth = 150
+                m.channelLogo.loadHeight = 150
+            end if
+
             m.channelLogo.uri = data.logo
         else
+            print "VideoInfoOverlay: No logo available"
+            ' Reset to original channel logo size
+            m.channelLogo.width = 150
+            m.channelLogo.height = 150
+            m.channelLogo.loadWidth = 150
+            m.channelLogo.loadHeight = 150
             m.channelLogo.uri = ""
         end if
 
@@ -50,6 +75,7 @@ sub onChannelDataChanged()
         ' Set program details
         if data.programDetails <> invalid and data.programDetails <> ""
             m.programDetails.text = data.programDetails
+            m.programDetails.font.size = 28
         else
             m.programDetails.text = ""
         end if
