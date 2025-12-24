@@ -177,12 +177,15 @@ function EPGParseXMLOptimized(xmlString as String) as Object
             result.programsByChannel[normalizedChannel] = []
         end if
 
+        ' Store both parsed seconds AND original time strings for duration calculation
         programInfo = {
             title: programTitle
             description: programDesc
             subTitle: programSubTitle
             startTime: startSec
             endTime: stopSec
+            startTimeStr: startTime
+            stopTimeStr: stopTime
         }
         result.programsByChannel[normalizedChannel].push(programInfo)
     end for

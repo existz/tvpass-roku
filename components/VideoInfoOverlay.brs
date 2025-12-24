@@ -23,6 +23,14 @@ sub init()
     m.currentY = -270
     m.animationSpeed = 15  ' Pixels per frame
 
+    ' Store logo dimensions and original offset from currentY
+    m.defaultLogoWidth = 150
+    m.defaultLogoHeight = 150
+    m.posterArtWidth = 200
+    m.posterArtHeight = 200
+    m.logoOriginalOffset = [1700, 50]  ' Store as [x, y] offset
+    m.logoCurrentOffset = [1700, 50]   ' Will be adjusted based on size
+
     m.top.observeField("channelData", "onChannelDataChanged")
     m.top.observeField("showOverlay", "onShowOverlayChanged")
 end sub
@@ -33,33 +41,44 @@ sub onChannelDataChanged()
 
         ' Set channel logo/artwork
         if data.logo <> invalid and data.logo <> ""
-            print "VideoInfoOverlay: Setting logo to: " + data.logo
 
             ' Detect if this is poster artwork (from fanart.tv) vs channel logo
             isPosterArt = (data.logo.Instr("fanart.tv") >= 0 or data.logo.Instr("tmdb.org") >= 0 or data.logo.Instr("tvmaze.com") >= 0)
 
             if isPosterArt
+                ' Calculate vertical offset to center poster art
+                offsetY = (m.defaultLogoHeight - m.posterArtHeight) / 2
+
+                ' Keep X the same, adjust Y to center
+                m.logoCurrentOffset = [
+                    m.logoOriginalOffset[0],  ' Keep original X (1700)
+                    m.logoOriginalOffset[1] + offsetY  ' Adjust Y to center
+                ]
+
                 ' Larger size for poster artwork
-                m.channelLogo.width = 200
-                m.channelLogo.height = 200
-                m.channelLogo.loadWidth = 200
-                m.channelLogo.loadHeight = 200
+                m.channelLogo.width = m.posterArtWidth
+                m.channelLogo.height = m.posterArtHeight
+                m.channelLogo.loadWidth = m.posterArtWidth
+                m.channelLogo.loadHeight = m.posterArtHeight
             else
+                ' Reset to original offset for channel logos
+                m.logoCurrentOffset = m.logoOriginalOffset
+
                 ' Original size for channel logos
-                m.channelLogo.width = 150
-                m.channelLogo.height = 150
-                m.channelLogo.loadWidth = 150
-                m.channelLogo.loadHeight = 150
+                m.channelLogo.width = m.defaultLogoWidth
+                m.channelLogo.height = m.defaultLogoHeight
+                m.channelLogo.loadWidth = m.defaultLogoWidth
+                m.channelLogo.loadHeight = m.defaultLogoHeight
             end if
 
             m.channelLogo.uri = data.logo
         else
-            print "VideoInfoOverlay: No logo available"
-            ' Reset to original channel logo size
-            m.channelLogo.width = 150
-            m.channelLogo.height = 150
-            m.channelLogo.loadWidth = 150
-            m.channelLogo.loadHeight = 150
+            ' Reset to original offset and size
+            m.logoCurrentOffset = m.logoOriginalOffset
+            m.channelLogo.width = m.defaultLogoWidth
+            m.channelLogo.height = m.defaultLogoHeight
+            m.channelLogo.loadWidth = m.defaultLogoWidth
+            m.channelLogo.loadHeight = m.defaultLogoHeight
             m.channelLogo.uri = ""
         end if
 
@@ -125,9 +144,9 @@ sub onAnimationTick()
         end if
     end if
 
-    ' Update positions of all elements
+    ' Update positions of all elements - use dynamic offset array
     m.background.translation = [0, m.currentY]
-    m.channelLogo.translation = [1700, m.currentY + 50]
+    m.channelLogo.translation = [m.logoCurrentOffset[0], m.currentY + m.logoCurrentOffset[1]]
     m.nowPlaying.translation = [60, m.currentY + 40]
     m.programDetails.translation = [60, m.currentY + 110]
 end sub

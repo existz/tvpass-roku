@@ -2,7 +2,8 @@
 <component name="FanartArtworkTask" extends="Task">
     <interface>
         <field id="showName" type="string" />
-        <field id="isMovie" type="boolean" />
+        <field id="startTime" type="string" />
+        <field id="stopTime" type="string" />
         <field id="artworkUrl" type="string" />
         <field id="error" type="string" />
     </interface>

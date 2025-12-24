@@ -2,6 +2,7 @@ sub init()
     m.thumbnailContainer = m.top.findNode("thumbnailContainer")
     m.mainChannelLabel = m.top.findNode("mainChannelLabel")
     m.preloadContainer = m.top.findNode("preloadContainer")
+    m.liveScoreTicker = m.top.findNode("liveScoreTicker")
 
     m.uiColors = GetUIColors()
     m.thumbnails = []
@@ -384,12 +385,22 @@ sub onVisibleChanged()
             setupMainChannel(0)
         end if
 
+        ' Enable live score ticker
+        if m.liveScoreTicker <> invalid
+            m.liveScoreTicker.visible = true
+        end if
+
         ' Force focus after everything is set up
         m.top.setFocus(false)  ' Clear any stale focus
         m.top.setFocus(true)   ' Set fresh focus
     else
         ' Don't reset the preload flag when hiding
         ' Only reset when EPG data actually changes (handled in onEPGDataChanged)
+
+        ' Disable live score ticker
+        if m.liveScoreTicker <> invalid
+            m.liveScoreTicker.visible = false
+        end if
 
         ' Clear label
         m.mainChannelLabel.text = ""

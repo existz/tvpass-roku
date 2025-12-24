@@ -1,105 +1,181 @@
 sub init()
     m.top.functionName = "runTask"
+    m.lookupCache = {}
 end sub
 
 function runTask() as Void
     showName = m.top.showName
-    isMovie = m.top.isMovie
+    channelName = m.top.channelName  ' NEW: Get channel name
 
     if showName = invalid or showName = "" then
         m.top.error = "Invalid show name"
         return
     end if
 
-    ' Try with original name first (more specific)
+    ' NEW: Handle invalid channelName
+    if channelName = invalid then channelName = ""
+
     originalName = showName
     cleanName = CleanShowName(showName)
 
-    ' PRIORITY 1: Try OMDB (IMDB data) with original name first
-    print "FanartArtworkTask: Trying OMDB (IMDB) for original: " + originalName
-    artworkUrl = GetOMDBArtwork(originalName, isMovie)
-    if artworkUrl <> invalid and artworkUrl <> "" then
-        print "FanartArtworkTask: Found OMDB artwork with original name: " + artworkUrl
-        m.top.artworkUrl = artworkUrl
+    isLikelyMovie = false
+
+    if HasValidEPGTimes()
+        durationSeconds = calculateDurationFromEPG(m.top.startTime, m.top.stopTime)
+        durationMinutes = durationSeconds / 60
+
+        if durationMinutes >= 90
+            isLikelyMovie = true
+        end if
+    else
+        isLikelyMovie = DetectLikelyMovie(originalName)
+    end if
+
+    cacheKey = originalName + "|" + (isLikelyMovie = true).ToStr() + "|" + channelName
+    if m.lookupCache.DoesExist(cacheKey)
+        m.top.artworkUrl = m.lookupCache[cacheKey]
         return
     end if
 
-    ' Try OMDB with cleaned name if original fails
-    if cleanName <> originalName
-        print "FanartArtworkTask: Trying OMDB (IMDB) for cleaned: " + cleanName
-        artworkUrl = GetOMDBArtwork(cleanName, isMovie)
-        if artworkUrl <> invalid and artworkUrl <> "" then
-            print "FanartArtworkTask: Found OMDB artwork with cleaned name: " + artworkUrl
-            m.top.artworkUrl = artworkUrl
-            return
-        end if
+    success = false
+
+    if isLikelyMovie
+        success = tryAsMovie(originalName, cleanName, channelName)
+        if not success then success = tryAsTV(originalName, cleanName, channelName)
+    else
+        success = tryAsTV(originalName, cleanName, channelName)
+        if not success then success = tryAsMovie(originalName, cleanName, channelName)
     end if
 
-    ' PRIORITY 2: Try TMDB with original name first
-    print "FanartArtworkTask: No OMDB result, trying TMDB with original name..."
-    artworkUrl = GetTMDBArtwork(originalName, isMovie)
-    if artworkUrl <> invalid and artworkUrl <> "" then
-        print "FanartArtworkTask: Found TMDB artwork with original name: " + artworkUrl
-        m.top.artworkUrl = artworkUrl
+    if success
+        m.lookupCache[cacheKey] = m.top.artworkUrl
         return
     end if
 
-    ' Try TMDB with cleaned name
-    if cleanName <> originalName
-        print "FanartArtworkTask: Trying TMDB with cleaned name..."
-        artworkUrl = GetTMDBArtwork(cleanName, isMovie)
-        if artworkUrl <> invalid and artworkUrl <> "" then
-            print "FanartArtworkTask: Found TMDB artwork with cleaned name: " + artworkUrl
-            m.top.artworkUrl = artworkUrl
-            return
-        end if
-    end if
-
-    ' PRIORITY 3: Try fanart.tv via TVmaze ID with cleaned name
-    print "FanartArtworkTask: No TMDB result, trying fanart.tv..."
-    tvdbId = SearchTVmaze(cleanName)
-    if tvdbId <> invalid and tvdbId <> "" then
-        print "FanartArtworkTask: Found TVDB ID: " + tvdbId
-
-        ' Try TV artwork first
-        artworkUrl = GetFanartArtwork(tvdbId, "23fc46a3d3003a3bc2ecdc34fbf079d0", false)
-        if artworkUrl <> invalid and artworkUrl <> "" then
-            print "FanartArtworkTask: Found fanart.tv TV artwork: " + artworkUrl
-            m.top.artworkUrl = artworkUrl
-            return
-        end if
-
-        ' Try as movie if TV fails
-        if isMovie then
-            artworkUrl = GetFanartArtwork(tvdbId, "23fc46a3d3003a3bc2ecdc34fbf079d0", true)
-            if artworkUrl <> invalid and artworkUrl <> "" then
-                print "FanartArtworkTask: Found fanart.tv movie artwork: " + artworkUrl
-                m.top.artworkUrl = artworkUrl
-                return
-            end if
-        end if
-    end if
-
-    ' PRIORITY 4: Fallback to TVmaze poster (lowest priority)
-    print "FanartArtworkTask: No fanart.tv result, trying TVmaze..."
-    artworkUrl = GetTVmazePoster(cleanName)
-    if artworkUrl <> invalid and artworkUrl <> "" then
-        print "FanartArtworkTask: Found TVmaze poster: " + artworkUrl
-        m.top.artworkUrl = artworkUrl
-        return
-    end if
-
-    print "FanartArtworkTask: No artwork found for: " + showName
-    m.top.error = "No artwork found"
+    m.lookupCache[cacheKey] = invalid
 end function
 
-' NEW FUNCTION: Get artwork from OMDB (uses IMDB data)
-function GetOMDBArtwork(title as String, isMovie as Boolean) as Dynamic
-    ' OMDB API (uses IMDB data) - FREE but requires API key
-    ' Get free key at: http://www.omdbapi.com/apikey.aspx
+' Helper: Try to find artwork as TV series
+function tryAsTV(originalName as String, cleanName as String, channelName as String) as Boolean
+    artworkUrl = GetOMDBArtwork(originalName, false, channelName)
+    if artworkUrl <> invalid and artworkUrl <> "" then
+        m.top.artworkUrl = artworkUrl
+        return true
+    end if
+
+    if cleanName <> originalName
+        artworkUrl = GetOMDBArtwork(cleanName, false, channelName)
+        if artworkUrl <> invalid and artworkUrl <> "" then
+            m.top.artworkUrl = artworkUrl
+            return true
+        end if
+    end if
+
+    artworkUrl = GetTMDBArtwork(originalName, false, channelName)
+    if artworkUrl <> invalid and artworkUrl <> "" then
+        m.top.artworkUrl = artworkUrl
+        return true
+    end if
+
+    if cleanName <> originalName
+        artworkUrl = GetTMDBArtwork(cleanName, false, channelName)
+        if artworkUrl <> invalid and artworkUrl <> "" then
+            m.top.artworkUrl = artworkUrl
+            return true
+        end if
+    end if
+
+    return false
+end function
+
+function tryAsMovie(originalName as String, cleanName as String, channelName as String) as Boolean
+    artworkUrl = GetOMDBArtwork(originalName, true, channelName)
+    if artworkUrl <> invalid and artworkUrl <> "" then
+        m.top.artworkUrl = artworkUrl
+        return true
+    end if
+
+    if cleanName <> originalName
+        artworkUrl = GetOMDBArtwork(cleanName, true, channelName)
+        if artworkUrl <> invalid and artworkUrl <> "" then
+            m.top.artworkUrl = artworkUrl
+            return true
+        end if
+    end if
+
+    artworkUrl = GetTMDBArtwork(originalName, true, channelName)
+    if artworkUrl <> invalid and artworkUrl <> "" then
+        m.top.artworkUrl = artworkUrl
+        return true
+    end if
+
+    if cleanName <> originalName
+        artworkUrl = GetTMDBArtwork(cleanName, true, channelName)
+        if artworkUrl <> invalid and artworkUrl <> "" then
+            m.top.artworkUrl = artworkUrl
+            return true
+        end if
+    end if
+
+    return false
+end function
+
+function HasValidEPGTimes() as Boolean
+    isValid = true
+
+    if m.top.startTime = invalid or m.top.startTime = "" then
+        isValid = false
+    end if
+
+    if m.top.stopTime = invalid or m.top.stopTime = "" then
+        isValid = false
+    end if
+
+    return isValid
+end function
+
+' Detect if title is likely a movie based on patterns
+function DetectLikelyMovie(title as String) as Boolean
+    if title = invalid or title = "" then return false
+
+    t = LCase(title)
+
+    ' --- TV indicators ---
+    regexSeasonEpisode = CreateObject("roRegex", "s[0-9]{1,2}e[0-9]{1,2}", "i")
+    if regexSeasonEpisode.IsMatch(t) then return false
+
+    regexEpisode = CreateObject("roRegex", "episode\s+[0-9]+", "i")
+    if regexEpisode.IsMatch(t) then return false
+
+    regexSeason = CreateObject("roRegex", "season\s+[0-9]+", "i")
+    if regexSeason.IsMatch(t) then return false
+
+    ' --- Movie indicators ---
+    regexYear = CreateObject("roRegex", "\([0-9]{4}\)", "i")
+    if regexYear.IsMatch(t) then return true
+
+    regexMovieWords = CreateObject("roRegex", "(the movie|the film|: the movie)", "i")
+    if regexMovieWords.IsMatch(t) then return true
+
+    franchises = [
+        "star wars","harry potter","lord of the rings","jurassic",
+        "avengers","spider-man","batman","superman",
+        "mission impossible","fast and furious","transformers",
+        "matrix","terminator","alien","predator"
+    ]
+
+    for each f in franchises
+        if InStr(t, f) >= 0 then return true
+    end for
+
+    return false
+end function
+
+' UPDATED: Get artwork from OMDB with exact title matching
+function GetOMDBArtwork(title as String, isMovie as Boolean, channelName as String) as Dynamic
     omdbApiKey = "77eb6b72"
 
-    ' Extract year from title if present (e.g., "Show Name (2020)")
+    ' Extract year from title if present
     year = ExtractYear(title)
     titleWithoutYear = RemoveYearFromTitle(title)
 
@@ -112,12 +188,10 @@ function GetOMDBArtwork(title as String, isMovie as Boolean) as Dynamic
 
     searchUrl = "http://www.omdbapi.com/?apikey=" + omdbApiKey + "&t=" + encodedTitle + "&type=" + mediaType
 
-    ' Add year parameter if we found one (helps narrow results)
+    ' Add year parameter if we found one
     if year <> ""
         searchUrl = searchUrl + "&y=" + year
     end if
-
-    print "GetOMDBArtwork: Searching with URL: " + searchUrl
 
     http = createObject("roUrlTransfer")
     http.setUrl(searchUrl)
@@ -137,18 +211,17 @@ function GetOMDBArtwork(title as String, isMovie as Boolean) as Dynamic
                 json = ParseJson(response)
 
                 if json <> invalid
-                    ' Check if search was successful
                     if json.DoesExist("Response") and json.Response = "True"
-                        if json.DoesExist("Poster") and json.Poster <> invalid and json.Poster <> "N/A"
-                            print "GetOMDBArtwork: Found poster: " + json.Poster
-                            ' Log what we matched
-                            if json.DoesExist("Title") and json.DoesExist("Year")
-                                print "GetOMDBArtwork: Matched - Title: " + json.Title + ", Year: " + json.Year
+                        ' NEW: Exact title match validation
+                        if json.DoesExist("Title")
+                            resultTitle = json.Title
+                            ' Compare titles case-insensitively
+                            if LCase(resultTitle.Trim()) = LCase(titleWithoutYear.Trim())
+                                if json.DoesExist("Poster") and json.Poster <> invalid and json.Poster <> "N/A"
+                                    return json.Poster
+                                end if
                             end if
-                            return json.Poster
                         end if
-                    else if json.DoesExist("Error")
-                        print "GetOMDBArtwork: API Error: " + json.Error
                     end if
                 end if
             end if
@@ -194,7 +267,6 @@ function RemoveYearFromTitle(title as String) as String
             if content.Len() = 4 and IsNumeric(content)
                 yearVal = val(content)
                 if yearVal >= 1950 and yearVal <= 2030
-                    ' This is a year - remove it
                     return title.Left(parenPos).Trim()
                 end if
             end if
@@ -204,9 +276,8 @@ function RemoveYearFromTitle(title as String) as String
     return title
 end function
 
-' UPDATED FUNCTION: Get artwork from TMDB (now handles both movies and TV)
-function GetTMDBArtwork(title as String, isMovie as Boolean) as Dynamic
-    ' TMDB API - Get free key from themoviedb.org
+' UPDATED: Get artwork from TMDB with exact title matching and optional network validation
+function GetTMDBArtwork(title as String, isMovie as Boolean, channelName as String) as Dynamic
     tmdbApiKey = "66822e40a6a5a1ee3b39e0fcac1fc59f"
 
     ' Extract year if present
@@ -230,8 +301,6 @@ function GetTMDBArtwork(title as String, isMovie as Boolean) as Dynamic
         searchUrl = searchUrl + "&" + yearParam + "=" + year
     end if
 
-    print "GetTMDBArtwork: Searching with URL: " + searchUrl
-
     http = createObject("roUrlTransfer")
     http.setUrl(searchUrl)
     http.setCertificatesFile("common:/certs/ca-bundle.crt")
@@ -250,19 +319,35 @@ function GetTMDBArtwork(title as String, isMovie as Boolean) as Dynamic
                 json = ParseJson(response)
 
                 if json <> invalid and json.DoesExist("results") and json.results.Count() > 0
-                    firstResult = json.results[0]
-                    if firstResult.DoesExist("poster_path") and firstResult.poster_path <> invalid
-                        ' TMDB image base URL - use w500 for good quality
-                        posterUrl = "https://image.tmdb.org/t/p/w500" + firstResult.poster_path
-                        print "GetTMDBArtwork: Found poster: " + posterUrl
-                        ' Log what we matched
-                        if firstResult.DoesExist("name")
-                            print "GetTMDBArtwork: Matched TV show: " + firstResult.name
-                        else if firstResult.DoesExist("title")
-                            print "GetTMDBArtwork: Matched movie: " + firstResult.title
+                    ' NEW: Loop through results to find exact match
+                    for each result in json.results
+                        resultTitle = invalid
+
+                        ' Get the title based on media type
+                        if isMovie and result.DoesExist("title")
+                            resultTitle = result.title
+                        else if not isMovie and result.DoesExist("name")
+                            resultTitle = result.name
                         end if
-                        return posterUrl
-                    end if
+
+                        ' NEW: Exact title match check (case-insensitive)
+                        if resultTitle <> invalid and LCase(resultTitle.Trim()) = LCase(titleWithoutYear.Trim())
+                            ' For TV shows, optionally validate network
+                            if not isMovie and channelName <> invalid and channelName <> "" and result.DoesExist("id")
+                                ' Check network match for TV shows
+                                if ValidateNetwork(result.id, channelName, tmdbApiKey)
+                                    if result.DoesExist("poster_path") and result.poster_path <> invalid
+                                        return "https://image.tmdb.org/t/p/w500" + result.poster_path
+                                    end if
+                                end if
+                            else
+                                ' For movies or when network not provided, accept exact title match
+                                if result.DoesExist("poster_path") and result.poster_path <> invalid
+                                    return "https://image.tmdb.org/t/p/w500" + result.poster_path
+                                end if
+                            end if
+                        end if
+                    end for
                 end if
             end if
         else
@@ -273,8 +358,58 @@ function GetTMDBArtwork(title as String, isMovie as Boolean) as Dynamic
     return invalid
 end function
 
+' NEW: Validate that the show's network matches the channel name
+function ValidateNetwork(showId as Integer, channelName as String, apiKey as String) as Boolean
+    if channelName = invalid or channelName = "" then return true
+
+    detailsUrl = "https://api.themoviedb.org/3/tv/" + showId.ToStr() + "?api_key=" + apiKey
+
+    http = createObject("roUrlTransfer")
+    http.setUrl(detailsUrl)
+    http.setCertificatesFile("common:/certs/ca-bundle.crt")
+    http.addHeader("User-Agent", "Roku/TVPass-Client")
+    http.initClientCertificates()
+
+    port = createObject("roMessagePort")
+    http.setPort(port)
+
+    if http.asyncGetToString()
+        msg = wait(10000, port)
+        if type(msg) = "roUrlEvent"
+            responseCode = msg.getResponseCode()
+            if responseCode = 200
+                response = msg.getString()
+                json = ParseJson(response)
+
+                if json <> invalid and json.DoesExist("networks") and json.networks <> invalid
+                    channelLower = LCase(channelName)
+
+                    ' Check if any network name matches the channel
+                    for each network in json.networks
+                        if network.DoesExist("name") and network.name <> invalid
+                            networkLower = LCase(network.name)
+
+                            ' Flexible matching: check if channel name is in network name or vice versa
+                            if networkLower.Instr(channelLower) >= 0 or channelLower.Instr(networkLower) >= 0
+                                return true
+                            end if
+                        end if
+                    end for
+
+                    ' No match found - reject this result
+                    return false
+                end if
+            end if
+        else
+            http.asyncCancel()
+        end if
+    end if
+
+    ' If we can't validate, accept it (network data might not be available)
+    return true
+end function
+
 function SearchTVmaze(showName as String) as Dynamic
-    ' URL encode the show name
     encodedName = showName.Replace(" ", "%20")
     searchUrl = "https://api.tvmaze.com/search/shows?q=" + encodedName
 
@@ -300,10 +435,8 @@ function SearchTVmaze(showName as String) as Dynamic
                     if firstResult.DoesExist("show") and firstResult.show <> invalid
                         show = firstResult.show
 
-                        ' Get TVDB ID from externals
                         if show.DoesExist("externals") and show.externals <> invalid
                             if show.externals.DoesExist("thetvdb") and show.externals.thetvdb <> invalid
-                                ' FIX: Trim whitespace and convert to string
                                 return Str(show.externals.thetvdb).Trim()
                             end if
                         end if
@@ -319,15 +452,12 @@ function SearchTVmaze(showName as String) as Dynamic
 end function
 
 function GetFanartArtwork(tvdbId as String, apiKey as String, isMovie as Boolean) as Dynamic
-    ' Ensure no whitespace in ID (safety check)
     tvdbId = tvdbId.Trim()
 
-    ' Build fanart.tv URL
     mediaType = "tv"
     if isMovie then mediaType = "movies"
 
     fanartUrl = "https://webservice.fanart.tv/v3/" + mediaType + "/" + tvdbId + "?api_key=" + apiKey
-    print "FanartArtworkTask: Fetching from: " + fanartUrl
 
     http = createObject("roUrlTransfer")
     http.setUrl(fanartUrl)
@@ -342,37 +472,20 @@ function GetFanartArtwork(tvdbId as String, apiKey as String, isMovie as Boolean
         msg = wait(10000, port)
         if type(msg) = "roUrlEvent"
             responseCode = msg.getResponseCode()
-            print "FanartArtworkTask: Response code: " + str(responseCode)
 
             if responseCode = 200
                 response = msg.getString()
-                print "FanartArtworkTask: Response length: " + str(len(response))
-
                 json = ParseJson(response)
 
                 if json <> invalid
-                    print "FanartArtworkTask: JSON parsed successfully"
-                    ' Print available artwork types
-                    for each key in json
-                        if type(json[key]) = "roArray" and json[key].Count() > 0
-                            print "FanartArtworkTask: Found " + key + " (" + str(json[key].Count()) + " items)"
-                        end if
-                    end for
-
-                    ' Try to get artwork
                     artworkUrl = ExtractArtwork(json, isMovie)
                     if artworkUrl <> invalid and artworkUrl <> ""
                         return artworkUrl
                     end if
-                else
-                    print "FanartArtworkTask: Failed to parse JSON"
                 end if
-            else
-                print "FanartArtworkTask: HTTP error " + str(responseCode)
             end if
         else
             http.asyncCancel()
-            print "FanartArtworkTask: Request timeout"
         end if
     end if
 
@@ -380,15 +493,9 @@ function GetFanartArtwork(tvdbId as String, apiKey as String, isMovie as Boolean
 end function
 
 function ExtractArtwork(json as Object, isMovie as Boolean) as Dynamic
-    ' Try ALL available artwork types in priority order
-    ' For TV shows: try tvposter, tvthumb, clearlogo, hdtvlogo
-    ' For movies: try movieposter, moviethumb, hdmovielogo, movielogo
-
     if isMovie
-        ' Movie artwork priority
         artworkTypes = ["movieposter", "moviethumb", "hdmovielogo", "movielogo"]
     else
-        ' TV show artwork priority - logos and clear art work best
         artworkTypes = ["tvposter", "tvthumb", "hdclearlogo", "clearlogo", "hdtvlogo"]
     end if
 
@@ -397,14 +504,11 @@ function ExtractArtwork(json as Object, isMovie as Boolean) as Dynamic
             if json[artworkType].Count() > 0
                 url = json[artworkType][0].url
                 if url <> invalid and url <> ""
-                    print "FanartArtworkTask: Using " + artworkType + ": " + url
                     return url
                 end if
             end if
         end if
     end for
-
-    print "FanartArtworkTask: No suitable artwork found"
     return invalid
 end function
 
@@ -450,7 +554,6 @@ function GetTVmazePoster(showName as String) as Dynamic
 end function
 
 function CleanShowName(name as String) as String
-    ' Remove sports prefixes
     cleaned = name
     cleaned = cleaned.Replace("NBA Basketball: ", "")
     cleaned = cleaned.Replace("NFL Football: ", "")
@@ -459,17 +562,12 @@ function CleanShowName(name as String) as String
     cleaned = cleaned.Replace("MLB Baseball: ", "")
     cleaned = cleaned.Replace("NHL Hockey: ", "")
 
-    ' Remove season/episode patterns
     cleaned = RemoveSeasonEpisode(cleaned)
 
-    ' Remove brackets [like episode codes] but keep parentheses (including years)
     bracketPos = cleaned.Instr("[")
     if bracketPos > 0
         cleaned = cleaned.Left(bracketPos).Trim()
     end if
-
-    ' Keep EVERYTHING in parentheses - don't remove any parenthetical content
-    ' This preserves (US), (UK), years (2024), and other disambiguating info
 
     return cleaned.Trim()
 end function
@@ -508,4 +606,31 @@ function IsNumeric(text as String) as Boolean
         end if
     end for
     return true
+end function
+
+function calculateDurationFromEPG(startTime as String, stopTime as String) as Integer
+    startDateTime = CreateObject("roDateTime")
+    startDateTime.FromISO8601String(formatEPGTime(startTime))
+
+    stopDateTime = CreateObject("roDateTime")
+    stopDateTime.FromISO8601String(formatEPGTime(stopTime))
+
+    durationSeconds = stopDateTime.AsSeconds() - startDateTime.AsSeconds()
+
+    return durationSeconds
+end function
+
+function formatEPGTime(epgTime as String) as String
+    timeStr = epgTime.Split(" ")[0]
+
+    year = timeStr.Mid(0, 4)
+    month = timeStr.Mid(4, 2)
+    day = timeStr.Mid(6, 2)
+    hour = timeStr.Mid(8, 2)
+    minute = timeStr.Mid(10, 2)
+    second = timeStr.Mid(12, 2)
+
+    iso8601 = year + "-" + month + "-" + day + "T" + hour + ":" + minute + ":" + second + "Z"
+
+    return iso8601
 end function

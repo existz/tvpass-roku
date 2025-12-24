@@ -25,6 +25,12 @@
             translation="[-2000,-2000]"
             visible="false"/>
 
+        <!-- Live Score Ticker at bottom -->
+        <LiveScoreTicker
+            id="liveScoreTicker"
+            translation="[0,1020]"
+            visible="true"/>
+
         <!-- Main Channel Label - only covers top strip -->
         <Rectangle
             id="labelBackground"

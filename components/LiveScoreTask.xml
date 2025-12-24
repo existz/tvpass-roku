@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="LiveScoreTask" extends="Task">
+    <interface>
+        <field id="apiUrls" type="assocarray" />
+        <field id="scoresData" type="array" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/LiveScoreTask.brs" />
+</component>
