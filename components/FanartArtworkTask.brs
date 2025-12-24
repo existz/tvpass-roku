@@ -11,27 +11,51 @@ function runTask() as Void
         return
     end if
 
+    ' Try with original name first (more specific)
+    originalName = showName
     cleanName = CleanShowName(showName)
 
-    ' PRIORITY 1: Try OMDB (IMDB data) - best quality posters
-    print "FanartArtworkTask: Trying OMDB (IMDB) for: " + cleanName
-    artworkUrl = GetOMDBArtwork(cleanName, isMovie)
+    ' PRIORITY 1: Try OMDB (IMDB data) with original name first
+    print "FanartArtworkTask: Trying OMDB (IMDB) for original: " + originalName
+    artworkUrl = GetOMDBArtwork(originalName, isMovie)
     if artworkUrl <> invalid and artworkUrl <> "" then
-        print "FanartArtworkTask: Found OMDB artwork: " + artworkUrl
+        print "FanartArtworkTask: Found OMDB artwork with original name: " + artworkUrl
         m.top.artworkUrl = artworkUrl
         return
     end if
 
-    ' PRIORITY 2: Try TMDB - good quality and coverage
-    print "FanartArtworkTask: No OMDB result, trying TMDB..."
-    artworkUrl = GetTMDBArtwork(cleanName, isMovie)
+    ' Try OMDB with cleaned name if original fails
+    if cleanName <> originalName
+        print "FanartArtworkTask: Trying OMDB (IMDB) for cleaned: " + cleanName
+        artworkUrl = GetOMDBArtwork(cleanName, isMovie)
+        if artworkUrl <> invalid and artworkUrl <> "" then
+            print "FanartArtworkTask: Found OMDB artwork with cleaned name: " + artworkUrl
+            m.top.artworkUrl = artworkUrl
+            return
+        end if
+    end if
+
+    ' PRIORITY 2: Try TMDB with original name first
+    print "FanartArtworkTask: No OMDB result, trying TMDB with original name..."
+    artworkUrl = GetTMDBArtwork(originalName, isMovie)
     if artworkUrl <> invalid and artworkUrl <> "" then
-        print "FanartArtworkTask: Found TMDB artwork: " + artworkUrl
+        print "FanartArtworkTask: Found TMDB artwork with original name: " + artworkUrl
         m.top.artworkUrl = artworkUrl
         return
     end if
 
-    ' PRIORITY 3: Try fanart.tv via TVmaze ID - high quality but limited coverage
+    ' Try TMDB with cleaned name
+    if cleanName <> originalName
+        print "FanartArtworkTask: Trying TMDB with cleaned name..."
+        artworkUrl = GetTMDBArtwork(cleanName, isMovie)
+        if artworkUrl <> invalid and artworkUrl <> "" then
+            print "FanartArtworkTask: Found TMDB artwork with cleaned name: " + artworkUrl
+            m.top.artworkUrl = artworkUrl
+            return
+        end if
+    end if
+
+    ' PRIORITY 3: Try fanart.tv via TVmaze ID with cleaned name
     print "FanartArtworkTask: No TMDB result, trying fanart.tv..."
     tvdbId = SearchTVmaze(cleanName)
     if tvdbId <> invalid and tvdbId <> "" then
@@ -65,7 +89,7 @@ function runTask() as Void
         return
     end if
 
-    print "FanartArtworkTask: No artwork found for: " + cleanName
+    print "FanartArtworkTask: No artwork found for: " + showName
     m.top.error = "No artwork found"
 end function
 
@@ -75,14 +99,25 @@ function GetOMDBArtwork(title as String, isMovie as Boolean) as Dynamic
     ' Get free key at: http://www.omdbapi.com/apikey.aspx
     omdbApiKey = "77eb6b72"
 
+    ' Extract year from title if present (e.g., "Show Name (2020)")
+    year = ExtractYear(title)
+    titleWithoutYear = RemoveYearFromTitle(title)
+
     ' URL encode the title
-    encodedTitle = title.Replace(" ", "+")
+    encodedTitle = titleWithoutYear.Replace(" ", "+")
 
     ' Build search URL - specify type (movie or series)
     mediaType = "series"
     if isMovie then mediaType = "movie"
 
     searchUrl = "http://www.omdbapi.com/?apikey=" + omdbApiKey + "&t=" + encodedTitle + "&type=" + mediaType
+
+    ' Add year parameter if we found one (helps narrow results)
+    if year <> ""
+        searchUrl = searchUrl + "&y=" + year
+    end if
+
+    print "GetOMDBArtwork: Searching with URL: " + searchUrl
 
     http = createObject("roUrlTransfer")
     http.setUrl(searchUrl)
@@ -106,8 +141,14 @@ function GetOMDBArtwork(title as String, isMovie as Boolean) as Dynamic
                     if json.DoesExist("Response") and json.Response = "True"
                         if json.DoesExist("Poster") and json.Poster <> invalid and json.Poster <> "N/A"
                             print "GetOMDBArtwork: Found poster: " + json.Poster
+                            ' Log what we matched
+                            if json.DoesExist("Title") and json.DoesExist("Year")
+                                print "GetOMDBArtwork: Matched - Title: " + json.Title + ", Year: " + json.Year
+                            end if
                             return json.Poster
                         end if
+                    else if json.DoesExist("Error")
+                        print "GetOMDBArtwork: API Error: " + json.Error
                     end if
                 end if
             end if
@@ -119,18 +160,77 @@ function GetOMDBArtwork(title as String, isMovie as Boolean) as Dynamic
     return invalid
 end function
 
+' Helper function to extract year from title
+function ExtractYear(title as String) as String
+    if title = invalid or title = "" then return ""
+
+    ' Look for (YYYY) pattern
+    parenPos = title.Instr("(")
+    if parenPos > 0
+        closeParenPos = title.Instr(")")
+        if closeParenPos > parenPos
+            content = title.Mid(parenPos + 1, closeParenPos - parenPos - 1).Trim()
+            if content.Len() = 4 and IsNumeric(content)
+                yearVal = val(content)
+                if yearVal >= 1950 and yearVal <= 2030
+                    return content
+                end if
+            end if
+        end if
+    end if
+
+    return ""
+end function
+
+' Helper function to remove year from title
+function RemoveYearFromTitle(title as String) as String
+    if title = invalid or title = "" then return ""
+
+    parenPos = title.Instr("(")
+    if parenPos > 0
+        closeParenPos = title.Instr(")")
+        if closeParenPos > parenPos
+            content = title.Mid(parenPos + 1, closeParenPos - parenPos - 1).Trim()
+            if content.Len() = 4 and IsNumeric(content)
+                yearVal = val(content)
+                if yearVal >= 1950 and yearVal <= 2030
+                    ' This is a year - remove it
+                    return title.Left(parenPos).Trim()
+                end if
+            end if
+        end if
+    end if
+
+    return title
+end function
+
 ' UPDATED FUNCTION: Get artwork from TMDB (now handles both movies and TV)
 function GetTMDBArtwork(title as String, isMovie as Boolean) as Dynamic
     ' TMDB API - Get free key from themoviedb.org
-    tmdbApiKey = "66822e40a6a5a1ee3b39e0fcac1fc59f"  ' Replace with free key
+    tmdbApiKey = "66822e40a6a5a1ee3b39e0fcac1fc59f"
 
-    encodedTitle = title.Replace(" ", "%20")
+    ' Extract year if present
+    year = ExtractYear(title)
+    titleWithoutYear = RemoveYearFromTitle(title)
+
+    encodedTitle = titleWithoutYear.Replace(" ", "%20")
 
     ' Use different endpoints for movies vs TV shows
     searchType = "tv"
-    if isMovie then searchType = "movie"
+    yearParam = "first_air_date_year"
+    if isMovie
+        searchType = "movie"
+        yearParam = "year"
+    end if
 
     searchUrl = "https://api.themoviedb.org/3/search/" + searchType + "?api_key=" + tmdbApiKey + "&query=" + encodedTitle
+
+    ' Add year if available
+    if year <> ""
+        searchUrl = searchUrl + "&" + yearParam + "=" + year
+    end if
+
+    print "GetTMDBArtwork: Searching with URL: " + searchUrl
 
     http = createObject("roUrlTransfer")
     http.setUrl(searchUrl)
@@ -155,6 +255,12 @@ function GetTMDBArtwork(title as String, isMovie as Boolean) as Dynamic
                         ' TMDB image base URL - use w500 for good quality
                         posterUrl = "https://image.tmdb.org/t/p/w500" + firstResult.poster_path
                         print "GetTMDBArtwork: Found poster: " + posterUrl
+                        ' Log what we matched
+                        if firstResult.DoesExist("name")
+                            print "GetTMDBArtwork: Matched TV show: " + firstResult.name
+                        else if firstResult.DoesExist("title")
+                            print "GetTMDBArtwork: Matched movie: " + firstResult.title
+                        end if
                         return posterUrl
                     end if
                 end if
@@ -362,29 +468,8 @@ function CleanShowName(name as String) as String
         cleaned = cleaned.Left(bracketPos).Trim()
     end if
 
-    ' Keep years in parentheses (2024) but remove other parenthetical content
-    ' Only remove parentheses if they don't contain a 4-digit year
-    parenPos = cleaned.Instr("(")
-    if parenPos > 0
-        closeParenPos = cleaned.Instr(")")
-        if closeParenPos > parenPos
-            parenContent = cleaned.Mid(parenPos + 1, closeParenPos - parenPos - 1).Trim()
-
-            ' Check if content is a 4-digit year
-            if parenContent.Len() = 4 and IsNumeric(parenContent)
-                yearVal = val(parenContent)
-                if yearVal >= 1950 and yearVal <= 2030
-                    ' This is a year - keep it
-                else
-                    ' Not a valid year - remove parentheses
-                    cleaned = cleaned.Left(parenPos).Trim()
-                end if
-            else
-                ' Not a year - remove parentheses
-                cleaned = cleaned.Left(parenPos).Trim()
-            end if
-        end if
-    end if
+    ' Keep EVERYTHING in parentheses - don't remove any parenthetical content
+    ' This preserves (US), (UK), years (2024), and other disambiguating info
 
     return cleaned.Trim()
 end function
