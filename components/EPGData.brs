@@ -103,16 +103,19 @@ function EPGParseXMLOptimized(xmlString as String) as Object
     xml = CreateObject("roXMLElement")
     if not xml.Parse(xmlString) then return result
 
+    ' Use LongInteger for all time comparisons
     now = CreateObject("roDateTime")
     currentTime = now.AsSeconds()
-    windowStart = currentTime - 7200
-    windowEnd = currentTime + 7200
+    currentTimeLong& = currentTime
+
+    ' Use LongInteger for all time calculations
+    windowStart& = currentTimeLong& - 7200&
+    windowEnd& = currentTimeLong& + 14400&
 
     programmes = xml.GetNamedElements("programme")
     if programmes.count() = 0 then return result
 
     for each programme in programmes
-        ' Quick time check first before parsing
         startTime = programme@start
         stopTime = programme@stop
 
@@ -121,10 +124,9 @@ function EPGParseXMLOptimized(xmlString as String) as Object
         startSec = EPGParseXmltvTime(startTime)
         stopSec = EPGParseXmltvTime(stopTime)
 
-        ' Skip if completely outside time window (include programs from 2 hours in the past)
-        if startSec > windowEnd or stopSec < windowStart then continue for
+        ' Skip if completely outside time window
+        if startSec > windowEnd& or stopSec < windowStart& then continue for
 
-        ' NOW parse remaining fields
         channel = programme@channel
         if channel = invalid then continue for
 
@@ -151,8 +153,9 @@ function EPGParseXMLOptimized(xmlString as String) as Object
             programTitle = programSubTitle
         end if
 
-        ' For current programs, store the appropriate display text
-        if startSec <= currentTime and stopSec > currentTime
+        ' Check if this is a CURRENT program (playing right now)
+        ' Use LongInteger comparison
+        if startSec <= currentTimeLong& and stopSec > currentTimeLong& then
             ' Check if this is a sports program
             isSports = false
             for each keyword in ["College Basketball", "College Football", "College Baseball", "NFL Football", "NBA Basketball", "NBA G League Basketball", "MLB Baseball", "NHL Hockey"]
@@ -445,4 +448,37 @@ function EPGGetProgramsForTimeSlots(epg as Object, tvgId as String) as Object
     end for
 
     return result
+end function
+
+function EPGGetPrograms(epg as Object, tvgId as String) as Object
+    if tvgId = invalid then return []
+
+    normalizedId = EPGNormalizeChannelId(tvgId)
+
+    if epg.programsByChannel.doesExist(normalizedId)
+        return epg.programsByChannel[normalizedId]
+    end if
+
+    return []
+end function
+
+function EPGNormalizeChannelId(channelId as String) as String
+    ' Normalize channel IDs for consistent lookup
+    if channelId = invalid then return ""
+
+    normalized = LCase(channelId.Trim())
+
+    ' Remove common suffixes
+    normalized = normalized.Replace(".us", "")
+    normalized = normalized.Replace(".tv", "")
+    normalized = normalized.Replace(".uk", "")
+
+    ' Remove all punctuation and spaces for maximum compatibility
+    normalized = normalized.Replace(".", "")
+    normalized = normalized.Replace("_", "")
+    normalized = normalized.Replace("-", "")
+    normalized = normalized.Replace(" ", "")
+    normalized = normalized.Replace(",", "")
+
+    return normalized
 end function

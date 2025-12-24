@@ -169,32 +169,3 @@ function GetESPNLogoUrlFast(teamName as String, league as String) as String
 
     return ""
 end function
-
-function EPGGetPrograms(epg as Object, tvgId as String) as Object
-    if tvgId = invalid then return []
-
-    normalizedId = EPGNormalizeChannelId(tvgId)
-
-    if epg.programsByChannel.doesExist(normalizedId)
-        return epg.programsByChannel[normalizedId]
-    end if
-
-    return []
-end function
-
-function EPGNormalizeChannelId(id as String) as String
-    if id = invalid then return ""
-
-    id = id.Trim()
-
-    if id.StartsWith("channel")
-        return id.Mid(7)
-    end if
-
-    dotPos = id.Instr(".")
-    if dotPos > 0
-        return Left(id, dotPos - 1)
-    end if
-
-    return id
-end function
