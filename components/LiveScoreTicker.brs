@@ -141,7 +141,7 @@ sub createScoreItems()
         leagueLabel.text = score.league
         leagueLabel.font = "font:SmallBoldSystemFont"
         leagueLabel.color = m.uiColors.LIGHT_GRAY
-        leagueLabel.font.size = 26
+        leagueLabel.font.size = 24
         leagueLabel.horizAlign = "center"
         leagueLabel.vertAlign = "center"
         gameGroup.appendChild(leagueLabel)
@@ -149,7 +149,7 @@ sub createScoreItems()
         ' Away team - adjusted position for wider badge
         awayLabel = createObject("roSGNode", "Label")
         awayLabel.translation = [90, 13]
-        awayLabel.width = 85
+        awayLabel.width = 95
         awayLabel.height = 30
         awayLabel.text = score.awayTeam
         awayLabel.font = "font:SmallBoldSystemFont"
@@ -161,20 +161,20 @@ sub createScoreItems()
         ' Calculate dynamic positioning based on score digits
         awayScoreDigits = 0
         homeScoreDigits = 0
-        homeTeamPos = 195
-        homeScorePos = 295
-        statusPos = 370
-        separatorPos = 630
-        gameWidth = 640
+        homeTeamPos = 205
+        homeScorePos = 305
+        statusPos = 380
+        separatorPos = 640
+        gameWidth = 650
 
         if not isScheduled then
             ' Count digits in scores for dynamic spacing
             awayScoreDigits = len(stri(score.awayScore).trim())
             homeScoreDigits = len(stri(score.homeScore).trim())
 
-            ' Away score - HIGHLIGHT WINNER'S SCORE IN YELLOW
+            ' Away score - fixed position relative to away team
             awayScore = createObject("roSGNode", "Label")
-            awayScore.translation = [191, 13]
+            awayScore.translation = [201, 13]
             awayScore.width = 75
             awayScore.height = 30
             awayScore.text = stri(score.awayScore).trim()
@@ -189,15 +189,11 @@ sub createScoreItems()
             awayScore.vertAlign = "center"
             gameGroup.appendChild(awayScore)
 
-            ' Adjust home team position based on away score digits
-            if awayScoreDigits = 2 then
-                homeTeamPos = 268  ' 8px closer for 2-digit scores
-            else
-                homeTeamPos = 276  ' Normal (3 digits)
-            end if
+            ' Home team - fixed position
+            homeTeamPos = 286
 
-            ' Adjust home score position based on home team position
-            homeScorePos = homeTeamPos + 101
+            ' Home score - fixed spacing from home team (same as away)
+            homeScorePos = 392
 
             ' Adjust status position based on home score digits
             if homeScoreDigits = 2 then
@@ -206,20 +202,20 @@ sub createScoreItems()
                 statusPos = homeScorePos + 75 + 20  ' Normal gap
             end if
 
-            separatorPos = 682
-            gameWidth = 692
+            separatorPos = 692
+            gameWidth = 702
         else
             ' Scheduled game - closer spacing
-            homeTeamPos = 195
-            statusPos = 355
-            separatorPos = 615
-            gameWidth = 625
+            homeTeamPos = 205
+            statusPos = 365
+            separatorPos = 625
+            gameWidth = 635
         end if
 
         ' Home team - dynamic position
         homeLabel = createObject("roSGNode", "Label")
         homeLabel.translation = [homeTeamPos, 13]
-        homeLabel.width = 85
+        homeLabel.width = 95
         homeLabel.height = 30
         homeLabel.text = score.homeTeam
         homeLabel.font = "font:SmallBoldSystemFont"
