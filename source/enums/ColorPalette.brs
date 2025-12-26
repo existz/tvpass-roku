@@ -11,6 +11,7 @@ function GetUIColors() as Object
         LIGHT_GRAY_DD: "0xDDDDDDFF"
         WHITE: "0xFFFFFFFF"
         GREEN: "0x00FF00FF"
+        YELLOW: "0xFFDA03FF"
     }
 end function
 

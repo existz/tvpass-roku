@@ -72,33 +72,13 @@ sub onScoresReceived()
 
     scoresData = m.currentTask.scoresData
     if scoresData = invalid or scoresData.count() = 0 then
-        ' Create placeholder message
-        createPlaceholderContent()
+        ' No games at all - hide the entire ticker
+        m.top.visible = false
         return
     end if
 
     m.scoresData = scoresData
     createScoreItems()
-end sub
-
-sub createPlaceholderContent()
-    ' Clear existing items
-    clearScrollContainer()
-
-    ' Create placeholder message
-    placeholder = createObject("roSGNode", "Label")
-    placeholder.translation = [20, 13]  ' Changed from 15 to 13
-    placeholder.width = 400
-    placeholder.height = 30
-    placeholder.text = "No live games at this time"
-    placeholder.font = "font:SmallBoldSystemFont"
-    placeholder.color = m.uiColors.LIGHT_GRAY
-    placeholder.horizAlign = "left"
-    placeholder.vertAlign = "center"
-
-    m.contentGroup.appendChild(placeholder)
-    m.scoreItems = [placeholder]
-    m.contentWidth = 450
 end sub
 
 sub clearScrollContainer()
@@ -115,9 +95,13 @@ sub createScoreItems()
     clearScrollContainer()
 
     if m.scoresData.count() = 0 then
-        createPlaceholderContent()
+        ' No games - hide ticker
+        m.top.visible = false
         return
     end if
+
+    ' Show ticker since we have games
+    m.top.visible = true
 
     totalWidth = 0
     spacing = 60
@@ -125,6 +109,18 @@ sub createScoreItems()
     for each score in m.scoresData
         ' Check if game has started (not scheduled)
         isScheduled = (score.status.Instr("AM") >= 0 or score.status.Instr("PM") >= 0 or score.status = "Scheduled" or score.status.Instr("SUN") >= 0 or score.status.Instr("MON") >= 0 or score.status.Instr("TUE") >= 0 or score.status.Instr("WED") >= 0 or score.status.Instr("THU") >= 0 or score.status.Instr("FRI") >= 0 or score.status.Instr("SAT") >= 0)
+
+        ' Determine if game is finished and who won
+        isFinal = (score.status = "Final" or score.status.Instr("Final") >= 0)
+        awayWon = false
+        homeWon = false
+        if isFinal
+            if score.awayScore > score.homeScore
+                awayWon = true
+            else if score.homeScore > score.awayScore
+                homeWon = true
+            end if
+        end if
 
         ' Create game container
         gameGroup = createObject("roSGNode", "Group")
@@ -176,14 +172,19 @@ sub createScoreItems()
             awayScoreDigits = len(stri(score.awayScore).trim())
             homeScoreDigits = len(stri(score.homeScore).trim())
 
-            ' Away score
+            ' Away score - HIGHLIGHT WINNER'S SCORE IN YELLOW
             awayScore = createObject("roSGNode", "Label")
             awayScore.translation = [191, 13]
             awayScore.width = 75
             awayScore.height = 30
             awayScore.text = stri(score.awayScore).trim()
             awayScore.font = "font:MediumBoldSystemFont"
-            awayScore.color = m.uiColors.WHITE
+            ' Highlight winner's score in yellow
+            if awayWon
+                awayScore.color = m.uiColors.YELLOW
+            else
+                awayScore.color = m.uiColors.WHITE
+            end if
             awayScore.horizAlign = "left"
             awayScore.vertAlign = "center"
             gameGroup.appendChild(awayScore)
@@ -228,14 +229,19 @@ sub createScoreItems()
         gameGroup.appendChild(homeLabel)
 
         if not isScheduled then
-            ' Home score - dynamic position
+            ' Home score - dynamic position - HIGHLIGHT WINNER'S SCORE IN YELLOW
             homeScore = createObject("roSGNode", "Label")
             homeScore.translation = [homeScorePos, 13]
             homeScore.width = 75
             homeScore.height = 30
             homeScore.text = stri(score.homeScore).trim()
             homeScore.font = "font:MediumBoldSystemFont"
-            homeScore.color = m.uiColors.WHITE
+            ' Highlight winner's score in yellow
+            if homeWon
+                homeScore.color = m.uiColors.YELLOW
+            else
+                homeScore.color = m.uiColors.WHITE
+            end if
             homeScore.horizAlign = "left"
             homeScore.vertAlign = "center"
             gameGroup.appendChild(homeScore)
