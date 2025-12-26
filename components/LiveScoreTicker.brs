@@ -248,7 +248,11 @@ sub createScoreItems()
             statusLabel.width = 200
         end if
         statusLabel.height = 30
-        statusLabel.text = score.status
+        if isScheduled then
+            statusLabel.text = FormatScheduledTime(score.status)
+        else
+            statusLabel.text = score.status
+        end if
         statusLabel.font = "font:SmallBoldSystemFont"
         statusLabel.font.size = 28
         statusLabel.color = GetStatusColor(score.status)
@@ -310,3 +314,25 @@ sub onAnimationTick()
     ' Update only the contentGroup position, not scrollContainer
     m.contentGroup.translation = [m.scrollX, 0]
 end sub
+
+function FormatScheduledTime(timeStr as String) as String
+    if timeStr = invalid then return timeStr
+    
+    if timeStr.Instr("AM") >= 0 or timeStr.Instr("PM") >= 0 then
+        return timeStr
+    end if
+    
+    if timeStr.Instr(":") >= 0 then
+        parts = timeStr.split(":")
+        if parts.count() >= 1 then
+            hour = val(parts[0])
+            if hour >= 1 and hour < 12 then
+                return timeStr + " AM"
+            else
+                return timeStr + " PM"
+            end if
+        end if
+    end if
+    
+    return timeStr
+end function
