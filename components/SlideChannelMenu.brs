@@ -28,7 +28,6 @@ sub init()
     m.top.observeField("visible", "onVisibleChanged")
     m.top.observeField("currentChannelIndex", "onCurrentChannelIndexChanged")
     m.top.observeField("epgData", "onEPGDataChanged")
-    m.top.observeField("bitmapCache", "onBitmapCacheChanged")
 
     ' Initialize menuClosed field
     m.top.menuClosed = false

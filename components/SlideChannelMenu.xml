@@ -16,7 +16,7 @@
         <field id="launchMultiview" type="array" alwaysNotify="true" />
         <field id="menuClosed" type="boolean" alwaysNotify="true" />
         <field id="epgData" type="assocarray" />
-        <field id="bitmapCache" type="assocarray" onChange="onBitmapCacheChanged" />
+        <field id="bitmapCache" type="assocarray" />
     </interface>
 
     <!-- Make the menu focusable so it can receive key events -->
