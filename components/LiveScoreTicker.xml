@@ -3,6 +3,7 @@
     <script type="text/brightscript" uri="pkg:/components/LiveScoreTicker.brs" />
     <script type="text/brightscript" uri="pkg:/source/enums/ColorPalette.brs" />
     <script type="text/brightscript" uri="pkg:/source/enums/Utils.brs" />
+    <script type="text/brightscript" uri="pkg:/source/enums/URLs.brs" />
 
     <interface>
         <field id="visible" type="boolean" />

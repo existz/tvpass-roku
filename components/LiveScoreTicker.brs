@@ -28,12 +28,8 @@ sub init()
     m.scoreItems = []
     m.currentTask = invalid
 
-    ' ESPN API URLs - no parameters returns today's games only
-    m.apiUrls = {
-        NBA: "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
-        NFL: "http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
-        MLB: "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard"
-    }
+    ' ESPN API URLs - loaded from Utils
+    m.apiUrls = GetLiveScoreApiUrls()
 
     m.top.observeField("visible", "onVisibleChanged")
 end sub

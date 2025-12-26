@@ -14,3 +14,11 @@ function GetLogoUrls() as Object
         TV_LOGOS_LOCAL: "https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/us-local/"
     }
 end function
+
+function GetLiveScoreApiUrls() as Object
+    return {
+        NBA: "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
+        NFL: "http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
+        MLB: "http://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard"
+    }
+end function
