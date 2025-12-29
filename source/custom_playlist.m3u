@@ -17,6 +17,8 @@ http://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/61
 https://jmp2.uk/stvp-US1800015K5
 #EXTINF:-1 tvg-id="tv-land-sitcoms" group-title="TV" tvg-name="TV Land Sitcoms" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/tv-land-us.png"
 https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/5c2d64ffbdf11b71587184b8/master.m3u8?advertisingId=&appName=web&appVersion=unknown&appStoreUrl=&architecture=&buildVersion=&clientTime=0&deviceDNT=0&deviceId=bc2c6d52-e3fb-11f0-8e33-4db53aefd476&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&sid=f6f17f58-0232-4717-8060-17d482bbd9eb&userId=&serverSideAds=true
+#EXTINF:-1 tvg-id="the-connors" group-title="TV" tvg-name="The Connors" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/the-connors-us.png"
+https://amg00353-amg00353c36-lg-us-6064.playouts.now.amagi.tv/playlist.m3u8
 
 # Local Affiliates
 #EXTINF:-1 tvg-id="WTVQDT1.us@SD" group-title="TV" tvg-name="ABC 36 News WTVQ (Lexington KY)" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/us-local/abc-36-wtvq-us.png"
