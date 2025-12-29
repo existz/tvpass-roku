@@ -170,7 +170,7 @@ sub createScoreItems()
 
             ' Away score - fixed position relative to away team
             awayScore = createObject("roSGNode", "Label")
-            awayScore.translation = [201, 13]
+            awayScore.translation = [215, 13]
             awayScore.width = 75
             awayScore.height = 30
             awayScore.text = stri(score.awayScore).trim()
@@ -189,7 +189,7 @@ sub createScoreItems()
             homeTeamPos = 286
 
             ' Home score - fixed spacing from home team (same as away)
-            homeScorePos = 392
+            homeScorePos = 406
 
             ' Adjust status position based on home score digits
             if homeScoreDigits = 2 then
