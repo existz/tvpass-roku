@@ -247,6 +247,7 @@ function GetTeamColorPalette() as Object
             "smu": "0xFFFFFFFF"
             "south-alabama": "0xCE181EFF"
             "south-carolina": "0x73000AFF"
+            "south-carolina-state": "0x001A72FF"
             "south-florida": "0x006747FF"
             "southern-miss": "0xFFAA3CFF"
             "stanford": "0x8C1515FF"

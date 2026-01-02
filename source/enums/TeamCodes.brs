@@ -244,6 +244,7 @@ function GetNCAATeams() as Object
         "SMU": "smu", "SMU Mustangs": "smu",
         "South Alabama": "south-alabama", "South Alabama Jaguars": "south-alabama", "USA": "south-alabama",
         "South Carolina": "south-carolina", "South Carolina Gamecocks": "south-carolina", "SC": "south-carolina",
+        "South Carolina State": "south-carolina-state", "South Carolina State Bulldogs": "south-carolina-state",
         "South Florida": "south-florida", "South Florida Bulls": "south-florida", "USF": "south-florida",
         "Southern Miss": "southern-miss", "Southern Miss Golden Eagles": "southern-miss", "USM": "southern-miss",
         "Stanford": "stanford", "Stanford Cardinal": "stanford", "STAN": "stanford",
@@ -522,6 +523,7 @@ function GetNCAATeamId(teamCode as String) as String
         "smu": "2567",
         "south-alabama": "6",
         "south-carolina": "2579",
+        "south-carolina-state": "2569",
         "south-florida": "58",
         "southern-miss": "2582",
         "stanford": "24",
@@ -581,8 +583,9 @@ function GetTeamCodeByLeague(teamName as String, league as String) as Dynamic
 
     if teams = invalid then return invalid
 
+    lowerTeamName = LCase(teamName)
     for each key in teams
-        if LCase(teamName).Instr(LCase(key)) >= 0 then return teams[key]
+        if LCase(key) = lowerTeamName then return teams[key]
     end for
 
     return invalid
@@ -597,8 +600,9 @@ function GetESPNAbbrByLeague(teamName as String, league as String) as Dynamic
 
     if teams = invalid then return invalid
 
+    lowerTeamName = LCase(teamName)
     for each key in teams
-        if teamName.Instr(key) >= 0 then return teams[key]
+        if LCase(key) = lowerTeamName then return teams[key]
     end for
     return invalid
 end function
