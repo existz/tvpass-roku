@@ -95,6 +95,7 @@ sub init()
     m.maxRetryAttempts = 10
     m.retryDelay = 2
     m.lastPosition = 0
+    m.streamEstablished = false  ' Track if stream successfully connected
 
     ' Pre-create all timers in init() — Prevents runtime crashes
     m.clockTimer = createObject("roSGNode", "Timer")
@@ -109,17 +110,17 @@ sub init()
 
     m.returnToGuideTimer = createObject("roSGNode", "Timer")
     m.returnToGuideTimer.repeat = false
-    m.returnToGuideTimer.duration = 3
+    m.returnToGuideTimer.duration = 5
     m.returnToGuideTimer.observeField("fire", "returnToGuide")
 
     m.bufferingTimer = createObject("roSGNode", "Timer")
     m.bufferingTimer.repeat = false
-    m.bufferingTimer.duration = 10
+    m.bufferingTimer.duration = 30
     m.bufferingTimer.observeField("fire", "onBufferingTimeout")
 
     m.positionCheckTimer = createObject("roSGNode", "Timer")
     m.positionCheckTimer.repeat = false
-    m.positionCheckTimer.duration = 3
+    m.positionCheckTimer.duration = 8
     m.positionCheckTimer.observeField("fire", "onPositionCheck")
 
     ' Observe events
@@ -1034,8 +1035,9 @@ sub playChannel(channel as Object)
     m.retryTimer.control = "stop"
     m.returnToGuideTimer.control = "stop"
 
-    ' Reset position tracking
+    ' Reset position tracking and stream establishment flag
     m.lastPosition = 0
+    m.streamEstablished = false
 
     m.videoPlayer.opacity = 1.0
     m.videoPlayer.visible = true
@@ -1047,7 +1049,7 @@ sub playChannel(channel as Object)
     if channel.url.Instr("tvpass.org/live/") >= 0 and channel.id <> invalid
         ' Clear cache + force FRESH redirect on EVERY retry
         if m.isRetrying or m.retryAttempts > 0
-            m.resolvedUrlCache[channel.id] = invalid  ' Remove specific channel cache
+            m.resolvedUrlCache[channel.id] = invalid
         end if
 
         cachedUrl = invalid
@@ -1061,9 +1063,8 @@ sub playChannel(channel as Object)
         else
             ' Store channel for later playback after fresh resolution
             m.pendingChannel = channel
-
             resolveTask = createObject("roSGNode", "ResolveUrlTask")
-            resolveTask.url = channel.url  ' Original TVPass URL → fresh redirect
+            resolveTask.url = channel.url ' Original TVPass URL → fresh redirect
             resolveTask.observeField("resolvedUrl", "onUrlResolved")
             resolveTask.control = "RUN"
         end if
@@ -1321,7 +1322,7 @@ sub onVideoStateChanged()
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
             m.retryAttempts = m.retryAttempts + 1
             m.isRetrying = true
-            m.retryInProgress = true  ' BLOCK FURTHER RETRIES
+            m.retryInProgress = true
 
             msgParts = ["Server full, retrying... (", Stri(m.retryAttempts), "/", Stri(m.maxRetryAttempts), ")"]
             m.loadingLabel.text = msgParts.Join("")
@@ -1338,7 +1339,7 @@ sub onVideoStateChanged()
             m.retryTimer.duration = m.retryDelay
             m.retryTimer.control = "start"
         else
-            m.retryInProgress = false  ' Allow return to guide
+            m.retryInProgress = false
             msgParts = ["Max retries reached or no channel selected"]
             print msgParts.Join("")
             m.loadingLabel.text = "Unable to connect - Server full"
@@ -1358,15 +1359,8 @@ sub onVideoStateChanged()
     end if
 
     if state = "finished" or state = "stopped"
-        ' Check retry flag first
-        if m.isRetrying
-            return
-        end if
-
-        ' Don't exit multiview on video stop
-        if m.isMultiviewMode
-            return
-        end if
+        if m.isRetrying then return
+        if m.isMultiviewMode then return
 
         m.bufferingTimer.control = "stop"
         m.positionCheckTimer.control = "stop"
@@ -1381,11 +1375,10 @@ sub onVideoStateChanged()
 
     if state = "playing"
         m.blackFlashOverlay.visible = false
-        m.retryInProgress = false      ' CLEAR RETRY LOCK
+        m.retryInProgress = false
         m.retryAttempts = 0
         m.isRetrying = false
-
-        m.loadingLabel.visible = false
+        m.streamEstablished = true  ' Mark stream as successfully established
 
         m.loadingLabel.visible = false
 
@@ -1393,12 +1386,15 @@ sub onVideoStateChanged()
         m.retryTimer.control = "stop"
         m.returnToGuideTimer.control = "stop"
 
-        ' Check stream quality info
         checkStreamQuality()
 
-        m.lastPosition = m.videoPlayer.position
-        m.positionCheckTimer.control = "stop"
-        m.positionCheckTimer.control = "start"
+        ' Only start position check if stream not yet established
+        ' Once established, we don't need to check for "server full"
+        if not m.streamEstablished then
+            m.lastPosition = m.videoPlayer.position
+            m.positionCheckTimer.control = "stop"
+            m.positionCheckTimer.control = "start"
+        end if
 
         if m.isMultiviewMode
             m.multiviewGrid.visible = true
@@ -1417,6 +1413,12 @@ end sub
 sub onBufferingTimeout()
     if m.retryInProgress then return
 
+    ' If stream was already established, don't treat buffering as a failure
+    if m.streamEstablished then
+        print "Stream established - ignoring buffering timeout"
+        return
+    end if
+
     if m.videoPlayer.state = "buffering"
         msgParts = ["Still buffering after timeout. Retry attempt ", str(m.retryAttempts + 1), "/", str(m.maxRetryAttempts)]
         print msgParts.Join("")
@@ -1427,7 +1429,7 @@ sub onBufferingTimeout()
 
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
             m.retryAttempts = m.retryAttempts + 1
-            m.isRetrying = true  ' SET RETRY FLAG
+            m.isRetrying = true
 
             msgParts = ["Timeout, retrying... (", Stri(m.retryAttempts), "/", Stri(m.maxRetryAttempts), ")"]
             m.loadingLabel.text = msgParts.Join("")
@@ -1465,6 +1467,11 @@ end sub
 sub onPositionCheck()
     if m.retryInProgress then return
 
+    ' If stream was already established, don't check for stuck position
+    if m.streamEstablished then
+        return
+    end if
+
     currentPosition = m.videoPlayer.position
 
     if currentPosition = m.lastPosition or currentPosition < 1
@@ -1477,7 +1484,7 @@ sub onPositionCheck()
 
         if m.retryAttempts < m.maxRetryAttempts and m.currentChannelIndex >= 0
             m.retryAttempts = m.retryAttempts + 1
-            m.isRetrying = true  ' SET RETRY FLAG
+            m.isRetrying = true
 
             msgParts = ["Server full, retrying... (", Stri(m.retryAttempts), "/", Stri(m.maxRetryAttempts), ")"]
             m.loadingLabel.text = msgParts.Join("")
