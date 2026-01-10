@@ -450,7 +450,7 @@ sub loadPlaylist()
     hideGuideElements()
 
     m.epgData.isLoading = true
-    m.epgData.pendingTasks = 3
+    m.epgData.pendingTasks = 2  ' Only wait for playlist and EPG, not logo fallback
     m.epgData.playlistData = invalid
     m.epgData.epgData = invalid
     m.epgData.logoFallbackData = invalid
@@ -479,7 +479,7 @@ sub loadPlaylist()
     m.epgData.epgTask.observeField("error", "onScheduleError")
     m.epgData.epgTask.control = "RUN"
 
-    ' Load logo fallback
+    ' Load logo fallback in background - don't wait for it
     m.epgData.logoTask = createObject("roSGNode", "LoadPlaylistTask")
     m.epgData.logoTask.url = m.apiUrls.TVPASS_HD_FALLBACK + "?t=" + timestamp
     m.epgData.logoTask.observeField("response", "onLogoPlaylistResponse")
@@ -536,13 +536,12 @@ sub onTvpassPlaylistResponse()
         end for
     end if
 
-    ' NEW: Ensure each channel has a stable id for URL caching
+    ' Ensure each channel has a stable id for URL caching
     for each channel in mainChannels
         if channel.id = invalid then
             if channel.tvgId <> invalid and channel.tvgId <> ""
                 channel.id = channel.tvgId
             else
-                ' Fallback: use URL hash or title for uniqueness
                 channel.id = "ch_" + LCase(Left(channel.title, 20)).Replace(" ", "_")
             end if
         end if
@@ -554,20 +553,34 @@ sub onTvpassPlaylistResponse()
 
     ' Continue normal async flow
     m.epgData.pendingTasks = m.epgData.pendingTasks - 1
+
+    ' If EPG is done, show guide immediately without waiting for logos
     if m.epgData.pendingTasks = 0
-        showGuide()
+        ' Apply logos if fallback already loaded
+        if m.epgData.logoFallbackData <> invalid
+            EPGEnrichWithLogosFast(m.epgData.playlistData, m.epgData.logoFallbackData, m.logoUrls, m.networkLogoPatterns)
+        end if
+        finishLoading()
     end if
 end sub
 
 sub onLogoPlaylistResponse()
     m.epgData.logoFallbackData = EPGParsePlaylist(m.epgData.logoTask.response)
     m.epgData.logoTask = invalid
-    checkPlaylistsComplete()
+
+    ' If guide is already shown, apply logos now
+    if m.epgData.pendingTasks = 0 and m.epgData.playlistData <> invalid
+        EPGEnrichWithLogosFast(m.epgData.playlistData, m.epgData.logoFallbackData, m.logoUrls, m.networkLogoPatterns)
+        ' Refresh the guide to show updated logos
+        if m.channelList.content <> invalid
+            m.channelList.content.notifyUpdate()
+        end if
+    end if
 end sub
 
 sub onLogoPlaylistError()
     m.epgData.logoTask = invalid
-    checkPlaylistsComplete()
+    ' Don't block loading - logos are optional
 end sub
 
 sub onScheduleResponse()
@@ -580,14 +593,32 @@ sub onScheduleResponse()
         m.epgData.programsByChannel = epgResult.programsByChannel
     end if
     m.epgData.epgTask = invalid
-    checkPlaylistsComplete()
+
+    m.epgData.pendingTasks = m.epgData.pendingTasks - 1
+
+    ' If playlist is done, show guide immediately
+    if m.epgData.pendingTasks = 0
+        ' Apply logos if fallback already loaded
+        if m.epgData.logoFallbackData <> invalid
+            EPGEnrichWithLogosFast(m.epgData.playlistData, m.epgData.logoFallbackData, m.logoUrls, m.networkLogoPatterns)
+        end if
+        finishLoading()
+    end if
 end sub
 
 sub onScheduleError()
     m.epgData.schedules = {}
     m.epgData.programsByChannel = {}
     m.epgData.epgTask = invalid
-    checkPlaylistsComplete()
+
+    m.epgData.pendingTasks = m.epgData.pendingTasks - 1
+
+    if m.epgData.pendingTasks = 0
+        if m.epgData.logoFallbackData <> invalid
+            EPGEnrichWithLogosFast(m.epgData.playlistData, m.epgData.logoFallbackData, m.logoUrls, m.networkLogoPatterns)
+        end if
+        finishLoading()
+    end if
 end sub
 
 sub onPlaylistError()
@@ -596,58 +627,50 @@ sub onPlaylistError()
     showError("Failed to load channel list")
 end sub
 
-sub checkPlaylistsComplete()
-    m.epgData.pendingTasks = m.epgData.pendingTasks - 1
-    if m.epgData.pendingTasks = 0
-        EPGEnrichWithLogosFast(m.epgData.playlistData, m.epgData.logoFallbackData, m.logoUrls, m.networkLogoPatterns)
-        m.epgData.channels = m.epgData.playlistData
-        m.epgData.isLoading = false
-        m.epgData.lastUpdate = CreateObject("roDateTime").AsSeconds()
+sub finishLoading()
+    m.epgData.isLoading = false
+    m.epgData.lastUpdate = CreateObject("roDateTime").AsSeconds()
 
-        ' Invalidate URL cache on EPG refresh (TVPass URLs may change)
-        m.resolvedUrlCache = {}
+    ' Invalidate URL cache on EPG refresh
+    m.resolvedUrlCache = {}
 
+    ' Preload channel logos if needed
+    if m.epgData.channels.count() > 0
+        currentCacheSize = m.bitmapCache.getCacheSize()
 
-        ' Only preload channel logos if cache is empty or has few items
-        if m.epgData.channels.count() > 0
-            currentCacheSize = m.bitmapCache.getCacheSize()
-
-            if currentCacheSize = 0 then
-                ' First time - preload everything
-                logoUris = m.bitmapCache.collectUrisFromChannels(m.epgData.channels)
-                if logoUris.count() > 0
-                    m.bitmapCache.preload(logoUris, m.preloadContainer)
+        if currentCacheSize = 0 then
+            logoUris = m.bitmapCache.collectUrisFromChannels(m.epgData.channels)
+            if logoUris.count() > 0
+                m.bitmapCache.preload(logoUris, m.preloadContainer)
+            end if
+        else
+            logoUris = m.bitmapCache.collectUrisFromChannels(m.epgData.channels)
+            newLogos = 0
+            for each uri in logoUris
+                if not m.bitmapCache.isCached(uri) then
+                    newLogos++
                 end if
+            end for
+
+            if newLogos > 0 then
+                m.bitmapCache.preload(logoUris, m.preloadContainer)
             else
-                ' Already have cache - only preload new logos
-                logoUris = m.bitmapCache.collectUrisFromChannels(m.epgData.channels)
-                newLogos = 0
-                for each uri in logoUris
-                    if not m.bitmapCache.isCached(uri) then
-                        newLogos++
-                    end if
-                end for
-
-                if newLogos > 0 then
-                    m.bitmapCache.preload(logoUris, m.preloadContainer)
-                else
-                    print "BitmapCache: All channel logos already cached"
-                end if
+                print "BitmapCache: All channel logos already cached"
             end if
         end if
+    end if
 
-        ' Update multiview's EPG data reference for logo preloading
-        m.multiviewGrid.epgData = m.epgData
-        m.multiviewGrid.bitmapCache = m.bitmapCache
+    ' Update multiview's EPG data reference
+    m.multiviewGrid.epgData = m.epgData
+    m.multiviewGrid.bitmapCache = m.bitmapCache
 
-        ' Kick off background prefetch of TVPass redirect URLs
-        PrefetchTvpassUrls()
+    ' Kick off background prefetch of TVPass redirect URLs
+    PrefetchTvpassUrls()
 
-        if m.epgData.channels.count() > 0
-            showGuide()
-        else
-            showError("No channels found")
-        end if
+    if m.epgData.channels.count() > 0
+        showGuide()
+    else
+        showError("No channels found")
     end if
 end sub
 
