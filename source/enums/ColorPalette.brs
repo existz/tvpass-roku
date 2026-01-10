@@ -192,7 +192,7 @@ function GetTeamColorPalette() as Object
             "hawaii": "0x024731FF"
             "houston": "0xC8102EFF"
             "illinois": "0xE84A27FF"
-            "indiana": "0x990000FF"
+            "indiana": "0xFFFFFFFF"
             "iowa": "0xFFCD00FF"
             "iowa-state": "0xC8102EFF"
             "james-madison": "0x450084FF"
