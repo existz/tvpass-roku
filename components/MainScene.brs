@@ -1021,6 +1021,7 @@ sub onChannelSelected()
     if idx >= 0 and idx < m.epgData.channels.count()
         if m.isBackgroundPlayback and idx = m.currentChannelIndex
             m.isBackgroundPlayback = false
+            m.isReturningToGuide = false
             m.videoPlayer.opacity = 1.0
             m.videoOverlay.visible = false
             hideGuideElements()
@@ -1063,6 +1064,7 @@ sub playChannel(channel as Object)
     m.lastPosition = 0
     m.streamEstablished = false
     m.userCancelledRetry = false  ' Clear user cancellation flag when intentionally playing a channel
+    m.isReturningToGuide = false  ' Clear the returning to guide flag when starting new playback
 
     m.videoPlayer.opacity = 1.0
     m.videoPlayer.visible = true
