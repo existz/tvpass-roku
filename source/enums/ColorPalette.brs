@@ -109,7 +109,7 @@ function GetTeamColorPalette() as Object
             "padres": "0x2F241DFF"
             "giants": "0x000000FF"
             "mariners": "0x0C2C56FF"
-            "cardinals": "0xC41E3AFF"
+            "cardinals": "0xFFFFFFFF"
             "rays": "0x092C5CFF"
             "rangers": "0x003278FF"
             "blue-jays": "0x134A8EFF"
