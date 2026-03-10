@@ -65,6 +65,7 @@ sub init()
     ' Prevent retry spam during rapid state changes
     m.isRetrying = false
     m.retryInProgress = false
+    m.userCancelledRetry = false  ' Set to true when user presses back to cancel retry
 
     ' Fanart artwork cache
     m.artworkCache = {}
@@ -1061,6 +1062,7 @@ sub playChannel(channel as Object)
     ' Reset position tracking and stream establishment flag
     m.lastPosition = 0
     m.streamEstablished = false
+    m.userCancelledRetry = false  ' Clear user cancellation flag when intentionally playing a channel
 
     m.videoPlayer.opacity = 1.0
     m.videoPlayer.visible = true
@@ -1548,6 +1550,13 @@ sub onRetryTimer()
     ' Reset retry lock BEFORE attempting new playback
     m.retryInProgress = false
 
+    ' Don't retry if user explicitly cancelled by pressing back
+    if m.userCancelledRetry
+        m.userCancelledRetry = false
+        returnToGuide()
+        return
+    end if
+
     if m.currentChannelIndex >= 0 and m.currentChannelIndex < m.epgData.channels.count()
         channel = m.epgData.channels[m.currentChannelIndex]
         playChannel(channel)
@@ -1563,8 +1572,13 @@ sub returnToGuide()
     m.retryTimer.control = "stop"
     m.returnToGuideTimer.control = "stop"
 
-    m.loadingLabel.visible = false
+    ' Clear retry state
+    m.isRetrying = false
+    m.retryInProgress = false
     m.retryAttempts = 0
+    m.userCancelledRetry = false
+
+    m.loadingLabel.visible = false
     loadPlaylist()
 end sub
 
@@ -1702,19 +1716,32 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
             ' Set flag to prevent duplicate back button handling
             m.isReturningToGuide = true
 
+            ' Cancel any ongoing retry if server is full
+            if m.isRetrying or m.retryAttempts > 0
+                m.retryTimer.control = "stop"
+                m.isRetrying = false
+                m.retryInProgress = false
+                m.userCancelledRetry = true  ' Mark that user explicitly cancelled retry
+                m.retryAttempts = 0
+                m.loadingLabel.visible = false
+            end if
+
+            ' Stop video playback and hide video player
+            m.videoPlayer.control = "stop"
+            m.videoPlayer.visible = false
+            m.videoOverlay.visible = false
+            m.videoInfoOverlay.showOverlay = false
+
             ' Ensure multiview state is cleared
             if m.isMultiviewMode then
                 m.isMultiviewMode = false
             end if
 
-            ' Close any open overlays
-            m.videoInfoOverlay.showOverlay = false
+            ' Ensure slideout menu is hidden
             m.channelMenu.visible = false
+            m.isBackgroundPlayback = false
 
-            m.isBackgroundPlayback = true
-            m.videoPlayer.opacity = 1.0
-            m.videoPlayer.visible = true
-            m.videoOverlay.visible = true
+            ' Show guide and load playlist
             showGuideElements()
             loadPlaylist()
 
