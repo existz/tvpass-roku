@@ -1,22 +1,16 @@
 #EXTM3U
 
 # 90s TV
-#EXTINF:-1 tvg-id="pluto-90210" group-title="TV" tvg-name="90210" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/90210.png"
-http://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/5f4d83e0a382c00007bc02e7/master.m3u8?appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=6c265960-30d3-11ef-9cf5-e9ddff8ff496&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=3b3051db-b19e-4913-a7e9-fddc37302264
 #EXTINF:-1 tvg-id="xumo-savedbythebell" group-title="TV" tvg-name="Saved by the Bell" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/saved-by-the-bell.png"
 https://xumo-xumoent-vc-111-0pd1g.fast.nbcuni.com/live/master.m3u8
 
 # 2000s TV
-#EXTINF:-1 tvg-id="king-of-queens" group-title="TV" tvg-name="King of Queens" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/king-of-queens-us.png"
-http://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/62f4f414c2ba130007f8b24e/master.m3u8?appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=2c7ac9d7-35fc-11ef-a031-2b5d494037a2&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=4a0db601-9852-43bd-90bd-3b44aed929f7
 #EXTINF:-1 tvg-id="blue-bloods" group-title="TV" tvg-name="Blue Bloods" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/blue-bloods-us.png"
 http://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/61b3b8c645b45d0007a9bb8d/master.m3u8?appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=6c2743c5-30d3-11ef-9cf5-e9ddff8ff496&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=fe7428fc-4fd0-424f-828f-7d5d5e9ad75c
 
 # Other TV
 #EXTINF:-1 tvg-id="samsung-national-lampoon" group-title="TV" tvg-name="National Lampoon" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/national-lampoon-us.png"
 https://jmp2.uk/stvp-US1800015K5
-#EXTINF:-1 tvg-id="tv-land-sitcoms" group-title="TV" tvg-name="TV Land Sitcoms" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/tv-land-us.png"
-https://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/5c2d64ffbdf11b71587184b8/master.m3u8?advertisingId=&appName=web&appVersion=unknown&appStoreUrl=&architecture=&buildVersion=&clientTime=0&deviceDNT=0&deviceId=bc2c6d52-e3fb-11f0-8e33-4db53aefd476&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&sid=f6f17f58-0232-4717-8060-17d482bbd9eb&userId=&serverSideAds=true
 #EXTINF:-1 tvg-id="the-connors" group-title="TV" tvg-name="The Connors" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/the-connors-us.png"
 https://amg00353-amg00353c36-lg-us-6064.playouts.now.amagi.tv/playlist.m3u8
 
@@ -27,8 +21,6 @@ https://townnews.g-mana.live/media/14d1fd2c-0548-4803-80ad-6657831a7981/main.m3u
 https://amg01438-ewscripps-amg01438c21-lg-us-4332.playouts.now.amagi.tv/playlist.m3u8
 
 # Sports
-#EXTINF:-1 tvg-id="pluto-nfl-channel" group-title="TV" tvg-name="NFL Channel" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nfl-icon-us.png"
-http://cfd-v4-service-channel-stitcher-use1-1.prd.pluto.tv/stitch/hls/channel/5ced7d5df64be98e07ed47b6/master.m3u8?appName=web&appVersion=unknown&clientTime=0&deviceDNT=0&deviceId=6c2a5105-30d3-11ef-9cf5-e9ddff8ff496&deviceMake=Chrome&deviceModel=web&deviceType=web&deviceVersion=unknown&includeExtendedEvents=false&serverSideAds=false&sid=6477ef85-3680-442c-94d8-27197903b1f6
 #EXTINF:-1 tvg-id="firetv-nba-tv" group-title="TV" tvg-name="NBA TV" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/nba-tv-icon-us.png"
 https://amg00556-amg00556c3-firetv-us-6060.playouts.now.amagi.tv/playlist.m3u8
 #EXTINF:-1 tvg-id="plex-sportsgrid" group-title="TV" tvg-name="SportsGrid" tvg-logo="https://raw.githubusercontent.com/existz/tv-logos/main/countries/united-states/sports-grid-us.png"
@@ -41,21 +33,9 @@ https://jmp2.uk/stvp-US300062TG
 https://jmp2.uk/stvp-USBD700013BW
 
 # Replace TVPass channels
-#EXTINF:-1 tvg-id="big-ten-network" group-title="TV" tvg-name="Big Ten Network"
-https://fl1.moveonjoy.com/BIG_TEN_NETWORK/index.m3u8
 #EXTINF:-1 tvg-id="cspan" group-title="TV" tvg-name="C-SPAN"
 https://fl1.moveonjoy.com/C-SPAN/index.m3u8
-#EXTINF:-1 tvg-id="cbs-sports-network-usa" group-title="TV" tvg-name="CBS Sports Network USA"
-https://fl1.moveonjoy.com/CBS_SPORTS_NETWORK/index.m3u8
 #EXTINF:-1 tvg-id="lifetime-movies-east" group-title="TV" tvg-name="Lifetime Movies East"
 https://fl1.moveonjoy.com/LIFETIME_MOVIE_NETWORK/index.m3u8
-#EXTINF:-1 tvg-id="mlb-network" group-title="TV" tvg-name="MLB Network"
-https://fl1.moveonjoy.com/MLB_NETWORK/index.m3u8
-#EXTINF:-1 tvg-id="nfl-network" group-title="TV" tvg-name="NFL Network"
-https://fl1.moveonjoy.com/NFL_NETWORK/index.m3u8
-#EXTINF:-1 tvg-id="sec-network" group-title="TV" tvg-name="SEC Network"
-http://fl1.moveonjoy.com/SEC_NETWORK/index.m3u8
 #EXTINF:-1 tvg-id="tv-one" group-title="TV" tvg-name="TV One"
 https://fl1.moveonjoy.com/TV_ONE/index.m3u8
-#EXTINF:-1 tvg-id="yes-network" group-title="TV" tvg-name="Yes Network"
-https://fl1.moveonjoy.com/YES_NETWORK/index.m3u8
